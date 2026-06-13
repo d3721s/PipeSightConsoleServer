@@ -286,9 +286,9 @@ async function removeAnnotation(id: number) {
 <style scoped>
 .annotate-page {
   display: grid;
-  grid-template-columns: 18rem 1fr;
-  gap: 1rem;
-  height: calc(100vh - 3rem - 2rem);
+  grid-template-columns: 24rem 1fr;
+  gap: 1.5rem;
+  height: calc(100vh - 4rem - 5rem);
 }
 .media-rail {
   background: #ffffff;

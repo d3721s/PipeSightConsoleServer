@@ -50,18 +50,19 @@ const router = useRouter()
 
 <style scoped>
 .home-page {
-  max-width: 48rem;
+  max-width: 100%;
   margin: 0 auto;
 }
 .home-tiles {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
 }
 .action-tile {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
+  min-height: 9rem;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -73,26 +74,28 @@ const router = useRouter()
   color: #0f62fe;
 }
 .action-tile-icon :deep(svg) {
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 .action-tile-body {
   flex: 1;
 }
 .action-tile-body h3 {
-  margin: 0 0 0.25rem;
-  font-size: 1.125rem;
+  margin: 0 0 0.375rem;
+  font-size: 1.375rem;
 }
 .action-tile-body p {
   margin: 0;
   color: #525252;
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 .action-tile-go {
   color: #6f6f6f;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 .start-btn {
   width: 100%;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 </style>

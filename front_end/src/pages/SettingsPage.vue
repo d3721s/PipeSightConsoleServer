@@ -293,7 +293,7 @@ onActivated(loadStorage)
 
 <style scoped>
 .settings-page {
-  max-width: 66rem;
+  max-width: 96rem;
   margin: 0 auto;
 }
 /* Let Carbon's grid own horizontal rhythm; only add vertical gaps between rows. */

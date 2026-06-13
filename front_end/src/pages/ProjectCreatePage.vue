@@ -64,8 +64,8 @@ async function submit() {
         />
       </div>
       <div class="form-actions">
-        <cv-button kind="secondary" @click="router.push('/')">返回首页</cv-button>
-        <cv-button :icon="ArrowRight24" :disabled="busy" @click="submit">进入控制台</cv-button>
+        <cv-button size="lg" kind="secondary" @click="router.push('/')">返回首页</cv-button>
+        <cv-button size="lg" :icon="ArrowRight24" :disabled="busy" @click="submit">进入控制台</cv-button>
       </div>
     </cv-tile>
   </div>
@@ -73,13 +73,13 @@ async function submit() {
 
 <style scoped>
 .form-page {
-  max-width: 56rem;
+  max-width: 90rem;
   margin: 0 auto;
 }
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem 1.5rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem 1.75rem;
 }
 .form-grid :deep(.cv-text-input):first-child {
   grid-column: 1 / -1;
@@ -88,6 +88,6 @@ async function submit() {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 2rem;
+  margin-top: 2.5rem;
 }
 </style>

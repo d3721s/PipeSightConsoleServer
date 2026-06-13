@@ -82,7 +82,7 @@ function downloadPdf(id: number) {
 
 <style scoped>
 .reports-page {
-  max-width: 60rem;
+  max-width: 90rem;
   margin: 0 auto;
 }
 .report-list {

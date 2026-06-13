@@ -96,7 +96,7 @@ function downloadPdf() {
 
 <style scoped>
 .report-detail-page {
-  max-width: 68rem;
+  max-width: 96rem;
   margin: 0 auto;
 }
 .detail-toolbar {
