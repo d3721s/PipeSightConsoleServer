@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -57,4 +57,20 @@ def write_storage(payload: StoragePathIn, db: Session = Depends(get_db)) -> dict
     # old location until restarted. Tell the UI so it can prompt the user.
     result["restartRequired"] = True
     return result
+
+
+@router.get("/recording")
+def read_recording(db: Session = Depends(get_db)) -> dict:
+    value = get_setting(db, "recording", {})
+    return {"segmentMinutes": int(value.get("segmentMinutes", 30)), "default": 30}
+
+
+class RecordingSettingsIn(BaseModel):
+    segment_minutes: int = Field(default=30, alias="segmentMinutes", ge=1)
+
+
+@router.put("/recording")
+def write_recording(payload: RecordingSettingsIn, db: Session = Depends(get_db)) -> dict:
+    set_setting(db, "recording", {"segmentMinutes": payload.segment_minutes})
+    return read_recording(db)
 

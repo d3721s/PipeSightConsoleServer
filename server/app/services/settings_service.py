@@ -23,3 +23,20 @@ def set_setting(db: Session, key: str, value: dict) -> dict:
     db.commit()
     return value
 
+
+def get_recording_segment_minutes(default: int = 30) -> int:
+    """Persisted recording segment length (minutes), read in its own session.
+
+    Used by the recorder when the request does not specify a value. Falls back
+    to `default` on any error or invalid stored value.
+    """
+    try:
+        from app.db import SessionLocal
+
+        with SessionLocal() as db:
+            value = get_setting(db, "recording", {})
+        minutes = int(value.get("segmentMinutes", default))
+        return minutes if minutes > 0 else default
+    except Exception:
+        return default
+

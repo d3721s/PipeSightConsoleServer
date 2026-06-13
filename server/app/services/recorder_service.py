@@ -11,6 +11,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.services.odometer_service import odometer_service
+from app.services.settings_service import get_recording_segment_minutes
 
 
 settings = get_settings()
@@ -90,7 +91,11 @@ class RecorderService:
         recording_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         pattern = recording_dir / f"PipeSight_{stamp}_%03d.mp4"
-        minutes = segment_minutes if segment_minutes and segment_minutes > 0 else settings.recording_segment_minutes
+        # Segment length: explicit arg wins, else the persisted setting, else default.
+        if segment_minutes and segment_minutes > 0:
+            minutes = segment_minutes
+        else:
+            minutes = get_recording_segment_minutes(settings.recording_segment_minutes)
         segment_seconds = max(1, minutes) * 60
 
         self._osd_textfile = recording_dir / f".osd_{stamp}.txt"

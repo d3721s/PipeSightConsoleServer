@@ -58,6 +58,12 @@ export const api = {
   getStorage: () => request<StorageOptions>('/api/settings/storage'),
   setStorage: (path: string | null) =>
     request<StorageOptions>('/api/settings/storage', { method: 'PUT', body: JSON.stringify({ path }) }),
+  getRecordingSettings: () => request<{ segmentMinutes: number; default: number }>('/api/settings/recording'),
+  setRecordingSettings: (segmentMinutes: number) =>
+    request<{ segmentMinutes: number; default: number }>('/api/settings/recording', {
+      method: 'PUT',
+      body: JSON.stringify({ segmentMinutes })
+    }),
 
   listRecordings: () => request<Recording[]>('/api/recordings'),
   recordingTrack: (id: number) => request<TrackData>(`/api/recordings/${id}/track`),

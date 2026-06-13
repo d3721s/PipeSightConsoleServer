@@ -167,6 +167,25 @@ async function applyStorage(path: string | null) {
   }
 }
 
+async function loadRecordingSettings() {
+  try {
+    const data = await api.getRecordingSettings()
+    segmentMinutes.value = data.segmentMinutes
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+async function saveRecordingSettings() {
+  try {
+    const data = await api.setRecordingSettings(segmentMinutes.value)
+    segmentMinutes.value = data.segmentMinutes
+    show('录像分段已保存')
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
 async function openAnnotate() {
   page.value = 'annotate'
   activeRecording.value = null
@@ -347,8 +366,7 @@ async function toggleRecording() {
     channel: active.channel,
     distanceM: distance.value,
     projectName: currentProject.value?.name || '',
-    projectLocation: currentProject.value?.location || '',
-    segmentMinutes: segmentMinutes.value
+    projectLocation: currentProject.value?.location || ''
   })
   window.setTimeout(loadStream, 800)
   show('录像已开始')
@@ -410,7 +428,10 @@ onUnmounted(() => {
 // Refresh storage options (incl. currently-mounted USB drives) each time the
 // settings page is opened.
 watch(page, (value) => {
-  if (value === 'settings') loadStorage()
+  if (value === 'settings') {
+    loadStorage()
+    loadRecordingSettings()
+  }
 })
 </script>
 
@@ -464,10 +485,6 @@ watch(page, (value) => {
             <button :class="{ active: active.channel === 1 }" @click="selectChannel(1)">云台</button>
             <button :class="{ active: active.channel === 2 }" @click="selectChannel(2)">固定</button>
           </div>
-          <label class="distance-input">
-            <span>分段(分钟)</span>
-            <input v-model.number="segmentMinutes" type="number" min="1" step="1" :disabled="recording.active" />
-          </label>
           <div class="control-row">
             <button @click="takeSnapshot">拍照</button>
             <button :class="{ danger: recording.active }" @click="toggleRecording">
