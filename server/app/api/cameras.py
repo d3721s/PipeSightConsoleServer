@@ -102,6 +102,7 @@ def get_active_stream(request: Request, db: Session = Depends(get_db)) -> dict:
     camera = get_camera(db, device)
     if not camera.ip:
         raise HTTPException(status_code=400, detail="camera IP is empty")
-    use_relay = recorder_service.active_for(device, channel)
-    return stream_payload(request, camera, channel, use_relay)
+    # Preview always shows the live camera stream (no OSD). The OSD is burned in
+    # only in the recorded MP4, so there is no recording relay to switch to.
+    return stream_payload(request, camera, channel, use_recording_relay=False)
 

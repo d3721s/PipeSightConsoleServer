@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { api } from './api'
 import WebRtcPlayer from './components/WebRtcPlayer.vue'
 import { cameraControlSocket, type PtzDirection } from './ws'
@@ -15,6 +15,9 @@ const active = reactive<ActiveCamera>({ device: 'front', channel: 1 })
 const stream = ref<StreamInfo | null>(null)
 const digitalZoom = ref(1)
 const distance = ref(0)
+const odometerConnected = ref(false)
+let odometerTimer: number | null = null
+const segmentMinutes = ref(30)
 const recording = ref<RecordingStatus>({ active: false })
 const projects = ref<Project[]>([])
 const currentProject = ref<Project | null>(null)
@@ -157,7 +160,10 @@ async function toggleRecording() {
     sessionId: currentSession.value?.id,
     device: active.device,
     channel: active.channel,
-    distanceM: distance.value
+    distanceM: distance.value,
+    projectName: currentProject.value?.name || '',
+    projectLocation: currentProject.value?.location || '',
+    segmentMinutes: segmentMinutes.value
   })
   window.setTimeout(loadStream, 800)
   show('录像已开始')
@@ -201,6 +207,20 @@ function openEditor() {
 onMounted(() => {
   cameraControlSocket.connect()
   loadInitial().catch((error) => show(error.message))
+  // Poll the cart odometer so the OSD overlay distance matches the recording.
+  odometerTimer = window.setInterval(async () => {
+    try {
+      const data = await api.odometer()
+      odometerConnected.value = data.connected
+      if (data.mileageM !== null) distance.value = data.mileageM
+    } catch {
+      odometerConnected.value = false
+    }
+  }, 250)
+})
+
+onUnmounted(() => {
+  if (odometerTimer !== null) window.clearInterval(odometerTimer)
 })
 </script>
 
@@ -289,8 +309,13 @@ onMounted(() => {
             <button :class="{ active: active.channel === 2 }" @click="selectChannel(2)">固定</button>
           </div>
           <label class="distance-input">
-            <span>距离 m</span>
-            <input v-model.number="distance" type="number" step="0.01" />
+            <span>里程 m</span>
+            <input :value="distance.toFixed(2)" type="text" readonly :title="odometerConnected ? '来自小车里程计' : '里程计未连接'" />
+          </label>
+          <div v-if="!odometerConnected" class="odometer-warn">里程计未连接</div>
+          <label class="distance-input">
+            <span>分段(分钟)</span>
+            <input v-model.number="segmentMinutes" type="number" min="1" step="1" :disabled="recording.active" />
           </label>
           <label>
             <span>数字变焦 {{ digitalZoom.toFixed(1) }}x</span>

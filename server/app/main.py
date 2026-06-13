@@ -10,6 +10,7 @@ from app.api import annotations, cameras, media, media_proxy, projects, reports,
 from app.config import get_settings
 from app.db import init_db
 from app.services.mediamtx_service import mediamtx_service
+from app.services.odometer_service import odometer_service
 from app.ws import camera_control
 
 
@@ -30,11 +31,13 @@ app.add_middleware(
 def on_startup() -> None:
     init_db()
     mediamtx_service.start()
+    odometer_service.start()
 
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
     mediamtx_service.stop()
+    odometer_service.stop()
 
 
 app.include_router(system.router)

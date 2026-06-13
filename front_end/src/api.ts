@@ -53,6 +53,7 @@ export const api = {
     request<RecordingStatus>('/api/recordings/start', { method: 'POST', body: JSON.stringify(data) }),
   stopRecording: () => request<RecordingStatus>('/api/recordings/stop', { method: 'POST' }),
   recordingStatus: () => request<RecordingStatus>('/api/recordings/status'),
+  odometer: () => request<{ connected: boolean; mileageCm: number | null; mileageM: number | null }>('/api/odometer'),
 
   startReport: (data: Record<string, unknown>) =>
     request<Report>('/api/reports/start', { method: 'POST', body: JSON.stringify(data) }),

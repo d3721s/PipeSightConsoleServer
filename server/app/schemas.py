@@ -102,7 +102,9 @@ class MediaAssetOut(BaseModel):
 
 
 class RecordingStartIn(SnapshotIn):
-    pass
+    project_name: str = Field(default="", alias="projectName")
+    project_location: str = Field(default="", alias="projectLocation")
+    segment_minutes: int | None = Field(default=None, alias="segmentMinutes")
 
 
 class RecordingStatusOut(BaseModel):
