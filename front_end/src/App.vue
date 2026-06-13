@@ -16,7 +16,6 @@ const active = reactive<ActiveCamera>({ device: 'front', channel: 1 })
 const stream = ref<StreamInfo | null>(null)
 const digitalZoom = ref(1)
 const distance = ref(0)
-const odometerConnected = ref(false)
 let odometerTimer: number | null = null
 const segmentMinutes = ref(30)
 const storage = ref<StorageOptions | null>(null)
@@ -397,10 +396,9 @@ onMounted(() => {
   odometerTimer = window.setInterval(async () => {
     try {
       const data = await api.odometer()
-      odometerConnected.value = data.connected
       if (data.mileageM !== null) distance.value = data.mileageM
     } catch {
-      odometerConnected.value = false
+      // keep last known distance
     }
   }, 250)
 })
