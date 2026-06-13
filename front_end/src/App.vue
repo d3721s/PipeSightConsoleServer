@@ -741,6 +741,18 @@ watch(page, (value) => {
               <button :disabled="storageBusy" @click="loadStorage">刷新</button>
             </div>
           </article>
+
+          <article class="settings-card">
+            <h2>录像设置</h2>
+            <label>
+              <span>分段时长（分钟）</span>
+              <input v-model.number="segmentMinutes" type="number" min="1" step="1" />
+            </label>
+            <p class="storage-hint">每段录像达到该时长后自动切分为新文件。</p>
+            <div class="control-row">
+              <button @click="saveRecordingSettings">保存</button>
+            </div>
+          </article>
         </div>
       </section>
     </main>
