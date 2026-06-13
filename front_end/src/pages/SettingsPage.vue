@@ -248,7 +248,6 @@ onActivated(loadStorage)
                     hide-label
                     placeholder="/mnt/usb"
                     :disabled="storageBusy"
-                    class="manual-input"
                   />
                   <cv-button
                     kind="tertiary"
@@ -318,8 +317,23 @@ onActivated(loadStorage)
 .card-head h3 {
   margin: 0;
 }
-/* Carbon form fields already carry vertical margin; the action row gets a
-   clear separation and Carbon's right-aligned button convention. */
+
+/* Carbon's .bx--form-item has NO bottom margin and no inter-item spacing, so
+   stacked inputs touch each other. Carbon's convention is a vertical rhythm
+   between fields — apply it to every form-item inside a card's form. */
+.settings-card :deep(.bx--form-item) {
+  margin-bottom: 1rem;
+}
+/* The form-group fieldset stacks its fields; remove its own trailing margin so
+   the action row spacing is controlled by .form-actions. */
+.settings-card :deep(.bx--fieldset) {
+  margin-bottom: 0;
+}
+/* Form-group legend gets a little breathing room above its fields. */
+.settings-card :deep(.bx--fieldset > .bx--label:first-child) {
+  margin-bottom: 0.75rem;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -351,7 +365,10 @@ onActivated(loadStorage)
   align-items: flex-end;
   gap: 0.5rem;
 }
-.manual-input {
+/* The manual-path input is itself a flex form-item; let it fill the row and
+   drop its bottom margin so it baseline-aligns with the button beside it. */
+.manual-row :deep(.bx--form-item) {
   flex: 1;
+  margin-bottom: 0;
 }
 </style>
