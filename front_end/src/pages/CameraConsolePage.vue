@@ -25,7 +25,7 @@ import {
   selectChannel,
   stream
 } from '../stores/cameras'
-import { distance } from '../stores/odometer'
+import { distance, odometerConnected } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, toggleReport } from '../stores/session'
 
 const router = useRouter()
@@ -106,6 +106,7 @@ async function toggleRecording() {
 
       <osd-overlay
         :distance="distance"
+        :odometer-connected="odometerConnected"
         :project-name="currentProject?.name || ''"
         :location="currentProject?.location || ''"
       />
@@ -143,7 +144,7 @@ async function toggleRecording() {
       </div>
 
       <div class="rail-section">
-        <span class="rail-label">相机 / 通道</span>
+        <span class="rail-label">相机 </span>
         <camera-switcher
           :device="active.device"
           :channel="active.channel"
