@@ -305,10 +305,10 @@ onMounted(() => {
           <div class="ptz-block" :class="{ disabled: !isPtzChannel }">
             <span>云台控制</span>
             <div class="ptz-grid">
-              <button class="up" @click="ptzStep('up')" @pointerdown="ptzStart('up')" @pointerup="ptzStop">▲</button>
-              <button class="left" @click="ptzStep('left')" @pointerdown="ptzStart('left')" @pointerup="ptzStop">◀</button>
-              <button class="right" @click="ptzStep('right')" @pointerdown="ptzStart('right')" @pointerup="ptzStop">▶</button>
-              <button class="down" @click="ptzStep('down')" @pointerdown="ptzStart('down')" @pointerup="ptzStop">▼</button>
+              <button class="up" @click="ptzStep('up')">▲</button>
+              <button class="left" @click="ptzStep('left')">◀</button>
+              <button class="right" @click="ptzStep('right')">▶</button>
+              <button class="down" @click="ptzStep('down')">▼</button>
             </div>
           </div>
           <button @click="openEditor">进入标记编辑</button>
