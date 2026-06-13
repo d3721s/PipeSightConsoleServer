@@ -11,8 +11,15 @@ DeleteOSD is permanent for the deleted entries.
 Run on the Ubuntu server:
     cd ~/PipeSightConsoleServer/server
     source .venv/bin/activate
-    python scripts/onvif_delete_osd.py            # delete for camera 'front'
-    python scripts/onvif_delete_osd.py rear       # or another camera code
+
+    # Option 1: look the camera up from the DB by code (needs the backend to
+    # have created the tables and the camera to be configured):
+    python scripts/onvif_delete_osd.py                # camera code 'front'
+    python scripts/onvif_delete_osd.py rear           # another camera code
+
+    # Option 2: pass connection details directly (no DB needed):
+    python scripts/onvif_delete_osd.py 192.168.71.21 admin L26FDBCF
+    python scripts/onvif_delete_osd.py 192.168.71.21 admin L26FDBCF 80
 
 It first prints every OSD token it finds, deletes each one, then re-reads to
 confirm none remain.
@@ -26,7 +33,6 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, ".")
 
-from app.db import SessionLocal  # noqa: E402
 from app.drivers.onvif_client import (  # noqa: E402
     OnvifConfig,
     OnvifError,
@@ -37,12 +43,49 @@ from app.drivers.onvif_client import (  # noqa: E402
     service_xaddr,
     xml_escape,
 )
-from app.models import CameraDevice  # noqa: E402
-from sqlalchemy import select  # noqa: E402
 
 
 MEDIA2_NS = "http://www.onvif.org/ver20/media/wsdl"
-CAMERA_CODE = sys.argv[1] if len(sys.argv) > 1 else "front"
+
+
+def _config_from_args() -> tuple[OnvifConfig, str]:
+    """Build an OnvifConfig from CLI args, or from the DB by camera code.
+
+    Forms:
+      <ip> <user> <pass> [port]   -> direct connection (no DB)
+      [code]                      -> look up camera by code in the DB
+    """
+    args = sys.argv[1:]
+    looks_like_ip = bool(args) and args[0].count(".") == 3 and args[0].replace(".", "").isdigit()
+    if looks_like_ip:
+        ip = args[0]
+        user = args[1] if len(args) > 1 else "admin"
+        password = args[2] if len(args) > 2 else ""
+        port = int(args[3]) if len(args) > 3 else 80
+        return OnvifConfig(ip=ip, username=user, password=password, port=port), ip
+
+    code = args[0] if args else "front"
+    from app.db import SessionLocal
+    from app.models import CameraDevice
+    from sqlalchemy import select
+
+    with SessionLocal() as db:
+        camera = db.scalar(select(CameraDevice).where(CameraDevice.code == code))
+    if camera is None or not camera.ip:
+        raise SystemExit(
+            f"camera '{code}' not found / has no IP. Either start the backend and "
+            f"configure the camera, or pass details directly: "
+            f"python scripts/onvif_delete_osd.py <ip> <user> <pass> [port]"
+        )
+    return (
+        OnvifConfig(
+            ip=camera.ip,
+            username=camera.username,
+            password=camera.password,
+            port=camera.onvif_port or 80,
+        ),
+        camera.code,
+    )
 
 
 def pretty(xml_text: str) -> str:
@@ -89,21 +132,10 @@ async def resolve_media2(config: OnvifConfig) -> str:
 
 
 async def main() -> None:
-    with SessionLocal() as db:
-        camera = db.scalar(select(CameraDevice).where(CameraDevice.code == CAMERA_CODE))
-    if camera is None or not camera.ip:
-        print(f"camera '{CAMERA_CODE}' not found or has no IP")
-        return
-
-    config = OnvifConfig(
-        ip=camera.ip,
-        username=camera.username,
-        password=camera.password,
-        port=camera.onvif_port or 80,
-    )
+    config, label = _config_from_args()
     media2_url = await resolve_media2(config)
     print("=" * 64)
-    print(f"camera     : {camera.code} ({camera.ip})")
+    print(f"camera     : {label} ({config.ip})")
     print(f"media2 url  : {media2_url}")
     print("=" * 64)
 

@@ -222,6 +222,17 @@ async function toggleRecording() {
   width: 1.5rem;
   height: 1.5rem;
 }
+/* Both zoom buttons sit on a dark pill; force their glyphs solid white in every
+   state (incl. disabled at a zoom limit) so the two buttons always match.
+   Carbon ghost defaults to a dark glyph and a different grey when disabled,
+   which made the two buttons look inconsistent. */
+.zoom-btn :deep(svg),
+.zoom-btn:hover :deep(svg),
+.zoom-btn:focus :deep(svg),
+.zoom-btn:disabled :deep(svg),
+.zoom-btn.bx--btn--disabled :deep(svg) {
+  fill: #ffffff;
+}
 .ptz-cluster {
   position: absolute;
   right: 1.25rem;
