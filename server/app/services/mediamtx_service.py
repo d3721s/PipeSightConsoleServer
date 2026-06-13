@@ -62,11 +62,9 @@ class MediaMtxService:
                 config_path = write_mediamtx_config(db)
 
             try:
-                self._process = subprocess.Popen(
-                    [str(exe), str(config_path)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                # Inherit the server's stdout/stderr so MediaMTX logs (including
+                # why it rejects a WHEP request) show up in the run.sh terminal.
+                self._process = subprocess.Popen([str(exe), str(config_path)])
             except OSError as exc:
                 self._process = None
                 self._state = MediaMtxState(
