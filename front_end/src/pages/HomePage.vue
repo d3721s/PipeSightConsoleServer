@@ -28,7 +28,7 @@ onMounted(async () => {
   <div class="page home-page">
     <header class="page-head">
       <h1>风电机组叶片内腔巡检机器人</h1>
-      <p class="page-sub">内蒙古建升电气工程有限公司</p>
+      <p class="page-sub">XX有限公司</p>
     </header>
 
     <div class="home-grid">
