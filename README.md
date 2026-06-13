@@ -20,6 +20,15 @@ sudo apt install -y python3 python3-venv python3-pip ffmpeg nodejs npm
 
 Ubuntu 22.04 默认 Python 3.10 可用，后端要求为 Python 3.10+。
 
+前端要求 Node.js 20.19+ 或 22.12+。Ubuntu apt 默认的 Node 12 不能运行 Vite。推荐使用 NodeSource 安装 Node 22：
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+npm -v
+```
+
 安装 MediaMTX：
 
 ```bash
