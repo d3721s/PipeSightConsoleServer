@@ -204,6 +204,15 @@ label span {
   transform-origin: center;
 }
 
+.webrtc-player.pannable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.webrtc-player.pannable.dragging {
+  cursor: grabbing;
+}
+
 .player-message {
   position: absolute;
   inset: 0;
@@ -232,6 +241,7 @@ label span {
   font-weight: 700;
   line-height: 1.8;
   text-shadow: 0 1px 2px #000;
+  pointer-events: none;
 }
 
 .recording-badge {
