@@ -377,45 +377,10 @@ watch(page, (value) => {
     </header>
 
     <main>
-      <section v-if="page === 'home'" class="home-page">
-        <div class="home-actions">
-          <button @click="page = 'project'">启动巡检</button>
-          <button @click="loadReports">报告中心</button>
-          <button @click="page = 'settings'">系统设置</button>
-        </div>
-        <div class="status-panel">
-          <h2>设备状态</h2>
-          <div v-for="camera in cameras" :key="camera.code" class="status-row">
-            <span>{{ camera.name }}</span>
-            <strong>{{ camera.ip || '未配置' }}</strong>
-            <em :class="camera.status">{{ camera.status }}</em>
-          </div>
-          <div class="status-row">
-            <span>FFmpeg</span>
-            <strong>{{ health.ffmpeg ? '可用' : '未检测到' }}</strong>
-          </div>
-          <div class="status-row">
-            <span>录像</span>
-            <strong>{{ recording.active ? '进行中' : '空闲' }}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section v-else-if="page === 'project'" class="form-page">
-        <h1>风电机组叶片信息收集表</h1>
-        <div class="project-form">
-          <label><span>项目名称</span><input v-model="projectForm.name" /></label>
-          <label><span>风机机型</span><input v-model="projectForm.fanModel" /></label>
-          <label><span>风机编号</span><input v-model="projectForm.fanNo" /></label>
-          <label><span>叶片型号</span><input v-model="projectForm.bladeModel" /></label>
-          <label><span>叶片长度</span><input v-model="projectForm.bladeLength" /></label>
-          <label><span>叶片出厂编号</span><input v-model="projectForm.bladeFactoryNo" /></label>
-          <label><span>地点</span><input v-model="projectForm.location" /></label>
-        </div>
-        <button class="primary-action" @click="createProject">进入控制页</button>
-      </section>
-
-      <section v-else-if="page === 'console'" class="console-page">
+      <!-- Console uses v-show (not v-if) so the WebRTC preview stays mounted and
+           connected when navigating to other pages, and is instantly there on
+           return. -->
+      <section v-show="page === 'console'" class="console-page">
         <div class="video-area">
           <WebRtcPlayer
             v-if="stream"
@@ -474,6 +439,44 @@ watch(page, (value) => {
           </div>
           <button @click="openEditor">进入标记编辑</button>
         </aside>
+      </section>
+
+      <section v-if="page === 'home'" class="home-page">
+        <div class="home-actions">
+          <button @click="page = 'project'">启动巡检</button>
+          <button @click="loadReports">报告中心</button>
+          <button @click="page = 'settings'">系统设置</button>
+        </div>
+        <div class="status-panel">
+          <h2>设备状态</h2>
+          <div v-for="camera in cameras" :key="camera.code" class="status-row">
+            <span>{{ camera.name }}</span>
+            <strong>{{ camera.ip || '未配置' }}</strong>
+            <em :class="camera.status">{{ camera.status }}</em>
+          </div>
+          <div class="status-row">
+            <span>FFmpeg</span>
+            <strong>{{ health.ffmpeg ? '可用' : '未检测到' }}</strong>
+          </div>
+          <div class="status-row">
+            <span>录像</span>
+            <strong>{{ recording.active ? '进行中' : '空闲' }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="page === 'project'" class="form-page">
+        <h1>风电机组叶片信息收集表</h1>
+        <div class="project-form">
+          <label><span>项目名称</span><input v-model="projectForm.name" /></label>
+          <label><span>风机机型</span><input v-model="projectForm.fanModel" /></label>
+          <label><span>风机编号</span><input v-model="projectForm.fanNo" /></label>
+          <label><span>叶片型号</span><input v-model="projectForm.bladeModel" /></label>
+          <label><span>叶片长度</span><input v-model="projectForm.bladeLength" /></label>
+          <label><span>叶片出厂编号</span><input v-model="projectForm.bladeFactoryNo" /></label>
+          <label><span>地点</span><input v-model="projectForm.location" /></label>
+        </div>
+        <button class="primary-action" @click="createProject">进入控制页</button>
       </section>
 
       <section v-else-if="page === 'editor'" class="editor-page">

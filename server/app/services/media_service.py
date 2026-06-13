@@ -64,6 +64,11 @@ def write_mediamtx_config(db: Session) -> Path:
                     f"  {media_path(camera.code, channel)}:",
                     f"    source: {build_rtsp_url(camera, channel)}",
                     "    sourceOnDemand: yes",
+                    # Stop pulling a stream ~1s after the last viewer leaves, so
+                    # only the currently-viewed camera+channel is ever decoded
+                    # (default is 10s, which made a just-switched-away channel
+                    # keep streaming alongside the new one).
+                    "    sourceOnDemandCloseAfter: 1s",
                     f"  {recording_media_path(camera.code, channel)}:",
                     "    source: publisher",
                 ]
