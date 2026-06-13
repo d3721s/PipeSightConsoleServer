@@ -1,7 +1,22 @@
 <script setup lang="ts">
-import { onActivated, onMounted, reactive, ref } from 'vue'
-import { CvTile, CvTextInput, CvNumberInput, CvButton, CvTag, CvInlineNotification } from '@carbon/vue'
-import { Save24, Connect24, Renew24, Folder24, VolumeFileStorage24, CheckmarkOutline16 } from '@carbon/icons-vue'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import {
+  CvGrid,
+  CvRow,
+  CvColumn,
+  CvTile,
+  CvForm,
+  CvFormGroup,
+  CvTextInput,
+  CvNumberInput,
+  CvButton,
+  CvTag,
+  CvInlineNotification,
+  CvStructuredList,
+  CvStructuredListItem,
+  CvStructuredListData
+} from '@carbon/vue'
+import { Save24, Connect24, Renew24 } from '@carbon/icons-vue'
 import { api } from '../api'
 import { cameras, loadCameras } from '../stores/cameras'
 import { notify } from '../stores/session'
@@ -39,7 +54,14 @@ async function probeCamera(code: CameraCode) {
   }
 }
 
+function statusKind(status: string) {
+  if (status === 'online') return 'green'
+  if (status === 'error') return 'red'
+  return 'gray'
+}
+
 // --- Storage path -----------------------------------------------------------
+const INTERNAL = '__internal__'
 const storage = ref<StorageOptions | null>(null)
 const storageManualPath = ref('')
 const storageBusy = ref(false)
@@ -49,6 +71,14 @@ function formatBytes(bytes: number | null): string {
   const gb = bytes / 1024 ** 3
   return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1024 ** 2).toFixed(0)} MB`
 }
+
+// Which structured-list row is selected, derived from the active path.
+const selectedStorage = computed(() => {
+  if (!storage.value) return INTERNAL
+  return storage.value.currentPath === storage.value.internal.path
+    ? INTERNAL
+    : storage.value.currentPath
+})
 
 async function loadStorage() {
   try {
@@ -69,6 +99,21 @@ async function applyStorage(path: string | null) {
   } finally {
     storageBusy.value = false
   }
+}
+
+// Selecting a structured-list row applies that storage target.
+function onStorageSelect(value: string) {
+  if (storageBusy.value || !storage.value) return
+  if (value === INTERNAL) {
+    if (selectedStorage.value !== INTERNAL) applyStorage(null)
+    return
+  }
+  const drive = storage.value.removable.find((d) => d.path === value)
+  if (drive && !drive.writable) {
+    notify('该存储为只读，无法写入', 'warning')
+    return
+  }
+  if (selectedStorage.value !== value) applyStorage(value)
 }
 
 // --- Recording segment ------------------------------------------------------
@@ -110,202 +155,203 @@ onActivated(loadStorage)
       <p class="page-sub">相机配置、存储路径与录像分段</p>
     </header>
 
-    <div class="settings-grid">
-      <!-- Camera config cards -->
-      <cv-tile v-for="camera in cameras" :key="camera.code" class="settings-card">
-        <h3>{{ camera.name }}</h3>
-        <div class="card-fields">
-          <cv-text-input v-model="cameraDraft[camera.code].ip" label="IP 地址" placeholder="192.168.x.x" />
-          <cv-text-input v-model="cameraDraft[camera.code].username" label="用户名" />
-          <cv-text-input v-model="cameraDraft[camera.code].password" label="密码" type="password" password-visible />
-          <cv-number-input v-model="cameraDraft[camera.code].rtspPort" label="RTSP 端口" :min="1" :max="65535" />
-        </div>
-        <div class="card-actions">
-          <cv-tag :kind="camera.status === 'online' ? 'green' : camera.status === 'error' ? 'red' : 'gray'" :label="camera.status || '未知'" />
-          <span class="spacer" />
-          <cv-button size="sm" kind="tertiary" :icon="Connect24" @click="probeCamera(camera.code)">ONVIF 测试</cv-button>
-          <cv-button size="sm" :icon="Save24" @click="saveCamera(camera.code)">保存</cv-button>
-        </div>
-      </cv-tile>
+    <cv-grid class="settings-grid" :full-width="true">
+      <!-- Camera config cards, two-up on wide screens -->
+      <cv-row>
+        <cv-column
+          v-for="camera in cameras"
+          :key="camera.code"
+          :sm="4"
+          :md="4"
+          :lg="8"
+          class="settings-col"
+        >
+          <cv-tile class="settings-card">
+            <div class="card-head">
+              <h3>{{ camera.name }}</h3>
+              <cv-tag :kind="statusKind(camera.status)" :label="camera.status || '未知'" />
+            </div>
+            <cv-form @submit.prevent="saveCamera(camera.code)">
+              <cv-form-group>
+                <template #label>连接参数</template>
+                <template #content>
+                  <cv-text-input v-model="cameraDraft[camera.code].ip" label="IP 地址" placeholder="192.168.x.x" />
+                  <cv-text-input v-model="cameraDraft[camera.code].username" label="用户名" />
+                  <cv-text-input v-model="cameraDraft[camera.code].password" label="密码" type="password" password-visible />
+                  <cv-number-input v-model="cameraDraft[camera.code].rtspPort" label="RTSP 端口" :min="1" :max="65535" />
+                </template>
+              </cv-form-group>
+              <div class="form-actions">
+                <cv-button kind="tertiary" :icon="Connect24" @click="probeCamera(camera.code)">ONVIF 测试</cv-button>
+                <cv-button type="submit" :icon="Save24">保存配置</cv-button>
+              </div>
+            </cv-form>
+          </cv-tile>
+        </cv-column>
+      </cv-row>
 
-      <!-- Storage path -->
-      <cv-tile class="settings-card storage-card">
-        <h3>存储路径</h3>
-        <cv-inline-notification
-          v-if="storage"
-          kind="info"
-          :title="storage.usingDefault ? '当前使用内部存储' : '当前使用外部存储'"
-          :sub-title="`${storage.currentPath} · 切换后需重启后端生效，旧文件不迁移`"
-          :low-contrast="true"
-          hide-close-button
-        />
+      <!-- Storage path, full width -->
+      <cv-row>
+        <cv-column :sm="4" :md="8" :lg="16" class="settings-col">
+          <cv-tile class="settings-card">
+            <h3>存储路径</h3>
+            <cv-inline-notification
+              v-if="storage"
+              kind="info"
+              :title="storage.usingDefault ? '当前使用内部存储' : '当前使用外部存储'"
+              :sub-title="`${storage.currentPath} · 切换后需重启后端生效，旧文件不迁移`"
+              :low-contrast="true"
+              hide-close-button
+            />
 
-        <div v-if="storage" class="storage-list">
-          <button
-            class="storage-option"
-            :class="{ active: storage.currentPath === storage.internal.path }"
-            :disabled="storageBusy"
-            @click="applyStorage(null)"
-          >
-            <folder24 class="storage-icon" />
-            <span class="storage-text">
-              <strong>内部存储 <checkmark-outline16 v-if="storage.currentPath === storage.internal.path" class="storage-check" /></strong>
-              <small>{{ storage.internal.path }}</small>
-            </span>
-            <span class="storage-free">剩余 {{ formatBytes(storage.internal.freeBytes) }}</span>
-          </button>
+            <cv-structured-list
+              v-if="storage"
+              selectable
+              condensed
+              class="storage-list"
+              @change="onStorageSelect"
+            >
+              <template #items>
+                <cv-structured-list-item :model-value="selectedStorage" :value="INTERNAL">
+                  <cv-structured-list-data>内部存储</cv-structured-list-data>
+                  <cv-structured-list-data class="path-cell">{{ storage.internal.path }}</cv-structured-list-data>
+                  <cv-structured-list-data class="free-cell">剩余 {{ formatBytes(storage.internal.freeBytes) }}</cv-structured-list-data>
+                </cv-structured-list-item>
 
-          <button
-            v-for="drive in storage.removable"
-            :key="drive.path"
-            class="storage-option"
-            :class="{ active: storage.currentPath === drive.path }"
-            :disabled="storageBusy || !drive.writable"
-            @click="applyStorage(drive.path)"
-          >
-            <volume-file-storage24 class="storage-icon" />
-            <span class="storage-text">
-              <strong>
-                {{ drive.label }}
-                <cv-tag v-if="!drive.writable" kind="red" label="只读" />
-                <checkmark-outline16 v-if="storage.currentPath === drive.path" class="storage-check" />
-              </strong>
-              <small>{{ drive.path }}</small>
-            </span>
-            <span class="storage-free">剩余 {{ formatBytes(drive.freeBytes) }}</span>
-          </button>
+                <cv-structured-list-item
+                  v-for="drive in storage.removable"
+                  :key="drive.path"
+                  :model-value="selectedStorage"
+                  :value="drive.path"
+                >
+                  <cv-structured-list-data>
+                    {{ drive.label }}
+                    <cv-tag v-if="!drive.writable" kind="red" label="只读" />
+                  </cv-structured-list-data>
+                  <cv-structured-list-data class="path-cell">{{ drive.path }}</cv-structured-list-data>
+                  <cv-structured-list-data class="free-cell">剩余 {{ formatBytes(drive.freeBytes) }}</cv-structured-list-data>
+                </cv-structured-list-item>
+              </template>
+            </cv-structured-list>
 
-          <p v-if="storage.removable.length === 0" class="empty">未检测到外部存储（U盘）</p>
-        </div>
+            <p v-if="storage && storage.removable.length === 0" class="storage-empty">
+              未检测到外部存储（U盘）
+            </p>
 
-        <cv-text-input
-          v-model="storageManualPath"
-          label="手动指定路径"
-          placeholder="/mnt/usb"
-          :disabled="storageBusy"
-        />
-        <div class="card-actions">
-          <span class="spacer" />
-          <cv-button size="sm" kind="ghost" :icon="Renew24" :disabled="storageBusy" @click="loadStorage">刷新</cv-button>
-          <cv-button
-            size="sm"
-            :icon="Save24"
-            :disabled="storageBusy || !storageManualPath.trim()"
-            @click="applyStorage(storageManualPath.trim())"
-          >保存路径</cv-button>
-        </div>
-      </cv-tile>
+            <cv-form-group>
+              <template #label>手动指定路径</template>
+              <template #content>
+                <div class="manual-row">
+                  <cv-text-input
+                    v-model="storageManualPath"
+                    label=""
+                    hide-label
+                    placeholder="/mnt/usb"
+                    :disabled="storageBusy"
+                    class="manual-input"
+                  />
+                  <cv-button
+                    kind="tertiary"
+                    :icon="Save24"
+                    :disabled="storageBusy || !storageManualPath.trim()"
+                    @click="applyStorage(storageManualPath.trim())"
+                  >应用路径</cv-button>
+                </div>
+              </template>
+            </cv-form-group>
 
-      <!-- Recording segment -->
-      <cv-tile class="settings-card">
-        <h3>录像设置</h3>
-        <cv-number-input
-          v-model="segmentMinutes"
-          label="分段时长（分钟）"
-          :min="1"
-          :max="120"
-          :step="1"
-          helper-text="每段录像达到该时长后自动切分为新文件。范围 1–120 分钟。"
-        />
-        <div class="card-actions">
-          <span class="spacer" />
-          <cv-button size="sm" :icon="Save24" @click="saveRecordingSettings">保存</cv-button>
-        </div>
-      </cv-tile>
-    </div>
+            <div class="form-actions">
+              <cv-button kind="ghost" :icon="Renew24" :disabled="storageBusy" @click="loadStorage">刷新</cv-button>
+            </div>
+          </cv-tile>
+        </cv-column>
+      </cv-row>
+
+      <!-- Recording segment, full width -->
+      <cv-row>
+        <cv-column :sm="4" :md="8" :lg="16" class="settings-col">
+          <cv-tile class="settings-card">
+            <h3>录像设置</h3>
+            <cv-form @submit.prevent="saveRecordingSettings">
+              <cv-number-input
+                v-model="segmentMinutes"
+                label="分段时长（分钟）"
+                :min="1"
+                :max="120"
+                :step="1"
+                helper-text="每段录像达到该时长后自动切分为新文件。范围 1–120 分钟。"
+              />
+              <div class="form-actions">
+                <cv-button type="submit" :icon="Save24">保存</cv-button>
+              </div>
+            </cv-form>
+          </cv-tile>
+        </cv-column>
+      </cv-row>
+    </cv-grid>
   </div>
 </template>
 
 <style scoped>
 .settings-page {
-  max-width: 64rem;
+  max-width: 66rem;
   margin: 0 auto;
 }
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-  align-items: start;
+/* Let Carbon's grid own horizontal rhythm; only add vertical gaps between rows. */
+.settings-col {
+  margin-bottom: 1.5rem;
+}
+.settings-card {
+  height: 100%;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
 }
 .settings-card h3 {
   margin: 0 0 1rem;
-  font-size: 1.0625rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
-.storage-card {
-  grid-column: 1 / -1;
+.card-head h3 {
+  margin: 0;
 }
-.card-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem 1rem;
-}
-.card-actions {
+/* Carbon form fields already carry vertical margin; the action row gets a
+   clear separation and Carbon's right-aligned button convention. */
+.form-actions {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-.spacer {
-  flex: 1;
+  justify-content: flex-end;
+  gap: 1px; /* Carbon button-set seam */
+  margin-top: 1.5rem;
 }
 .storage-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
   margin: 1rem 0;
 }
-.storage-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-left: 3px solid transparent;
-  color: #161616;
-  cursor: pointer;
-  text-align: left;
+.path-cell {
+  color: #525252;
+  font-size: 0.8125rem;
+  font-family: 'IBM Plex Mono', monospace;
+  word-break: break-all;
 }
-.storage-option:hover:not(:disabled) {
-  background: #e8e8e8;
-}
-.storage-option.active {
-  border-left-color: #0f62fe;
-  background: #e0e0e0;
-}
-.storage-option:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.storage-icon {
-  color: #0f62fe;
-  flex-shrink: 0;
-}
-.storage-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.storage-text strong {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.storage-text small {
-  color: #6f6f6f;
-  font-size: 0.75rem;
-}
-.storage-check {
-  color: #24a148;
-}
-.storage-free {
+.free-cell {
   color: #525252;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.empty {
+.storage-empty {
   color: #6f6f6f;
   font-size: 0.875rem;
-  padding: 0.5rem 0;
+  padding: 0.5rem 0 1rem;
+}
+.manual-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+.manual-input {
+  flex: 1;
 }
 </style>
