@@ -68,30 +68,24 @@ body {
   height: 1.5rem;
 }
 
-/* --- Buttons: prevent icon/label overlap at the enlarged root font --------- */
-/* Carbon places a button's icon with position:absolute + a fixed px right
-   padding to reserve room. When the root font is scaled up, the (em-based)
-   label grows but that fixed px padding does not, so the label overruns the
-   icon. Lay the icon out inline instead (like Carbon's own ghost variant) so it
-   always flows after the label with a gap — no overlap at any font size. Also
-   relax the fixed widths so larger CJK labels fit. */
-.bx--btn {
-  max-width: none;
-  /* Carbon uses justify-content: space-between for its absolutely-positioned
-     icon. Now that the icon flows inline (below), center the label+icon group
-     instead so content isn't pushed to the button's two edges. */
-  justify-content: center;
-}
-.bx--btn .bx--btn__icon {
-  position: static;
-  margin-left: 0.5rem;
+/* --- Buttons: keep Carbon's native layout, just scale the icon reserve ------ */
+/* Carbon's button is correct by design: label left-aligned, icon absolutely
+   positioned at the right, with a fixed right padding reserving its space.
+   The ONLY problem at our enlarged root font is that the label is em-sized
+   (grows) while that right reserve is a fixed 63px (doesn't), so a long CJK
+   label can slide under the icon. We fix exactly that, and ONLY for buttons
+   that actually contain an icon (targeted via :has), so no-icon buttons keep
+   Carbon's stock padding untouched. Everything else (alignment, justify, icon
+   position) is left exactly as Carbon ships it. */
+.bx--btn:has(.bx--btn__icon):not(.bx--btn--icon-only) .bx--btn__icon {
+  right: 1rem;
   width: 1.25rem;
   height: 1.25rem;
-  flex-shrink: 0;
 }
-/* Icon-only buttons (e.g. the trash buttons) keep the icon centered. */
-.bx--btn.bx--btn--icon-only .bx--btn__icon {
-  margin-left: 0;
+.bx--btn:has(.bx--btn__icon):not(.bx--btn--icon-only) {
+  /* Reserve icon space in em (Carbon's default is a fixed 63px) so it tracks
+     the label's size at the scaled-up root font. */
+  padding-right: 3.25em;
 }
 
 /* --- Form control affordances: enlarge the tiny built-in icons -------------- */
