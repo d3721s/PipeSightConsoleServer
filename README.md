@@ -38,6 +38,15 @@ cp .env.example .env
 ./run.sh
 ```
 
+如果 `.venv` 是从其他系统拷贝来的，脚本会自动删除并重建 Ubuntu 虚拟环境。也可以手动执行：
+
+```bash
+cd server
+rm -rf .venv
+python3 -m venv .venv
+./run.sh
+```
+
 前端开发：
 
 ```bash
