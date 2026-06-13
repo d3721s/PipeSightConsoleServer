@@ -115,9 +115,9 @@ async function toggleRecording() {
 
       <!-- Bottom-left: zoom cluster -->
       <div class="zoom-cluster">
-        <cv-button kind="ghost" size="sm" :icon="ZoomOut24" :disabled="digitalZoom <= MIN_ZOOM" @click="nudgeZoom(-ZOOM_STEP)" />
+        <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomOut24" :disabled="digitalZoom <= MIN_ZOOM" @click="nudgeZoom(-ZOOM_STEP)" />
         <span class="zoom-readout">{{ zoomLabel }}</span>
-        <cv-button kind="ghost" size="sm" :icon="ZoomIn24" :disabled="digitalZoom >= MAX_ZOOM" @click="nudgeZoom(ZOOM_STEP)" />
+        <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomIn24" :disabled="digitalZoom >= MAX_ZOOM" @click="nudgeZoom(ZOOM_STEP)" />
       </div>
 
       <!-- Bottom-right: PTZ pad -->
@@ -215,6 +215,12 @@ async function toggleRecording() {
   text-align: center;
   color: #f4f4f4;
   font-variant-numeric: tabular-nums;
+}
+/* Icon-only zoom buttons: enlarge the glyph to match the scaled UI (the global
+   icon-enlarge rule intentionally skips icon-only buttons). */
+.zoom-btn :deep(.bx--btn__icon) {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 .ptz-cluster {
   position: absolute;

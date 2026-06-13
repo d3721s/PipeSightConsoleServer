@@ -67,6 +67,7 @@ export const api = {
 
   listRecordings: () => request<Recording[]>('/api/recordings'),
   recordingTrack: (id: number) => request<TrackData>(`/api/recordings/${id}/track`),
+  deleteMedia: (id: number) => request<{ ok: boolean }>(`/api/media/${id}`, { method: 'DELETE' }),
   listMarkers: (mediaId: number) => request<Marker[]>(`/api/media/${mediaId}/markers`),
   createMarker: (data: Record<string, unknown>) =>
     request<Marker>('/api/markers', { method: 'POST', body: JSON.stringify(data) }),

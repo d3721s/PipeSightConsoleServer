@@ -42,9 +42,11 @@ const router = useRouter()
       </cv-tile>
     </div>
 
-    <cv-button class="start-btn" size="lg" :icon="Play24" @click="router.push('/project')">
-      启动巡检
-    </cv-button>
+    <div class="start-row">
+      <cv-button class="start-btn" size="lg" :icon="Play24" @click="router.push('/project')">
+        启动巡检
+      </cv-button>
+    </div>
   </div>
 </template>
 
@@ -94,8 +96,12 @@ const router = useRouter()
   width: 1.25rem;
   height: 1.25rem;
 }
-.start-btn {
-  width: 100%;
+.start-row {
+  display: flex;
+  justify-content: flex-end;
   margin-top: 2rem;
+}
+.start-btn {
+  min-width: 16rem;
 }
 </style>

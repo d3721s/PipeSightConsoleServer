@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db
 from app.drivers.rtsp import build_rtsp_url
-from app.models import CameraDevice, MediaAsset, Project
+from app.models import Annotation, CameraDevice, Marker, MediaAsset, Project
 from app.schemas import MediaAssetOut, RecordingStartIn, RecordingStatusOut, SnapshotIn
 from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
@@ -193,4 +193,42 @@ def recording_track(asset_id: int, db: Session = Depends(get_db)) -> dict:
         return json.loads(track_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {"video": Path(asset.file_path).name, "samples": []}
+
+
+def _unlink(path: str | Path) -> None:
+    try:
+        Path(path).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+@router.delete("/media/{asset_id}")
+def delete_media(asset_id: int, db: Session = Depends(get_db)) -> dict:
+    """Delete a photo/recording: its file (+ video track sidecar), its graphic
+    annotations (rows + rendered PNGs) and its marker rows."""
+    asset = db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="media not found")
+
+    # Remove the media file itself, and the per-segment track json for videos.
+    if asset.file_path:
+        _unlink(asset.file_path)
+        if asset.type == "video":
+            _unlink(Path(asset.file_path).with_suffix(".json"))
+
+    # Remove linked annotations (and their rendered images) + marker mirrors.
+    annotations = db.scalars(
+        select(Annotation).where(Annotation.media_asset_id == asset_id)
+    ).all()
+    for annotation in annotations:
+        if annotation.rendered_path:
+            _unlink(annotation.rendered_path)
+        db.delete(annotation)
+    markers = db.scalars(select(Marker).where(Marker.media_asset_id == asset_id)).all()
+    for marker in markers:
+        db.delete(marker)
+
+    db.delete(asset)
+    db.commit()
+    return {"ok": True}
 
