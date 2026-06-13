@@ -235,3 +235,46 @@ onBeforeUnmount(() => stop())
   </div>
 </template>
 
+<style scoped>
+.webrtc-player,
+.webrtc-player video {
+  width: 100%;
+  height: 100%;
+}
+
+.webrtc-player {
+  position: relative;
+  overflow: hidden;
+}
+
+.webrtc-player video {
+  /* contain = show the whole frame letterboxed; never crop/zoom the stream. */
+  object-fit: contain;
+  transform-origin: center;
+  display: block;
+}
+
+.webrtc-player.interactive {
+  touch-action: none;
+}
+
+.webrtc-player.pannable {
+  cursor: grab;
+}
+
+.webrtc-player.pannable.dragging {
+  cursor: grabbing;
+}
+
+.player-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #9ab0be;
+  text-align: center;
+  padding: 30px;
+  background: #0b0c0d;
+}
+</style>
+

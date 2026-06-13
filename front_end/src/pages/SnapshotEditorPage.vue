@@ -344,14 +344,18 @@ async function removeAnnotation(id: number) {
 .preview-wrap {
   display: flex;
   justify-content: center;
+  align-items: center;
   background: #000;
   border: 1px solid #e0e0e0;
+  min-height: 18rem;
   max-height: 60vh;
   overflow: hidden;
 }
 .preview-img,
 .preview-video {
-  max-width: 100%;
+  /* Explicit width: a <video> with only max-* constraints collapses to ~0
+     height before metadata loads, making it invisible. */
+  width: 100%;
   max-height: 60vh;
   object-fit: contain;
 }
