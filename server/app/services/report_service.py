@@ -7,10 +7,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Marker, Project, Report
+from app.models import Annotation, Project, Report
 
 
 settings = get_settings()
+
+
+def _report_annotations(db: Session, report: Report) -> list[Annotation]:
+    if not report.session_id:
+        return []
+    return list(
+        db.scalars(
+            select(Annotation)
+            .where(Annotation.session_id == report.session_id)
+            .order_by(Annotation.id)
+        ).all()
+    )
 
 
 def export_report_pdf(db: Session, report: Report) -> str:
@@ -18,12 +30,12 @@ def export_report_pdf(db: Session, report: Report) -> str:
     report_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = report_dir / f"PipeSight_report_{report.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     project = db.get(Project, report.project_id)
-    markers = db.scalars(select(Marker).where(Marker.session_id == report.session_id)).all() if report.session_id else []
+    annotations = _report_annotations(db, report)
 
     try:
-        _write_reportlab_pdf(pdf_path, report, project, markers)
+        _write_reportlab_pdf(pdf_path, report, project, annotations)
     except Exception:
-        _write_minimal_pdf(pdf_path, report, project, markers)
+        _write_minimal_pdf(pdf_path, report, project, annotations)
 
     report.pdf_path = str(pdf_path)
     report.exported_at = datetime.now()
@@ -32,33 +44,42 @@ def export_report_pdf(db: Session, report: Report) -> str:
     return str(pdf_path)
 
 
-def _write_reportlab_pdf(path: Path, report: Report, project: Project | None, markers: list[Marker]) -> None:
-    from reportlab.lib.pagesizes import A4
+def _register_cn_font():
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.pdfgen import canvas
 
-    font_name = "Helvetica"
     for font_path in [
         Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
         Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
         Path("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"),
+        Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
         Path("/usr/share/fonts/truetype/arphic/uming.ttc"),
     ]:
         if font_path.exists():
-            pdfmetrics.registerFont(TTFont("CNFont", str(font_path)))
-            font_name = "CNFont"
-            break
+            try:
+                pdfmetrics.registerFont(TTFont("CNFont", str(font_path)))
+                return "CNFont"
+            except Exception:
+                continue
+    return "Helvetica"
 
+
+def _write_reportlab_pdf(path: Path, report: Report, project: Project | None, annotations: list[Annotation]) -> None:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    font_name = _register_cn_font()
     c = canvas.Canvas(str(path), pagesize=A4)
     width, height = A4
-    y = height - 50
+    margin = 50
+    y = height - margin
+
     c.setFont(font_name, 18)
-    c.drawString(50, y, report.title or "巡检报告")
-    y -= 36
+    c.drawString(margin, y, report.title or "巡检报告")
+    y -= 34
     c.setFont(font_name, 11)
     if project:
-        lines = [
+        for line in [
             f"项目名称: {project.name}",
             f"风机机型: {project.fan_model}",
             f"风机编号: {project.fan_no}",
@@ -66,35 +87,83 @@ def _write_reportlab_pdf(path: Path, report: Report, project: Project | None, ma
             f"叶片长度: {project.blade_length}",
             f"叶片出厂编号: {project.blade_factory_no}",
             f"地点: {report.location or project.location}",
-        ]
-        for line in lines:
-            c.drawString(50, y, line)
-            y -= 20
-    y -= 12
+            f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        ]:
+            c.drawString(margin, y, line)
+            y -= 18
+    y -= 8
     c.setFont(font_name, 13)
-    c.drawString(50, y, "标记点")
-    y -= 24
-    c.setFont(font_name, 10)
-    for marker in markers:
-        text = (
-            f"#{marker.id} 距离 {marker.distance_m:.2f}m "
-            f"{marker.defect_type} {marker.severity} {marker.position} {marker.note}"
-        )
-        c.drawString(50, y, text[:100])
-        y -= 18
-        if y < 60:
+    c.drawString(margin, y, f"标记点（{len(annotations)}）")
+    y -= 22
+
+    for idx, ann in enumerate(annotations, start=1):
+        data = ann.annotation_json or {}
+        defect = data.get("defect", {})
+        info_lines = [
+            f"#{idx}  {defect.get('type', '') or '—'}  {defect.get('code', '')}".strip(),
+            f"等级: {defect.get('severity', '') or '-'}   方向: {defect.get('direction', '') or '-'}   "
+            f"位置: {defect.get('position', '') or '-'}   里程: {_fmt_distance(defect.get('distanceM'))}",
+        ]
+        note = defect.get("note", "")
+        if note:
+            info_lines.append(f"备注: {note}")
+        if data.get("sourceType") == "video" and data.get("videoTime") is not None:
+            info_lines.append(f"来源: 视频帧 {float(data['videoTime']):.1f}s")
+
+        # Estimate height needed: text + image.
+        img_reader, img_w, img_h = _load_image(ann.rendered_path, max_w=width - 2 * margin, max_h=260)
+        needed = len(info_lines) * 16 + (img_h + 14 if img_reader else 0) + 16
+        if y - needed < margin:
             c.showPage()
-            c.setFont(font_name, 10)
-            y = height - 50
+            y = height - margin
+            c.setFont(font_name, 13)
+
+        c.setFont(font_name, 10)
+        for line in info_lines:
+            c.drawString(margin, y, line[:120])
+            y -= 16
+        if img_reader:
+            y -= 6
+            c.drawImage(img_reader, margin, y - img_h, width=img_w, height=img_h, preserveAspectRatio=True, anchor="sw")
+            y -= img_h + 8
+        y -= 10
+
     c.save()
 
 
-def _write_minimal_pdf(path: Path, report: Report, project: Project | None, markers: list[Marker]) -> None:
+def _fmt_distance(value) -> str:
+    try:
+        return f"{float(value):.2f}m"
+    except (TypeError, ValueError):
+        return "-"
+
+
+def _load_image(rendered_path: str, *, max_w: float, max_h: float):
+    """Return (ImageReader, draw_w, draw_h) scaled to fit, or (None, 0, 0)."""
+    if not rendered_path:
+        return None, 0, 0
+    p = Path(rendered_path)
+    if not p.exists():
+        return None, 0, 0
+    try:
+        from reportlab.lib.utils import ImageReader
+
+        reader = ImageReader(str(p))
+        iw, ih = reader.getSize()
+        if iw <= 0 or ih <= 0:
+            return None, 0, 0
+        scale = min(max_w / iw, max_h / ih, 1.0)
+        return reader, iw * scale, ih * scale
+    except Exception:
+        return None, 0, 0
+
+
+def _write_minimal_pdf(path: Path, report: Report, project: Project | None, annotations: list[Annotation]) -> None:
     title = (report.title or "PipeSight Report").encode("latin-1", errors="replace").decode("latin-1")
     lines = [title]
     if project:
         lines.append(f"Project: {project.name}")
-    lines.append(f"Markers: {len(markers)}")
+    lines.append(f"Annotations: {len(annotations)}")
     body = "BT /F1 12 Tf 50 780 Td " + " Tj 0 -18 Td ".join(f"({line})" for line in lines) + " Tj ET"
     objects = [
         "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",

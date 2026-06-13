@@ -9,7 +9,8 @@ dependencies = [
   "pydantic-settings",
   "sqlalchemy",
   "httpx",
-  "python-multipart"
+  "python-multipart",
+  "reportlab"
 ]
 
 [tool.pytest.ini_options]

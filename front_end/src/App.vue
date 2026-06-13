@@ -4,9 +4,9 @@ import { api } from './api'
 import WebRtcPlayer from './components/WebRtcPlayer.vue'
 import AnnotationEditor from './components/AnnotationEditor.vue'
 import { cameraControlSocket, type PtzDirection } from './ws'
-import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Photo, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Photo, Project, Recording, RecordingStatus, Report, ReportDetail, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
-type Page = 'home' | 'project' | 'console' | 'editor' | 'annotate' | 'reports' | 'settings'
+type Page = 'home' | 'project' | 'console' | 'annotate' | 'reports' | 'report-detail' | 'settings'
 
 const page = ref<Page>('home')
 const notice = ref('')
@@ -57,11 +57,7 @@ const projectForm = reactive({
   bladeFactoryNo: '',
   location: ''
 })
-const markerDraft = reactive({
-  defectType: '',
-  note: '',
-  distanceM: 0
-})
+const reportDetail = ref<ReportDetail | null>(null)
 
 const activeCamera = computed(() => cameras.value.find((camera) => camera.code === active.device))
 const isPtzChannel = computed(() => active.channel === 1)
@@ -399,12 +395,24 @@ async function loadReports() {
 async function exportPdf(report: Report) {
   await api.exportPdf(report.id)
   reports.value = await api.listReports()
+  if (reportDetail.value?.report.id === report.id) {
+    reportDetail.value = await api.reportDetail(report.id)
+  }
   show('PDF 已导出')
 }
 
-function openEditor() {
-  markerDraft.distanceM = distance.value
-  page.value = 'editor'
+async function openReportDetail(report: Report) {
+  try {
+    reportDetail.value = await api.reportDetail(report.id)
+    page.value = 'report-detail'
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+function downloadReportPdf(id: number) {
+  // Hit the download endpoint directly; the browser saves the file.
+  window.open(api.reportPdfUrl(id), '_blank')
 }
 
 onMounted(() => {
@@ -500,7 +508,6 @@ watch(page, (value) => {
               <button class="down" @click="ptzStep('down')">▼</button>
             </div>
           </div>
-          <button @click="openEditor">进入标记编辑</button>
         </aside>
       </section>
 
@@ -540,24 +547,6 @@ watch(page, (value) => {
           <label><span>地点</span><input v-model="projectForm.location" /></label>
         </div>
         <button class="primary-action" @click="createProject">进入控制页</button>
-      </section>
-
-      <section v-else-if="page === 'editor'" class="editor-page">
-        <div class="annotation-surface">
-          <div class="editor-placeholder">图片标记画布</div>
-        </div>
-        <div class="editor-tools">
-          <button>选择</button>
-          <button>画笔</button>
-          <button>标记框</button>
-          <button>文字</button>
-          <button>撤销</button>
-          <button>清空</button>
-          <label><span>距离 m</span><input v-model.number="markerDraft.distanceM" type="number" step="0.01" /></label>
-          <label><span>缺陷类型</span><input v-model="markerDraft.defectType" /></label>
-          <label><span>备注</span><input v-model="markerDraft.note" /></label>
-          <button class="primary-action" @click="page = 'console'">保存并返回</button>
-        </div>
       </section>
 
       <section v-else-if="page === 'annotate'" class="annotate-page">
@@ -675,7 +664,44 @@ watch(page, (value) => {
               <p>地点：{{ report.location || '-' }} / 状态：{{ report.status }}</p>
               <p>时间：{{ new Date(report.startedAt).toLocaleString() }}</p>
             </div>
-            <button @click="exportPdf(report)">导出 PDF</button>
+            <div class="control-row">
+              <button @click="openReportDetail(report)">查看详情</button>
+              <button @click="downloadReportPdf(report.id)">下载 PDF</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section v-else-if="page === 'report-detail' && reportDetail" class="report-detail-page">
+        <div class="control-row">
+          <button @click="page = 'reports'">返回</button>
+          <button class="primary-action" @click="downloadReportPdf(reportDetail.report.id)">下载 PDF</button>
+          <button @click="reportDetail && exportPdf({ id: reportDetail.report.id } as Report)">重新生成 PDF</button>
+        </div>
+
+        <h1>{{ reportDetail.report.title || `巡检报告 #${reportDetail.report.id}` }}</h1>
+        <div class="report-meta" v-if="reportDetail.project">
+          <div><span>项目名称</span>{{ reportDetail.project.name }}</div>
+          <div><span>风机机型</span>{{ reportDetail.project.fanModel || '-' }}</div>
+          <div><span>风机编号</span>{{ reportDetail.project.fanNo || '-' }}</div>
+          <div><span>叶片型号</span>{{ reportDetail.project.bladeModel || '-' }}</div>
+          <div><span>叶片长度</span>{{ reportDetail.project.bladeLength || '-' }}</div>
+          <div><span>叶片出厂编号</span>{{ reportDetail.project.bladeFactoryNo || '-' }}</div>
+          <div><span>地点</span>{{ reportDetail.report.location || reportDetail.project.location || '-' }}</div>
+        </div>
+
+        <h2>标记点（{{ reportDetail.annotations.length }}）</h2>
+        <p v-if="reportDetail.annotations.length === 0" class="annotate-empty">本次巡检暂无标注</p>
+        <div class="report-anno-grid">
+          <article v-for="(a, i) in reportDetail.annotations" :key="a.id" class="report-anno-card">
+            <img v-if="a.renderedUrl" :src="a.renderedUrl" class="report-anno-img" />
+            <div class="report-anno-info">
+              <strong>#{{ i + 1 }} {{ (a.defect.type as string) || '—' }} {{ (a.defect.code as string) }}</strong>
+              <small>等级：{{ (a.defect.severity as string) || '-' }} · 方向：{{ (a.defect.direction as string) || '-' }}</small>
+              <small>位置：{{ (a.defect.position as string) || '-' }} · 里程：{{ (a.defect.distanceM as number)?.toFixed?.(2) ?? '-' }}m</small>
+              <small v-if="a.sourceType === 'video' && a.videoTime !== null">来源：视频帧 {{ a.videoTime.toFixed(1) }}s</small>
+              <small v-if="a.defect.note">备注：{{ a.defect.note as string }}</small>
+            </div>
           </article>
         </div>
       </section>

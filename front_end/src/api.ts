@@ -1,4 +1,4 @@
-import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Marker, Photo, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Marker, Photo, Project, Recording, RecordingStatus, Report, ReportDetail, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -84,6 +84,8 @@ export const api = {
     request<Report>('/api/reports/start', { method: 'POST', body: JSON.stringify(data) }),
   stopReport: (id: number) => request<Report>(`/api/reports/${id}/stop`, { method: 'POST' }),
   listReports: () => request<Report[]>('/api/reports'),
-  exportPdf: (id: number) => request<Record<string, unknown>>(`/api/reports/${id}/export-pdf`, { method: 'POST' })
+  exportPdf: (id: number) => request<Record<string, unknown>>(`/api/reports/${id}/export-pdf`, { method: 'POST' }),
+  reportDetail: (id: number) => request<ReportDetail>(`/api/reports/${id}/detail`),
+  reportPdfUrl: (id: number) => `/api/reports/${id}/pdf`
 }
 

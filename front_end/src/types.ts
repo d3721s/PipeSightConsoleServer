@@ -149,3 +149,35 @@ export interface GraphicAnnotation {
   createdAt: string
 }
 
+export interface ReportDetailAnnotation {
+  id: number
+  renderedUrl: string | null
+  sourceType: string | null
+  videoTime: number | null
+  defect: Record<string, unknown>
+  createdAt: string
+}
+
+export interface ReportDetail {
+  report: {
+    id: number
+    title: string
+    location: string
+    status: string
+    startedAt: string
+    exportedAt: string | null
+    pdfReady: boolean
+    downloadUrl: string
+  }
+  project: {
+    name: string
+    fanModel: string
+    fanNo: string
+    bladeModel: string
+    bladeLength: string
+    bladeFactoryNo: string
+    location: string
+  } | null
+  annotations: ReportDetailAnnotation[]
+}
+

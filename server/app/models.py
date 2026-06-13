@@ -81,6 +81,7 @@ class Annotation(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     media_asset_id: Mapped[int] = mapped_column(ForeignKey("media_assets.id"))
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("inspection_sessions.id"), nullable=True)
     annotation_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     rendered_path: Mapped[str] = mapped_column(String(512), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)

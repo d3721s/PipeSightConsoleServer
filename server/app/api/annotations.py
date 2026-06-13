@@ -157,6 +157,7 @@ def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depend
 
     annotation = Annotation(
         media_asset_id=payload.media_asset_id or 0,
+        session_id=payload.session_id,
         annotation_json=stored,
         rendered_path=str(rendered_path) if rendered_path else "",
     )

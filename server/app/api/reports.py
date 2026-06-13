@@ -1,18 +1,30 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
-from app.models import Project, Report
+from app.models import Annotation, Project, Report
 from app.schemas import ReportCreate, ReportOut
 from app.services.report_service import export_report_pdf
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+settings = get_settings()
+
+
+def _storage_url(absolute_path: str) -> str | None:
+    try:
+        rel = Path(absolute_path).resolve().relative_to(settings.active_storage_dir.resolve())
+    except (ValueError, OSError):
+        return None
+    return "/storage/" + rel.as_posix()
 
 
 @router.post("/start", response_model=ReportOut)
@@ -63,5 +75,72 @@ def export_pdf(report_id: int, db: Session = Depends(get_db)) -> dict:
     if not report:
         raise HTTPException(status_code=404, detail="report not found")
     path = export_report_pdf(db, report)
-    return {"ok": True, "pdfPath": path}
+    return {"ok": True, "pdfPath": path, "downloadUrl": f"/api/reports/{report_id}/pdf"}
+
+
+@router.get("/{report_id}/detail")
+def report_detail(report_id: int, db: Session = Depends(get_db)) -> dict:
+    report = db.get(Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="report not found")
+    project = db.get(Project, report.project_id)
+    annotations = []
+    if report.session_id:
+        rows = db.scalars(
+            select(Annotation).where(Annotation.session_id == report.session_id).order_by(Annotation.id)
+        ).all()
+        for row in rows:
+            data = row.annotation_json or {}
+            annotations.append(
+                {
+                    "id": row.id,
+                    "renderedUrl": _storage_url(row.rendered_path) if row.rendered_path else None,
+                    "sourceType": data.get("sourceType"),
+                    "videoTime": data.get("videoTime"),
+                    "defect": data.get("defect", {}),
+                    "createdAt": row.created_at.isoformat(timespec="seconds"),
+                }
+            )
+    return {
+        "report": {
+            "id": report.id,
+            "title": report.title,
+            "location": report.location,
+            "status": report.status,
+            "startedAt": report.started_at.isoformat(timespec="seconds"),
+            "exportedAt": report.exported_at.isoformat(timespec="seconds") if report.exported_at else None,
+            "pdfReady": bool(report.pdf_path and Path(report.pdf_path).exists()),
+            "downloadUrl": f"/api/reports/{report.id}/pdf",
+        },
+        "project": None
+        if project is None
+        else {
+            "name": project.name,
+            "fanModel": project.fan_model,
+            "fanNo": project.fan_no,
+            "bladeModel": project.blade_model,
+            "bladeLength": project.blade_length,
+            "bladeFactoryNo": project.blade_factory_no,
+            "location": project.location,
+        },
+        "annotations": annotations,
+    }
+
+
+@router.get("/{report_id}/pdf")
+def download_pdf(report_id: int, db: Session = Depends(get_db)) -> FileResponse:
+    report = db.get(Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="report not found")
+    # Generate on demand if not exported yet (or the file vanished).
+    if not report.pdf_path or not Path(report.pdf_path).exists():
+        export_report_pdf(db, report)
+    pdf_path = Path(report.pdf_path)
+    if not pdf_path.exists():
+        raise HTTPException(status_code=404, detail="pdf not available")
+    return FileResponse(
+        str(pdf_path),
+        media_type="application/pdf",
+        filename=f"PipeSight_report_{report_id}.pdf",
+    )
 

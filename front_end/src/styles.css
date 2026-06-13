@@ -406,33 +406,57 @@ label span {
   bottom: 0;
 }
 
-.editor-page {
-  height: 100%;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  background: #18222a;
+.report-detail-page {
+  padding: 16px;
+  overflow-y: auto;
 }
 
-.annotation-surface {
+.report-meta {
   display: grid;
-  place-items: center;
-  color: #fff;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 12px 0 20px;
 }
 
-.editor-placeholder {
-  width: 80%;
-  height: 70%;
-  border: 2px dashed #7993a5;
-  display: grid;
-  place-items: center;
+.report-meta div {
+  display: flex;
+  gap: 10px;
 }
 
-.editor-tools {
+.report-meta span {
+  min-width: 96px;
+  opacity: 0.6;
+}
+
+.report-anno-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr) 130px 180px 1fr 160px;
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.report-anno-card {
+  border: 1px solid #d9e2e9;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.report-anno-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #000;
+}
+
+.report-anno-info {
+  display: grid;
+  gap: 3px;
   padding: 10px;
-  background: #eef3f6;
+}
+
+.report-anno-info small {
+  opacity: 0.7;
 }
 
 .report-list {
