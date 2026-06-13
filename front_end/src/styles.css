@@ -83,9 +83,10 @@ body {
   height: 1.25rem;
 }
 .bx--btn:has(.bx--btn__icon):not(.bx--btn--icon-only) {
-  /* Reserve icon space in em (Carbon's default is a fixed 63px) so it tracks
-     the label's size at the scaled-up root font. */
-  padding-right: 3.25em;
+  /* Reserve icon space in em (Carbon's default is a fixed 63px) so it tracks the
+     label size at the scaled-up root font: 1rem right offset + 1.25rem icon +
+     ~0.75rem gap between label and icon — matching Carbon's native proportion. */
+  padding-right: 3rem;
 }
 
 /* --- Form control affordances: enlarge the tiny built-in icons -------------- */
