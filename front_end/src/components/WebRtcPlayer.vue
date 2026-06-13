@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onActivated, onBeforeUnmount, onDeactivated, ref, watch } from 'vue'
 
 const props = defineProps<{
   src: string
@@ -206,7 +206,37 @@ function stop(clearError = true) {
   if (clearError) error.value = ''
 }
 
-watch(() => props.src, start, { immediate: true })
+// `mounted` tracks whether the very first start has happened. Under
+// <keep-alive>, onBeforeUnmount does NOT fire on navigate-away (the component
+// is cached, not destroyed), so a WebRTC peer would linger and the stream would
+// freeze on return. We tear the connection down on deactivate and rebuild it on
+// activate. The `immediate` watch already starts it on first mount, so the
+// first onActivated must not double-start.
+let started = false
+
+watch(
+  () => props.src,
+  () => {
+    started = true
+    start()
+  },
+  { immediate: true }
+)
+
+onActivated(() => {
+  // Skip the activation that immediately follows the initial mount.
+  if (started) {
+    started = false
+    return
+  }
+  start()
+})
+
+onDeactivated(() => {
+  started = false
+  stop()
+})
+
 onBeforeUnmount(() => stop())
 </script>
 
