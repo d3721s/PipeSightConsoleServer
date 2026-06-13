@@ -425,7 +425,7 @@ watch(page, (value) => {
       </div>
       <nav>
         <button :class="{ active: page === 'home' }" @click="page = 'home'">首页</button>
-        <button :class="{ active: page === 'project' }" @click="page = 'project'">新建项目</button>
+        <button :class="{ active: page === 'project' }" @click="page = 'project'">项目</button>
         <button :class="{ active: page === 'console' }" @click="page = 'console'">控制</button>
         <button :class="{ active: page === 'annotate' }" @click="openAnnotate">标注</button>
         <button :class="{ active: page === 'reports' }" @click="loadReports">报告</button>
