@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
+import { CvButton, CvTextInput } from '@carbon/vue'
+import { Cursor_124, Pen24, Crop24, TextScale24, Undo24, TrashCan24 } from '@carbon/icons-vue'
 
 type Tool = 'select' | 'pen' | 'rect' | 'text'
 
@@ -27,6 +29,7 @@ type Shape = RectShape | TextShape | PathShape
 
 const props = defineProps<{
   baseImage: string // URL or data URL of the background image / captured frame
+  initialDistance?: number
 }>()
 
 const emit = defineEmits<{
@@ -48,8 +51,15 @@ const defect = reactive({
   direction: '',
   position: '',
   note: '',
-  distanceM: 0
+  distanceM: props.initialDistance ?? 0
 })
+
+const tools: { id: Tool; label: string; icon: unknown }[] = [
+  { id: 'select', label: '选择', icon: Cursor_124 },
+  { id: 'pen', label: '画笔', icon: Pen24 },
+  { id: 'rect', label: '标记框', icon: Crop24 },
+  { id: 'text', label: '文字', icon: TextScale24 }
+]
 
 let img = new Image()
 let drawing = false
@@ -275,20 +285,36 @@ function save() {
 }
 
 watch(() => props.baseImage, loadBase)
+watch(() => props.initialDistance, (v) => {
+  if (typeof v === 'number') defect.distanceM = v
+})
 onMounted(loadBase)
 </script>
 
 <template>
   <div class="annot-editor">
     <div class="annot-toolbar">
-      <button :class="{ active: tool === 'select' }" @click="tool = 'select'">选择</button>
-      <button :class="{ active: tool === 'pen' }" @click="tool = 'pen'">画笔</button>
-      <button :class="{ active: tool === 'rect' }" @click="tool = 'rect'">标记框</button>
-      <button :class="{ active: tool === 'text' }" @click="tool = 'text'">文字</button>
-      <button @click="undo">撤销</button>
-      <button @click="clearAll">清空</button>
-      <button v-if="tool === 'select' && selectedIndex >= 0" class="danger" @click="deleteSelected">删除选中</button>
-      <label class="annot-color"><span>颜色</span><input v-model="color" type="color" /></label>
+      <div class="annot-tools">
+        <cv-button
+          v-for="t in tools"
+          :key="t.id"
+          size="sm"
+          :kind="tool === t.id ? 'primary' : 'ghost'"
+          :icon="t.icon"
+          @click="tool = t.id"
+        >{{ t.label }}</cv-button>
+      </div>
+      <div class="annot-tools">
+        <cv-button size="sm" kind="ghost" :icon="Undo24" @click="undo">撤销</cv-button>
+        <cv-button size="sm" kind="ghost" :icon="TrashCan24" @click="clearAll">清空</cv-button>
+        <cv-button
+          v-if="tool === 'select' && selectedIndex >= 0"
+          size="sm"
+          kind="danger--ghost"
+          @click="deleteSelected"
+        >删除选中</cv-button>
+        <label class="annot-color"><span>颜色</span><input v-model="color" type="color" /></label>
+      </div>
     </div>
 
     <div class="annot-canvas-wrap">
@@ -302,18 +328,82 @@ onMounted(loadBase)
     </div>
 
     <div class="annot-form">
-      <label><span>缺陷类型</span><input v-model="defect.defectType" /></label>
-      <label><span>缺陷代码</span><input v-model="defect.defectCode" /></label>
-      <label><span>等级</span><input v-model="defect.severity" /></label>
-      <label><span>方向</span><input v-model="defect.direction" placeholder="如 3点钟" /></label>
-      <label><span>位置</span><input v-model="defect.position" /></label>
-      <label><span>里程 m</span><input v-model.number="defect.distanceM" type="number" step="0.01" /></label>
-      <label class="annot-note"><span>备注</span><input v-model="defect.note" /></label>
+      <cv-text-input v-model="defect.defectType" label="缺陷类型" />
+      <cv-text-input v-model="defect.defectCode" label="缺陷代码" />
+      <cv-text-input v-model="defect.severity" label="等级" />
+      <cv-text-input v-model="defect.direction" label="方向" placeholder="如 3点钟" />
+      <cv-text-input v-model="defect.position" label="位置" />
+      <cv-text-input v-model.number="defect.distanceM" label="里程 (m)" type="number" />
+      <cv-text-input v-model="defect.note" label="备注" class="annot-note" />
     </div>
 
     <div class="annot-actions">
-      <button class="primary-action" @click="save">标记并保存</button>
-      <button @click="$emit('cancel')">取消</button>
+      <cv-button kind="secondary" @click="emit('cancel')">取消</cv-button>
+      <cv-button @click="save">标记并保存</cv-button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.annot-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.annot-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+.annot-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.annot-color {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: #525252;
+  font-size: 0.75rem;
+  padding-left: 0.5rem;
+}
+.annot-color input {
+  width: 2rem;
+  height: 1.75rem;
+  border: none;
+  background: none;
+  padding: 0;
+}
+.annot-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  background: #000;
+  border: 1px solid #e0e0e0;
+  max-height: 55vh;
+  overflow: auto;
+}
+.annot-canvas-wrap canvas {
+  max-width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  touch-action: none;
+  cursor: crosshair;
+}
+.annot-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem 1rem;
+}
+.annot-note {
+  grid-column: 1 / -1;
+}
+.annot-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+</style>
