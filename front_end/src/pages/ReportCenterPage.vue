@@ -151,6 +151,8 @@ async function confirmDelete() {
 .report-icon {
   color: #0f62fe;
   flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
 }
 .report-card-title h3 {
   margin: 0;

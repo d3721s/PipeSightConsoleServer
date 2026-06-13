@@ -28,8 +28,6 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 
 <template>
   <div class="chassis-group">
-    <h2 class="chassis-title">移动底盘</h2>
-
     <div class="chassis-section">
       <span class="chassis-label">灯光控制</span>
       <div class="segmented">
@@ -77,12 +75,6 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   gap: 1.25rem;
   padding-top: 1.25rem;
   border-top: 1px solid #393939;
-}
-.chassis-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #f4f4f4;
 }
 .chassis-section {
   display: flex;
