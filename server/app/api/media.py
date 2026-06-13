@@ -47,8 +47,21 @@ def _camera_for_request(db: Session, device: str | None, channel: int | None) ->
 @router.post("/snapshots", response_model=MediaAssetOut)
 def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)) -> MediaAsset:
     camera, channel = _camera_for_request(db, payload.device, payload.channel)
+
+    project_name = payload.project_name
+    project_location = payload.project_location
+    if (not project_name or not project_location) and payload.project_id is not None:
+        project = db.get(Project, payload.project_id)
+        if project is not None:
+            project_name = project_name or project.name
+            project_location = project_location or project.location
+
     try:
-        path = take_snapshot(build_rtsp_url(camera, channel))
+        path = take_snapshot(
+            build_rtsp_url(camera, channel),
+            project_name=project_name,
+            project_location=project_location,
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     asset = MediaAsset(

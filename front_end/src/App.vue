@@ -327,10 +327,10 @@ async function takeSnapshot() {
     sessionId: currentSession.value?.id,
     device: active.device,
     channel: active.channel,
-    distanceM: distance.value
+    distanceM: distance.value,
+    projectName: currentProject.value?.name || '',
+    projectLocation: currentProject.value?.location || ''
   })
-  markerDraft.distanceM = distance.value
-  page.value = 'editor'
   show(`拍照已保存 #${asset.id}`)
 }
 

@@ -85,6 +85,8 @@ class SnapshotIn(BaseModel):
     device: Literal["front", "rear"] | None = None
     channel: int | None = Field(default=None, ge=1, le=2)
     distance_m: float = Field(default=0, alias="distanceM")
+    project_name: str = Field(default="", alias="projectName")
+    project_location: str = Field(default="", alias="projectLocation")
 
 
 class MediaAssetOut(BaseModel):
@@ -102,8 +104,6 @@ class MediaAssetOut(BaseModel):
 
 
 class RecordingStartIn(SnapshotIn):
-    project_name: str = Field(default="", alias="projectName")
-    project_location: str = Field(default="", alias="projectLocation")
     segment_minutes: int | None = Field(default=None, alias="segmentMinutes")
 
 
