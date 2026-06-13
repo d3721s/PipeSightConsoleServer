@@ -249,10 +249,6 @@ async function removeMarker(id: number) {
   }
 }
 
-function seekTo(seconds: number) {
-  if (annotateVideo.value) annotateVideo.value.currentTime = seconds
-}
-
 async function createProject() {
   if (!projectForm.name.trim()) {
     show('请填写项目名称')
@@ -495,6 +491,63 @@ watch(page, (value) => {
           <label><span>缺陷类型</span><input v-model="markerDraft.defectType" /></label>
           <label><span>备注</span><input v-model="markerDraft.note" /></label>
           <button class="primary-action" @click="page = 'console'">保存并返回</button>
+        </div>
+      </section>
+
+      <section v-else-if="page === 'annotate'" class="annotate-page">
+        <aside class="annotate-list">
+          <h2>录像列表</h2>
+          <p v-if="recordings.length === 0" class="annotate-empty">暂无录像</p>
+          <button
+            v-for="rec in recordings"
+            :key="rec.id"
+            class="annotate-item"
+            :class="{ active: activeRecording?.id === rec.id }"
+            :disabled="!rec.available"
+            @click="selectRecording(rec)"
+          >
+            <span class="annotate-item-name">{{ rec.name }}</span>
+            <span class="annotate-item-meta">{{ rec.capturedAt }}<span v-if="!rec.available"> · 文件缺失</span></span>
+          </button>
+        </aside>
+
+        <div class="annotate-main" v-if="activeRecording">
+          <video
+            ref="annotateVideo"
+            class="annotate-video"
+            :src="activeRecording.videoUrl || ''"
+            controls
+            @timeupdate="onAnnotateTimeUpdate"
+            @seeked="onAnnotateTimeUpdate"
+          />
+          <div class="annotate-readout">
+            <span>当前时间：{{ videoCurrentTime.toFixed(1) }}s</span>
+            <span>里程：{{ currentMileageM === null ? '—' : currentMileageM.toFixed(2) + ' m' }}</span>
+          </div>
+
+          <div class="annotate-form">
+            <label><span>缺陷类型</span><input v-model="annotateDraft.defectType" placeholder="如：裂纹 / 错口" /></label>
+            <label><span>位置</span><input v-model="annotateDraft.position" placeholder="如：3点钟方向" /></label>
+            <label><span>备注</span><input v-model="annotateDraft.note" /></label>
+            <button class="primary-action" @click="saveMarker">在此处添加标记</button>
+          </div>
+
+          <div class="annotate-markers">
+            <h3>标记（{{ markers.length }}）</h3>
+            <p v-if="markers.length === 0" class="annotate-empty">暂无标记</p>
+            <div v-for="m in markers" :key="m.id" class="annotate-marker">
+              <button class="marker-distance" title="跳转到该里程不可用，按时间排序" disabled>{{ m.distanceM.toFixed(2) }}m</button>
+              <span class="marker-body">
+                <strong>{{ m.defectType || '—' }}</strong>
+                <small>{{ m.position }}<span v-if="m.note"> · {{ m.note }}</span></small>
+              </span>
+              <button class="link-danger" @click="removeMarker(m.id)">删除</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="annotate-main annotate-empty-main" v-else>
+          请选择左侧录像开始标注
         </div>
       </section>
 
