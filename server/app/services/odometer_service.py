@@ -21,6 +21,7 @@ class OdometerService:
         self._port = port
         self._lock = threading.Lock()
         self._mileage_cm: int | None = None
+        self._last_raw: dict | None = None
         self._connected = False
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -47,6 +48,12 @@ class OdometerService:
     def get_current_mileage_m(self) -> float | None:
         cm = self.get_current_mileage_cm()
         return None if cm is None else cm / 100.0
+
+    def get_current_raw(self) -> dict | None:
+        # The whole last JSON object from the cart (mileage + any pose/angle
+        # fields). Stored verbatim so new fields are captured without parsing.
+        with self._lock:
+            return dict(self._last_raw) if self._last_raw is not None else None
 
     def _run(self) -> None:
         while not self._stop.is_set():
@@ -89,9 +96,12 @@ class OdometerService:
                 obj = json.loads(chunk)
             except json.JSONDecodeError:
                 continue
+            if not isinstance(obj, dict):
+                continue
             value = obj.get("mileage_cm")
-            if isinstance(value, (int, float)):
-                with self._lock:
+            with self._lock:
+                self._last_raw = obj
+                if isinstance(value, (int, float)):
                     self._mileage_cm = int(value)
 
 

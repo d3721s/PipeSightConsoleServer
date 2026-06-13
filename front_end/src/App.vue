@@ -3,9 +3,9 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { api } from './api'
 import WebRtcPlayer from './components/WebRtcPlayer.vue'
 import { cameraControlSocket, type PtzDirection } from './ws'
-import type { ActiveCamera, CameraCode, CameraDevice, Project, RecordingStatus, Report, Session, StorageOptions, StreamInfo } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, Marker, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
-type Page = 'home' | 'project' | 'console' | 'editor' | 'reports' | 'settings'
+type Page = 'home' | 'project' | 'console' | 'editor' | 'annotate' | 'reports' | 'settings'
 
 const page = ref<Page>('home')
 const notice = ref('')
@@ -21,6 +21,15 @@ const segmentMinutes = ref(30)
 const storage = ref<StorageOptions | null>(null)
 const storageManualPath = ref('')
 const storageBusy = ref(false)
+
+// Video annotation page state.
+const recordings = ref<Recording[]>([])
+const activeRecording = ref<Recording | null>(null)
+const annotateVideo = ref<HTMLVideoElement | null>(null)
+const track = ref<TrackData | null>(null)
+const videoCurrentTime = ref(0)
+const markers = ref<Marker[]>([])
+const annotateDraft = reactive({ defectType: '', position: '', note: '' })
 const recording = ref<RecordingStatus>({ active: false })
 const projects = ref<Project[]>([])
 const currentProject = ref<Project | null>(null)
@@ -150,6 +159,100 @@ async function applyStorage(path: string | null) {
   }
 }
 
+async function openAnnotate() {
+  page.value = 'annotate'
+  activeRecording.value = null
+  track.value = null
+  markers.value = []
+  try {
+    recordings.value = await api.listRecordings()
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+async function selectRecording(recording: Recording) {
+  activeRecording.value = recording
+  track.value = null
+  markers.value = []
+  videoCurrentTime.value = 0
+  annotateDraft.defectType = ''
+  annotateDraft.position = ''
+  annotateDraft.note = ''
+  try {
+    const [trackData, markerList] = await Promise.all([
+      api.recordingTrack(recording.id),
+      api.listMarkers(recording.id)
+    ])
+    track.value = trackData
+    markers.value = markerList
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+// Mileage (m) at the current video position, from the nearest track sample.
+const currentMileageM = computed(() => {
+  const samples = track.value?.samples
+  if (!samples || samples.length === 0) return null
+  const t = videoCurrentTime.value
+  let best = samples[0]
+  let bestDelta = Math.abs(best.videoTime - t)
+  for (const sample of samples) {
+    const delta = Math.abs(sample.videoTime - t)
+    if (delta < bestDelta) {
+      best = sample
+      bestDelta = delta
+    }
+  }
+  const cm = best.raw?.mileage_cm
+  return typeof cm === 'number' ? cm / 100 : null
+})
+
+function onAnnotateTimeUpdate() {
+  if (annotateVideo.value) videoCurrentTime.value = annotateVideo.value.currentTime
+}
+
+async function saveMarker() {
+  const recording = activeRecording.value
+  if (!recording) return
+  if (!annotateDraft.defectType.trim()) {
+    show('请填写缺陷类型')
+    return
+  }
+  try {
+    await api.createMarker({
+      projectId: recording.projectId,
+      sessionId: recording.sessionId,
+      mediaAssetId: recording.id,
+      defectType: annotateDraft.defectType.trim(),
+      position: annotateDraft.position.trim(),
+      note: annotateDraft.note.trim(),
+      distanceM: currentMileageM.value ?? 0
+    })
+    markers.value = await api.listMarkers(recording.id)
+    annotateDraft.defectType = ''
+    annotateDraft.position = ''
+    annotateDraft.note = ''
+    show('标记已保存')
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+async function removeMarker(id: number) {
+  try {
+    await api.deleteMarker(id)
+    if (activeRecording.value) markers.value = await api.listMarkers(activeRecording.value.id)
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+function seekTo(seconds: number) {
+  if (annotateVideo.value) annotateVideo.value.currentTime = seconds
+}
+
 async function createProject() {
   if (!projectForm.name.trim()) {
     show('请填写项目名称')
@@ -271,6 +374,7 @@ watch(page, (value) => {
         <button :class="{ active: page === 'home' }" @click="page = 'home'">首页</button>
         <button :class="{ active: page === 'project' }" @click="page = 'project'">新建项目</button>
         <button :class="{ active: page === 'console' }" @click="page = 'console'">控制</button>
+        <button :class="{ active: page === 'annotate' }" @click="openAnnotate">标注</button>
         <button :class="{ active: page === 'reports' }" @click="loadReports">报告</button>
         <button :class="{ active: page === 'settings' }" @click="page = 'settings'">设置</button>
       </nav>

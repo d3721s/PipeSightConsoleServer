@@ -88,3 +88,41 @@ export interface StorageOptions {
   restartRequired?: boolean
 }
 
+export interface Recording {
+  id: number
+  projectId: number | null
+  sessionId: number | null
+  name: string
+  capturedAt: string
+  videoUrl: string | null
+  trackUrl: string | null
+  available: boolean
+}
+
+export interface TrackSample {
+  videoTime: number
+  raw: Record<string, unknown>
+}
+
+export interface TrackData {
+  video: string
+  startedAt?: string
+  durationS?: number
+  samples: TrackSample[]
+}
+
+export interface Marker {
+  id: number
+  projectId: number | null
+  sessionId: number | null
+  mediaAssetId: number | null
+  defectType: string
+  defectCode: string
+  severity: string
+  direction: string
+  position: string
+  note: string
+  distanceM: number
+  createdAt: string
+}
+

@@ -1,4 +1,4 @@
-import type { ActiveCamera, CameraCode, CameraDevice, Project, RecordingStatus, Report, Session, StorageOptions, StreamInfo } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, Marker, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -58,6 +58,13 @@ export const api = {
   getStorage: () => request<StorageOptions>('/api/settings/storage'),
   setStorage: (path: string | null) =>
     request<StorageOptions>('/api/settings/storage', { method: 'PUT', body: JSON.stringify({ path }) }),
+
+  listRecordings: () => request<Recording[]>('/api/recordings'),
+  recordingTrack: (id: number) => request<TrackData>(`/api/recordings/${id}/track`),
+  listMarkers: (mediaId: number) => request<Marker[]>(`/api/media/${mediaId}/markers`),
+  createMarker: (data: Record<string, unknown>) =>
+    request<Marker>('/api/markers', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMarker: (id: number) => request<{ ok: boolean }>(`/api/markers/${id}`, { method: 'DELETE' }),
 
   startReport: (data: Record<string, unknown>) =>
     request<Report>('/api/reports/start', { method: 'POST', body: JSON.stringify(data) }),

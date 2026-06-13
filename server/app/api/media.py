@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
 from app.drivers.rtsp import build_rtsp_url
 from app.models import CameraDevice, MediaAsset, Project
@@ -14,6 +19,16 @@ from app.services.snapshot_service import take_snapshot
 
 
 router = APIRouter(prefix="/api", tags=["media"])
+settings = get_settings()
+
+
+def _storage_url(absolute_path: str) -> str | None:
+    """Map an absolute file under the active storage dir to its /storage URL."""
+    try:
+        rel = Path(absolute_path).resolve().relative_to(settings.active_storage_dir.resolve())
+    except (ValueError, OSError):
+        return None
+    return "/storage/" + rel.as_posix()
 
 
 def _camera_for_request(db: Session, device: str | None, channel: int | None) -> tuple[CameraDevice, int]:
@@ -73,6 +88,8 @@ def start_recording(payload: RecordingStartIn, db: Session = Depends(get_db)) ->
             project_name=project_name,
             project_location=project_location,
             segment_minutes=payload.segment_minutes,
+            project_id=payload.project_id,
+            session_id=payload.session_id,
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -99,4 +116,44 @@ def odometer() -> dict:
         "mileageCm": cm,
         "mileageM": None if cm is None else cm / 100.0,
     }
+
+
+@router.get("/recordings")
+def list_recordings(db: Session = Depends(get_db)) -> list[dict]:
+    # Recorded segments (one MediaAsset per .mp4) for the annotation page to pick.
+    assets = db.scalars(
+        select(MediaAsset).where(MediaAsset.type == "video").order_by(MediaAsset.id.desc())
+    ).all()
+    out: list[dict] = []
+    for asset in assets:
+        video_url = _storage_url(asset.file_path)
+        track_path = Path(asset.file_path).with_suffix(".json")
+        track_url = _storage_url(str(track_path)) if track_path.exists() else None
+        out.append(
+            {
+                "id": asset.id,
+                "projectId": asset.project_id,
+                "sessionId": asset.session_id,
+                "name": Path(asset.file_path).name,
+                "capturedAt": asset.captured_at.isoformat(timespec="seconds"),
+                "videoUrl": video_url,
+                "trackUrl": track_url,
+                "available": video_url is not None and Path(asset.file_path).exists(),
+            }
+        )
+    return out
+
+
+@router.get("/recordings/{asset_id}/track")
+def recording_track(asset_id: int, db: Session = Depends(get_db)) -> dict:
+    asset = db.get(MediaAsset, asset_id)
+    if asset is None or asset.type != "video":
+        raise HTTPException(status_code=404, detail="recording not found")
+    track_path = Path(asset.file_path).with_suffix(".json")
+    if not track_path.exists():
+        return {"video": Path(asset.file_path).name, "samples": []}
+    try:
+        return json.loads(track_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"video": Path(asset.file_path).name, "samples": []}
 

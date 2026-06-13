@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -17,6 +18,7 @@ settings = get_settings()
 # OSD font. Install on the cart with: sudo apt install -y fonts-wqy-zenhei
 OSD_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
 OSD_TEXT_REFRESH_S = 0.2  # how often the dynamic OSD textfile is rewritten
+TRACK_SAMPLE_S = 1.0      # how often a mileage sample is buffered (one row/sec)
 
 
 @dataclass
@@ -44,13 +46,25 @@ class RecorderService:
         self._osd_stop = threading.Event()
         self._osd_thread: threading.Thread | None = None
 
+        # Mileage history captured during the recording, used to write a per-
+        # segment .json (videoTime -> raw odometer JSON) for the annotation page.
+        self._track_lock = threading.Lock()
+        self._track: list[tuple[float, dict]] = []  # (wall_epoch, raw_json)
+        self._track_thread: threading.Thread | None = None
+        self._t0: float = 0.0
+
+        # Segment-list watcher: ffmpeg writes the actual segment files it cuts to
+        # a CSV; we tail it to slice the mileage and to register each segment.
+        self._segment_list: Path | None = None
+        self._watch_thread: threading.Thread | None = None
+        self._project_id: int | None = None
+        self._session_id: int | None = None
+        self._processed_segments: set[str] = set()
+
     @property
     def state(self) -> RecordingState:
         if self._process and self._process.poll() is not None:
-            self._state.active = False
-            self._state.error = f"ffmpeg exited with {self._process.returncode}"
-            self._process = None
-            self._stop_osd_writer()
+            self._finish()
         return self._state
 
     def active_for(self, device: str, channel: int) -> bool:
@@ -66,6 +80,8 @@ class RecorderService:
         project_name: str = "",
         project_location: str = "",
         segment_minutes: int | None = None,
+        project_id: int | None = None,
+        session_id: int | None = None,
     ) -> RecordingState:
         if self.state.active:
             raise RuntimeError("recording already active")
@@ -77,10 +93,14 @@ class RecorderService:
         minutes = segment_minutes if segment_minutes and segment_minutes > 0 else settings.recording_segment_minutes
         segment_seconds = max(1, minutes) * 60
 
-        # Dynamic OSD lines (distance + project) are rendered from a textfile that
-        # a background thread rewrites with the live odometer value. The time line
-        # uses ffmpeg's built-in localtime so it ticks every second regardless.
         self._osd_textfile = recording_dir / f".osd_{stamp}.txt"
+        self._segment_list = recording_dir / f".segments_{stamp}.csv"
+        self._project_id = project_id
+        self._session_id = session_id
+        self._processed_segments = set()
+        self._track = []
+        self._t0 = time.time()
+
         self._state = RecordingState(
             active=True,
             device=device,
@@ -91,8 +111,8 @@ class RecorderService:
             project_name=project_name,
             project_location=project_location,
         )
-        self._write_osd_text()  # ensure the file exists before ffmpeg starts
-        self._start_osd_writer()
+        self._write_osd_text()  # ensure the OSD file exists before ffmpeg starts
+        self._start_workers()
 
         vf = self._build_drawtext_filter(self._osd_textfile)
         command = [
@@ -120,6 +140,10 @@ class RecorderService:
             str(segment_seconds),
             "-reset_timestamps",
             "1",
+            "-segment_list",
+            self._segment_list.as_posix(),
+            "-segment_list_type",
+            "csv",
             pattern.as_posix(),
         ]
 
@@ -132,7 +156,7 @@ class RecorderService:
                 text=True,
             )
         except OSError:
-            self._stop_osd_writer()
+            self._stop_workers()
             self._state.active = False
             raise
         return self._state
@@ -154,10 +178,160 @@ class RecorderService:
                     process.wait(timeout=2)
                 except subprocess.TimeoutExpired:
                     process.kill()
+        self._finish()
+        return self._state
+
+    def _finish(self) -> None:
+        """Tear down workers, drain any final segment, and clear state once."""
+        if not self._state.active and self._process is None:
+            return
+        if self._process is not None and self._process.poll() is not None and self._state.error is None:
+            rc = self._process.returncode
+            if rc not in (0, 255):  # 255 == graceful 'q' quit
+                self._state.error = f"ffmpeg exited with {rc}"
         self._process = None
         self._state.active = False
-        self._stop_osd_writer()
-        return self._state
+        self._stop_workers()
+        # Final drain: the last segment's CSV line is written when ffmpeg closes.
+        try:
+            self._drain_segments()
+        except Exception:
+            pass
+        self._cleanup_temp()
+
+    # --- background workers -------------------------------------------------
+
+    def _start_workers(self) -> None:
+        self._osd_stop.clear()
+        self._osd_thread = threading.Thread(target=self._osd_loop, name="osd-writer", daemon=True)
+        self._track_thread = threading.Thread(target=self._track_loop, name="track-sampler", daemon=True)
+        self._watch_thread = threading.Thread(target=self._watch_loop, name="segment-watch", daemon=True)
+        self._osd_thread.start()
+        self._track_thread.start()
+        self._watch_thread.start()
+
+    def _stop_workers(self) -> None:
+        self._osd_stop.set()
+        for thread in (self._osd_thread, self._track_thread, self._watch_thread):
+            if thread and thread.is_alive():
+                thread.join(timeout=2)
+        self._osd_thread = None
+        self._track_thread = None
+        self._watch_thread = None
+
+    def _osd_loop(self) -> None:
+        while not self._osd_stop.is_set():
+            try:
+                self._write_osd_text()
+            except OSError:
+                pass
+            time.sleep(OSD_TEXT_REFRESH_S)
+
+    def _track_loop(self) -> None:
+        # One mileage sample per second, storing the cart's whole JSON verbatim.
+        next_t = time.time()
+        while not self._osd_stop.is_set():
+            raw = odometer_service.get_current_raw()
+            if raw is not None:
+                with self._track_lock:
+                    self._track.append((time.time(), raw))
+            next_t += TRACK_SAMPLE_S
+            time.sleep(max(0.0, next_t - time.time()))
+
+    def _watch_loop(self) -> None:
+        while not self._osd_stop.is_set():
+            try:
+                self._drain_segments()
+            except Exception:
+                pass
+            time.sleep(1.0)
+
+    # --- segment list -> per-segment json + DB asset ------------------------
+
+    def _drain_segments(self) -> None:
+        seg_list = self._segment_list
+        if seg_list is None or not seg_list.exists():
+            return
+        try:
+            lines = seg_list.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return
+        for line in lines:
+            parts = line.split(",")
+            if len(parts) < 3:
+                continue
+            name = parts[0].strip()
+            if not name or name in self._processed_segments:
+                continue
+            try:
+                start_s = float(parts[1])
+                end_s = float(parts[2])
+            except ValueError:
+                continue
+            self._processed_segments.add(name)
+            mp4_path = seg_list.parent / name
+            self._write_segment_track(mp4_path, start_s, end_s)
+            self._register_segment(mp4_path)
+
+    def _write_segment_track(self, mp4_path: Path, start_s: float, end_s: float) -> None:
+        seg_t0 = self._t0 + start_s
+        seg_t1 = self._t0 + end_s
+        with self._track_lock:
+            rows = [
+                {"videoTime": round(wall - seg_t0, 2), "raw": raw}
+                for wall, raw in self._track
+                if seg_t0 - 0.5 <= wall <= seg_t1 + 0.5
+            ]
+        payload = {
+            "video": mp4_path.name,
+            "startedAt": datetime.fromtimestamp(seg_t0).isoformat(timespec="seconds"),
+            "durationS": round(end_s - start_s, 2),
+            "samples": rows,
+        }
+        track_path = mp4_path.with_suffix(".json")
+        try:
+            tmp = track_path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, track_path)
+        except OSError:
+            pass
+
+    def _register_segment(self, mp4_path: Path) -> None:
+        # Insert a MediaAsset row so the annotation page can list this recording.
+        try:
+            from app.db import SessionLocal
+            from app.models import MediaAsset
+        except Exception:
+            return
+        try:
+            with SessionLocal() as db:
+                exists = db.query(MediaAsset).filter(MediaAsset.file_path == str(mp4_path)).first()
+                if exists:
+                    return
+                asset = MediaAsset(
+                    project_id=self._project_id,
+                    session_id=self._session_id,
+                    camera_device=self._state.device or "front",
+                    camera_channel=self._state.channel or 1,
+                    type="video",
+                    file_path=str(mp4_path),
+                )
+                db.add(asset)
+                db.commit()
+        except Exception:
+            pass
+
+    def _cleanup_temp(self) -> None:
+        for path in (self._osd_textfile, self._segment_list):
+            if path is None:
+                continue
+            for candidate in (path, path.with_suffix(path.suffix + ".tmp"), path.with_suffix(".tmp")):
+                try:
+                    candidate.unlink(missing_ok=True)
+                except OSError:
+                    pass
+        self._osd_textfile = None
+        self._segment_list = None
 
     # --- OSD rendering -----------------------------------------------------
 
@@ -167,8 +341,6 @@ class RecorderService:
             f"fontfile={font}:fontsize=40:fontcolor=yellow:"
             "box=1:boxcolor=black@0.4:boxborderw=8"
         )
-        # Line 1: live clock (built-in). Lines 2-4: distance/project/location from
-        # the textfile (reload=1 re-reads it every frame). x=20 keeps it top-left.
         time_text = "时间\\: %{localtime\\:%Y-%m-%d %H\\\\\\:%M\\\\\\:%S}"
         time_layer = f"drawtext={common}:x=20:y=20:text='{time_text}'"
         body_file = _ff_escape_path(str(textfile))
@@ -180,41 +352,15 @@ class RecorderService:
         distance = "距离: --" if mileage_m is None else f"距离: {mileage_m:.2f}m"
         name = self._state.project_name or "-"
         location = self._state.project_location or "-"
-        # textfile content is rendered literally by ffmpeg; newlines => new lines.
         return f"{distance}\n项目名称: {name}\n项目地点: {location}\n"
 
     def _write_osd_text(self) -> None:
         textfile = self._osd_textfile
         if textfile is None:
             return
-        # Atomic replace so ffmpeg never reads a half-written file (avoids flicker).
         tmp = textfile.with_suffix(".tmp")
         tmp.write_text(self._osd_body_text(), encoding="utf-8")
         os.replace(tmp, textfile)
-
-    def _start_osd_writer(self) -> None:
-        self._osd_stop.clear()
-        self._osd_thread = threading.Thread(target=self._osd_loop, name="osd-writer", daemon=True)
-        self._osd_thread.start()
-
-    def _osd_loop(self) -> None:
-        while not self._osd_stop.is_set():
-            try:
-                self._write_osd_text()
-            except OSError:
-                pass
-            time.sleep(OSD_TEXT_REFRESH_S)
-
-    def _stop_osd_writer(self) -> None:
-        self._osd_stop.set()
-        textfile = self._osd_textfile
-        if textfile is not None:
-            for path in (textfile, textfile.with_suffix(".tmp")):
-                try:
-                    path.unlink(missing_ok=True)
-                except OSError:
-                    pass
-        self._osd_textfile = None
 
 
 recorder_service = RecorderService()

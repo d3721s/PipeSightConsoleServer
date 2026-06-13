@@ -62,6 +62,15 @@ def create_marker(payload: MarkerCreate, db: Session = Depends(get_db)) -> Marke
     return marker
 
 
+@router.get("/media/{media_id}/markers", response_model=list[MarkerOut])
+def list_markers(media_id: int, db: Session = Depends(get_db)) -> list[Marker]:
+    return list(
+        db.scalars(
+            select(Marker).where(Marker.media_asset_id == media_id).order_by(Marker.distance_m, Marker.id)
+        ).all()
+    )
+
+
 @router.put("/markers/{marker_id}", response_model=MarkerOut)
 def update_marker(marker_id: int, payload: MarkerCreate, db: Session = Depends(get_db)) -> Marker:
     marker = db.get(Marker, marker_id)
