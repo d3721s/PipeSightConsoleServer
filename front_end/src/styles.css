@@ -359,16 +359,6 @@ label span {
   width: 100%;
 }
 
-.zoom-indicator {
-  display: grid;
-  gap: 2px;
-}
-
-.zoom-indicator small {
-  opacity: 0.6;
-  font-size: 12px;
-}
-
 .ptz-block {
   display: grid;
   gap: 8px;
