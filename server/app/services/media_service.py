@@ -14,13 +14,13 @@ from app.models import CameraDevice
 settings = get_settings()
 
 
-def public_base(request: Request, port: int) -> str:
-    host = request.url.hostname or "127.0.0.1"
-    return f"http://{host}:{port}"
-
-
-def whep_url(request: Request, path: str) -> str:
-    return f"{public_base(request, settings.mediamtx_webrtc_port)}/{path}/whep"
+def whep_url(path: str) -> str:
+    # Relative path on purpose: the browser may sit on a different machine than
+    # the server (tablet over LAN), so a hard-coded host/IP here would point the
+    # client at its own machine. The dev server (Vite) and FastAPI both proxy
+    # "/whep/*" to MediaMTX, so a relative URL resolves to whatever origin the
+    # page was loaded from.
+    return f"/whep/{path}/whep"
 
 
 def stream_payload(
@@ -35,7 +35,7 @@ def stream_payload(
         "channel": channel,
         "path": path,
         "rtspUrl": build_rtsp_url(camera, channel),
-        "whepUrl": whep_url(request, path),
+        "whepUrl": whep_url(path),
         "recordingRelay": use_recording_relay,
     }
 
@@ -43,10 +43,18 @@ def stream_payload(
 def write_mediamtx_config(db: Session) -> Path:
     cameras = db.scalars(select(CameraDevice)).all()
     lines = [
-        "rtspAddress: :8554",
-        "webrtcAddress: :8889",
-        "paths:",
+        f"rtspAddress: :{settings.mediamtx_rtsp_port}",
+        "webrtc: yes",
+        f"webrtcAddress: :{settings.mediamtx_webrtc_port}",
+        # Media flows by UDP straight from the browser to MediaMTX (the WHEP
+        # proxy only carries signaling), so this port must be reachable on the
+        # server's LAN IP.
+        "webrtcLocalUDPAddress: :8189",
     ]
+    if settings.mediamtx_webrtc_additional_hosts:
+        hosts = ", ".join(settings.mediamtx_webrtc_additional_hosts)
+        lines.append(f"webrtcAdditionalHosts: [{hosts}]")
+    lines.append("paths:")
     for camera in cameras:
         if not camera.ip:
             continue
@@ -55,6 +63,7 @@ def write_mediamtx_config(db: Session) -> Path:
                 [
                     f"  {media_path(camera.code, channel)}:",
                     f"    source: {build_rtsp_url(camera, channel)}",
+                    "    sourceOnDemand: yes",
                     f"  {recording_media_path(camera.code, channel)}:",
                     "    source: publisher",
                 ]

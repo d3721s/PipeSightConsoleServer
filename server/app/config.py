@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 import shutil
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,11 +23,28 @@ class Settings(BaseSettings):
     )
     mediamtx_rtsp_port: int = 8554
     mediamtx_webrtc_port: int = 8889
+    # Extra IP/hostnames MediaMTX advertises as WebRTC ICE candidates. Leave
+    # empty to let MediaMTX auto-detect the server's interface addresses (works
+    # on a single LAN). Set it (e.g. the server LAN IP) for Docker / multi-NIC /
+    # NAT setups. Comma-separated via PIPESIGHT_MEDIAMTX_WEBRTC_ADDITIONAL_HOSTS.
+    mediamtx_webrtc_additional_hosts: list[str] = Field(default_factory=list)
 
     ffmpeg_exe: str = "ffmpeg"
     recording_segment_minutes: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="PIPESIGHT_")
+
+    @field_validator("mediamtx_webrtc_additional_hosts", mode="before")
+    @classmethod
+    def _split_hosts(cls, value: object) -> object:
+        # Accept a plain comma-separated env value (e.g. "192.168.1.5, host.lan")
+        # in addition to a JSON list.
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped or stripped.startswith("["):
+                return value
+            return [item.strip() for item in stripped.split(",") if item.strip()]
+        return value
 
     @property
     def resolved_database_url(self) -> str:

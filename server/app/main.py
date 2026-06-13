@@ -6,9 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import annotations, cameras, media, projects, reports, settings, system
+from app.api import annotations, cameras, media, media_proxy, projects, reports, settings, system
 from app.config import get_settings
 from app.db import init_db
+from app.services.mediamtx_service import mediamtx_service
 from app.ws import camera_control
 
 
@@ -28,6 +29,12 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    mediamtx_service.start()
+
+
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    mediamtx_service.stop()
 
 
 app.include_router(system.router)
@@ -38,6 +45,7 @@ app.include_router(media.router)
 app.include_router(annotations.router)
 app.include_router(reports.router)
 app.include_router(camera_control.router)
+app.include_router(media_proxy.router)
 
 if settings_obj.storage_dir.exists():
     app.mount("/storage", StaticFiles(directory=str(settings_obj.storage_dir)), name="storage")

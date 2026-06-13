@@ -10,6 +10,7 @@ from app.drivers.onvif_ptz import ptz_driver
 from app.models import CameraDevice
 from app.schemas import ActiveCameraIn, CameraChannelOut, CameraConfigIn, CameraOut, StreamOut
 from app.services.media_service import stream_payload, write_mediamtx_config
+from app.services.mediamtx_service import mediamtx_service
 from app.services.recorder_service import recorder_service
 from app.services.settings_service import get_setting, set_setting
 
@@ -47,6 +48,7 @@ def update_camera_config(device: str, payload: CameraConfigIn, db: Session = Dep
     db.commit()
     db.refresh(camera)
     write_mediamtx_config(db)
+    mediamtx_service.reload()
     return camera
 
 
