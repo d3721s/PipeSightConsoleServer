@@ -8,4 +8,7 @@ import { router } from './router'
 import 'carbon-components/css/carbon-components.min.css'
 import './styles.css'
 
+// Disable the browser right-click context menu app-wide (kiosk/tablet use).
+window.addEventListener('contextmenu', (event) => event.preventDefault())
+
 createApp(App).use(CarbonVue3).use(router).mount('#app')
