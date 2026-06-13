@@ -68,6 +68,46 @@ body {
   height: 1.5rem;
 }
 
+/* --- Buttons: prevent icon/label overlap at the enlarged root font --------- */
+/* Carbon places a button's icon with position:absolute + a fixed px right
+   padding to reserve room. When the root font is scaled up, the (em-based)
+   label grows but that fixed px padding does not, so the label overruns the
+   icon. Lay the icon out inline instead (like Carbon's own ghost variant) so it
+   always flows after the label with a gap — no overlap at any font size. Also
+   relax the fixed widths so larger CJK labels fit. */
+.bx--btn {
+  max-width: none;
+}
+.bx--btn .bx--btn__icon {
+  position: static;
+  margin-left: 0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+/* Icon-only buttons (e.g. the trash buttons) keep the icon centered. */
+.bx--btn.bx--btn--icon-only .bx--btn__icon {
+  margin-left: 0;
+}
+
+/* --- Form control affordances: enlarge the tiny built-in icons -------------- */
+/* The number-input +/- steppers and the password show/hide toggle ship with
+   small fixed-size SVGs that don't track the scaled-up root font, so they look
+   tiny on the tablet. Enlarge the icons (and give the steppers a bit more
+   width) so they're comfortable to tap. */
+.bx--number__control-btn {
+  width: 3.25rem;
+}
+.bx--number__control-btn svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.bx--text-input--password__visibility__toggle svg,
+.bx--text-input--password__visibility svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 /* Header is fixed; push content below its new height. */
 .app-content {
   margin-top: 4rem;

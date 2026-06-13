@@ -71,9 +71,9 @@ function downloadPdf(id: number) {
           <cv-tag :kind="statusKind(report.status)" :label="report.status" />
         </div>
         <div class="report-card-actions">
-          <cv-button size="sm" kind="tertiary" :icon="View24" @click="router.push(`/reports/${report.id}`)">查看详情</cv-button>
-          <cv-button size="sm" kind="ghost" :icon="DocumentExport24" @click="exportPdf(report)">重新生成</cv-button>
-          <cv-button size="sm" :icon="DocumentPdf24" @click="downloadPdf(report.id)">下载 PDF</cv-button>
+          <cv-button kind="tertiary" :icon="View24" @click="router.push(`/reports/${report.id}`)">查看详情</cv-button>
+          <cv-button kind="ghost" :icon="DocumentExport24" @click="exportPdf(report)">重新生成</cv-button>
+          <cv-button :icon="DocumentPdf24" @click="downloadPdf(report.id)">下载 PDF</cv-button>
         </div>
       </cv-tile>
     </div>

@@ -51,10 +51,10 @@ function downloadPdf() {
 <template>
   <div v-if="detail" class="page report-detail-page">
     <div class="detail-toolbar">
-      <cv-button kind="ghost" size="sm" :icon="ChevronLeft24" @click="router.push('/reports')">返回报告中心</cv-button>
+      <cv-button kind="ghost" :icon="ChevronLeft24" @click="router.push('/reports')">返回报告中心</cv-button>
       <div class="detail-toolbar-right">
-        <cv-button kind="tertiary" size="sm" :icon="DocumentExport24" @click="regenerate">重新生成 PDF</cv-button>
-        <cv-button size="sm" :icon="DocumentPdf24" @click="downloadPdf">下载 PDF</cv-button>
+        <cv-button kind="tertiary" :icon="DocumentExport24" @click="regenerate">重新生成 PDF</cv-button>
+        <cv-button :icon="DocumentPdf24" @click="downloadPdf">下载 PDF</cv-button>
       </div>
     </div>
 
