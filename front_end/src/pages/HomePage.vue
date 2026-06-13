@@ -10,7 +10,7 @@ const router = useRouter()
   <div class="page home-page">
     <header class="page-head">
       <h1>风电机组叶片内腔巡检机器人</h1>
-      <p class="page-sub">XX有限公司</p>
+      <p class="page-sub"></p>
     </header>
 
     <div class="home-tiles">
