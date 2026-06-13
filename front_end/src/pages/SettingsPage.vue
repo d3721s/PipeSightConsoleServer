@@ -343,6 +343,18 @@ onActivated(loadStorage)
 .storage-list {
   margin: 1rem 0;
 }
+/* Carbon sizes the structured-list selection checkmark at width:8% of the cell,
+   which is a tiny dot at our scale. Give it a fixed, legible size and a touch
+   more row padding. */
+.storage-list :deep(.bx--structured-list-svg) {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.storage-list :deep(.bx--structured-list-td) {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  vertical-align: middle;
+}
 .path-cell {
   color: #525252;
   font-size: 0.8125rem;
