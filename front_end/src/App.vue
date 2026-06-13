@@ -284,7 +284,7 @@ onUnmounted(() => {
           <WebRtcPlayer
             v-if="stream"
             :src="stream.whepUrl"
-            :digital-zoom="digitalZoom"
+            v-model:digital-zoom="digitalZoom"
           />
           <div v-else class="video-placeholder">请在系统设置中配置相机，并确认 MediaMTX/WebRTC 可用</div>
           <div class="osd">
@@ -317,10 +317,10 @@ onUnmounted(() => {
             <span>分段(分钟)</span>
             <input v-model.number="segmentMinutes" type="number" min="1" step="1" :disabled="recording.active" />
           </label>
-          <label>
+          <div class="zoom-indicator">
             <span>数字变焦 {{ digitalZoom.toFixed(1) }}x</span>
-            <input v-model.number="digitalZoom" min="1" max="4" step="0.1" type="range" />
-          </label>
+            <small>双指捏合缩放，单指拖动平移</small>
+          </div>
           <div class="control-row">
             <button @click="takeSnapshot">拍照</button>
             <button :class="{ danger: recording.active }" @click="toggleRecording">

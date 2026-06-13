@@ -204,9 +204,12 @@ label span {
   transform-origin: center;
 }
 
+.webrtc-player.interactive {
+  touch-action: none;
+}
+
 .webrtc-player.pannable {
   cursor: grab;
-  touch-action: none;
 }
 
 .webrtc-player.pannable.dragging {
@@ -354,6 +357,16 @@ label span {
 
 .distance-input input {
   width: 100%;
+}
+
+.zoom-indicator {
+  display: grid;
+  gap: 2px;
+}
+
+.zoom-indicator small {
+  opacity: 0.6;
+  font-size: 12px;
 }
 
 .ptz-block {

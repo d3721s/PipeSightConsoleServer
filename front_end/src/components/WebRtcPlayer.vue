@@ -6,6 +6,13 @@ const props = defineProps<{
   digitalZoom: number
 }>()
 
+const emit = defineEmits<{
+  (e: 'update:digitalZoom', value: number): void
+}>()
+
+const MIN_ZOOM = 1
+const MAX_ZOOM = 4
+
 const video = ref<HTMLVideoElement | null>(null)
 const container = ref<HTMLDivElement | null>(null)
 const error = ref('')
@@ -18,10 +25,21 @@ let abortController: AbortController | null = null
 const offsetX = ref(0)
 const offsetY = ref(0)
 const dragging = ref(false)
+
+// Active touch points, keyed by pointerId. 1 pointer => pan, 2 => pinch-zoom.
+const points = new Map<number, { x: number; y: number }>()
 let dragStartX = 0
 let dragStartY = 0
 let dragOriginX = 0
 let dragOriginY = 0
+// Pinch baseline captured when the second finger lands.
+let pinchStartDist = 0
+let pinchStartZoom = 1
+
+function setZoom(value: number) {
+  const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value))
+  emit('update:digitalZoom', clamped)
+}
 
 // With transform-origin centered and `translate() scale()`, a zoom of N over a
 // box of size W exposes (N-1)*W/2 of slack on each side. Clamp so panning can
@@ -40,30 +58,72 @@ function clampOffsets() {
   offsetY.value = Math.max(-maxY, Math.min(maxY, offsetY.value))
 }
 
+function twoPointerDistance(): number {
+  const [a, b] = [...points.values()]
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
 function onPointerDown(event: PointerEvent) {
-  if (props.digitalZoom <= 1) return
-  dragging.value = true
-  dragStartX = event.clientX
-  dragStartY = event.clientY
-  dragOriginX = offsetX.value
-  dragOriginY = offsetY.value
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  points.set(event.pointerId, { x: event.clientX, y: event.clientY })
+
+  if (points.size === 2) {
+    // Second finger down: start a pinch, end any single-finger pan.
+    dragging.value = false
+    pinchStartDist = twoPointerDistance()
+    pinchStartZoom = props.digitalZoom
+  } else if (points.size === 1 && props.digitalZoom > 1) {
+    // One finger on a zoomed image: pan.
+    dragging.value = true
+    dragStartX = event.clientX
+    dragStartY = event.clientY
+    dragOriginX = offsetX.value
+    dragOriginY = offsetY.value
+  }
 }
 
 function onPointerMove(event: PointerEvent) {
-  if (!dragging.value) return
-  offsetX.value = dragOriginX + (event.clientX - dragStartX)
-  offsetY.value = dragOriginY + (event.clientY - dragStartY)
-  clampOffsets()
+  const tracked = points.get(event.pointerId)
+  if (!tracked) return
+  tracked.x = event.clientX
+  tracked.y = event.clientY
+
+  if (points.size >= 2) {
+    // Pinch: scale zoom by the ratio of current to initial finger spread.
+    if (pinchStartDist > 0) {
+      const ratio = twoPointerDistance() / pinchStartDist
+      setZoom(pinchStartZoom * ratio)
+    }
+    return
+  }
+
+  if (dragging.value) {
+    offsetX.value = dragOriginX + (event.clientX - dragStartX)
+    offsetY.value = dragOriginY + (event.clientY - dragStartY)
+    clampOffsets()
+  }
 }
 
 function onPointerUp(event: PointerEvent) {
-  if (!dragging.value) return
-  dragging.value = false
+  points.delete(event.pointerId)
   try {
     ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
   } catch {
     // pointer may already be released
+  }
+  if (points.size < 2) {
+    pinchStartDist = 0
+  }
+  if (points.size === 0) {
+    dragging.value = false
+  } else if (points.size === 1 && props.digitalZoom > 1) {
+    // Lifting one finger of a pinch: continue panning with the remaining finger.
+    const [remaining] = [...points.values()]
+    dragging.value = true
+    dragStartX = remaining.x
+    dragStartY = remaining.y
+    dragOriginX = offsetX.value
+    dragOriginY = offsetY.value
   }
 }
 
@@ -153,7 +213,7 @@ onBeforeUnmount(() => stop())
 <template>
   <div
     ref="container"
-    class="webrtc-player"
+    class="webrtc-player interactive"
     :class="{ pannable: digitalZoom > 1, dragging }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
