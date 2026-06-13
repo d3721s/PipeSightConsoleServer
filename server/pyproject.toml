@@ -15,3 +15,9 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools]
+# Only "app" is the Python package. Without this, setuptools' flat-layout
+# auto-discovery also finds the runtime dirs (data/ storage/ third_party/) that
+# get created on startup and aborts with "Multiple top-level packages".
+packages = ["app"]
