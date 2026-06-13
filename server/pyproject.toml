@@ -1,0 +1,18 @@
+[project]
+name = "pipesight-server"
+version = "0.1.0"
+description = "PipeSight web backend"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic-settings",
+  "sqlalchemy",
+  "httpx",
+  "python-multipart"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+

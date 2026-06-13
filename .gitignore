@@ -1,0 +1,16 @@
+# Python
+server/.venv/
+server/data/
+server/storage/
+server/.uvicorn.pid
+front_end/.vite.pid
+__pycache__/
+*.py[cod]
+
+# Frontend
+front_end/node_modules/
+front_end/dist/
+
+# Local env
+.env
+*.log
