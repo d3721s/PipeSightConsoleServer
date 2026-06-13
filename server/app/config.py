@@ -62,7 +62,10 @@ class Settings(BaseSettings):
 
     @property
     def resolved_mediamtx_exe(self) -> Path | None:
-        if self.mediamtx_exe:
+        # Honor an explicit path only if it actually exists; otherwise fall
+        # through to auto-discovery so a stale .env value can't mask a working
+        # install (and so health reports the truth instead of a phantom path).
+        if self.mediamtx_exe and self.mediamtx_exe.exists():
             return self.mediamtx_exe
 
         from_path = shutil.which("mediamtx")
