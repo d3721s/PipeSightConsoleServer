@@ -467,18 +467,9 @@ watch(page, (value) => {
             <button :class="{ active: active.channel === 2 }" @click="selectChannel(2)">固定</button>
           </div>
           <label class="distance-input">
-            <span>里程 m</span>
-            <input :value="distance.toFixed(2)" type="text" readonly :title="odometerConnected ? '来自小车里程计' : '里程计未连接'" />
-          </label>
-          <div v-if="!odometerConnected" class="odometer-warn">里程计未连接</div>
-          <label class="distance-input">
             <span>分段(分钟)</span>
             <input v-model.number="segmentMinutes" type="number" min="1" step="1" :disabled="recording.active" />
           </label>
-          <div class="zoom-indicator">
-            <span>数字变焦 {{ digitalZoom.toFixed(1) }}x</span>
-            <small>双指捏合缩放，单指拖动平移</small>
-          </div>
           <div class="control-row">
             <button @click="takeSnapshot">拍照</button>
             <button :class="{ danger: recording.active }" @click="toggleRecording">
