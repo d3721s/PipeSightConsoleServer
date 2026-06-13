@@ -18,6 +18,8 @@ sudo apt update
 sudo apt install -y python3 python3-venv python3-pip ffmpeg nodejs npm
 ```
 
+Ubuntu 22.04 默认 Python 3.10 可用，后端要求为 Python 3.10+。
+
 安装 MediaMTX：
 
 ```bash

@@ -2,7 +2,7 @@
 name = "pipesight-server"
 version = "0.1.0"
 description = "PipeSight web backend"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
   "fastapi",
   "uvicorn[standard]",
@@ -15,4 +15,3 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-
