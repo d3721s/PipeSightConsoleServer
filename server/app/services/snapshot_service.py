@@ -43,10 +43,18 @@ def take_snapshot(
             fh.write(_osd_text(odometer_service.get_current_mileage_m(), project_name, project_location))
         font = _ff_escape_path(OSD_FONT)
         textfile = _ff_escape_path(osd_name)
-        vf = (
+        # Match the live preview overlay (OsdOverlay.vue): white text on a
+        # translucent black block with a soft shadow, plus a blue left accent
+        # bar (drawn as a separate drawbox since drawtext has no single-side
+        # border). Kept consistent with recorder_service._build_drawtext_filter.
+        accent = "drawbox=x=12:y=18:w=4:h=240:color=0x0f62fe@0.95:t=fill"
+        text = (
             f"drawtext=fontfile={font}:textfile={textfile}:"
-            "x=20:y=20:fontsize=40:fontcolor=yellow:box=1:boxcolor=black@0.4:boxborderw=8"
+            "x=30:y=20:fontsize=40:fontcolor=white:"
+            "box=1:boxcolor=black@0.45:boxborderw=10:"
+            "shadowcolor=black@0.8:shadowx=1:shadowy=2"
         )
+        vf = f"{accent},{text}"
         command = [
             settings.ffmpeg_exe,
             "-hide_banner",

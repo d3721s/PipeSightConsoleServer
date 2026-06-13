@@ -342,15 +342,23 @@ class RecorderService:
 
     def _build_drawtext_filter(self, textfile: Path) -> str:
         font = _ff_escape_path(OSD_FONT)
+        # Match the live preview overlay (OsdOverlay.vue): white text on a
+        # translucent black block with a soft shadow, plus a blue left accent
+        # bar. drawtext can't render a single-side border, so the blue bar is a
+        # separate drawbox drawn just left of the text column.
         common = (
-            f"fontfile={font}:fontsize=40:fontcolor=yellow:"
-            "box=1:boxcolor=black@0.4:boxborderw=8"
+            f"fontfile={font}:fontsize=40:fontcolor=white:"
+            "box=1:boxcolor=black@0.45:boxborderw=10:"
+            "shadowcolor=black@0.8:shadowx=1:shadowy=2"
         )
         time_text = "时间\\: %{localtime\\:%Y-%m-%d %H\\\\\\:%M\\\\\\:%S}"
-        time_layer = f"drawtext={common}:x=20:y=20:text='{time_text}'"
+        time_layer = f"drawtext={common}:x=30:y=20:text='{time_text}'"
         body_file = _ff_escape_path(str(textfile))
-        body_layer = f"drawtext={common}:x=20:y=75:textfile={body_file}:reload=1"
-        return f"{time_layer},{body_layer}"
+        body_layer = f"drawtext={common}:x=30:y=75:textfile={body_file}:reload=1"
+        # Blue left accent bar spanning the OSD block (Carbon interactive blue
+        # #0f62fe), mirroring the preview's 3px left border.
+        accent = "drawbox=x=12:y=18:w=4:h=240:color=0x0f62fe@0.95:t=fill"
+        return f"{accent},{time_layer},{body_layer}"
 
     def _osd_body_text(self) -> str:
         mileage_m = odometer_service.get_current_mileage_m()
