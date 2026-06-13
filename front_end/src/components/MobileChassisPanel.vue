@@ -27,7 +27,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 </script>
 
 <template>
-  <aside class="chassis-rail">
+  <div class="chassis-group">
     <h2 class="chassis-title">移动底盘</h2>
 
     <div class="chassis-section">
@@ -66,22 +66,21 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
       <div class="readout-row"><span>底盘 ID</span><strong>{{ fmtText(chassisId) }}</strong></div>
     </div>
-  </aside>
+  </div>
 </template>
 
 <style scoped>
-.chassis-rail {
+/* Renders inline inside the console control rail (not a separate column). */
+.chassis-group {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding: 1rem;
-  background: #161616;
-  border-left: 1px solid #393939;
-  overflow-y: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid #393939;
 }
 .chassis-title {
   margin: 0;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #f4f4f4;
 }
@@ -128,7 +127,6 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   font-weight: 600;
 }
 .chassis-readout {
-  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;

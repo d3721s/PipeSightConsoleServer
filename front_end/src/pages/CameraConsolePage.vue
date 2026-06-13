@@ -164,19 +164,19 @@ async function toggleRecording() {
         >{{ recording.active ? '停止录像' : '开始录像' }}</cv-button>
       </div>
 
+      <mobile-chassis-panel />
+
       <div class="rail-readout">
         <div><span>变焦</span><strong>{{ zoomLabel }}</strong></div>
       </div>
     </aside>
-
-    <mobile-chassis-panel />
   </div>
 </template>
 
 <style scoped>
 .console-page {
   display: grid;
-  grid-template-columns: 1fr 18rem 18rem;
+  grid-template-columns: 1fr 18rem;
   height: calc(100vh - 4rem); /* minus Carbon header */
   background: #000;
 }
@@ -268,7 +268,6 @@ async function toggleRecording() {
   width: 100%;
 }
 .rail-readout {
-  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;

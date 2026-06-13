@@ -84,6 +84,7 @@ export const api = {
     request<Report>('/api/reports/start', { method: 'POST', body: JSON.stringify(data) }),
   stopReport: (id: number) => request<Report>(`/api/reports/${id}/stop`, { method: 'POST' }),
   listReports: () => request<Report[]>('/api/reports'),
+  deleteReport: (id: number) => request<{ ok: boolean }>(`/api/reports/${id}`, { method: 'DELETE' }),
   exportPdf: (id: number) => request<Record<string, unknown>>(`/api/reports/${id}/export-pdf`, { method: 'POST' }),
   reportDetail: (id: number) => request<ReportDetail>(`/api/reports/${id}/detail`),
   reportPdfUrl: (id: number) => `/api/reports/${id}/pdf`

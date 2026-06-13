@@ -69,6 +69,24 @@ def get_report(report_id: int, db: Session = Depends(get_db)) -> Report:
     return report
 
 
+@router.delete("/{report_id}")
+def delete_report(report_id: int, db: Session = Depends(get_db)) -> dict:
+    report = db.get(Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="report not found")
+    # Remove the generated PDF file if present. The inspection's annotations are
+    # tied to the session (shared with the annotate page), not owned by the
+    # report, so they are intentionally left intact.
+    if report.pdf_path:
+        try:
+            Path(report.pdf_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+    db.delete(report)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/{report_id}/export-pdf")
 def export_pdf(report_id: int, db: Session = Depends(get_db)) -> dict:
     report = db.get(Report, report_id)

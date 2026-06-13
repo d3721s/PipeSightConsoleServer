@@ -26,6 +26,7 @@ declare module '@carbon/vue' {
   export const CvTab: Component
   export const CvToastNotification: Component
   export const CvInlineNotification: Component
+  export const CvModal: Component
   export const CvGrid: Component
   export const CvRow: Component
   export const CvColumn: Component
