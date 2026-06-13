@@ -1,4 +1,4 @@
-import type { ActiveCamera, CameraCode, CameraDevice, Marker, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Marker, Photo, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -65,6 +65,14 @@ export const api = {
   createMarker: (data: Record<string, unknown>) =>
     request<Marker>('/api/markers', { method: 'POST', body: JSON.stringify(data) }),
   deleteMarker: (id: number) => request<{ ok: boolean }>(`/api/markers/${id}`, { method: 'DELETE' }),
+
+  listPhotos: () => request<Photo[]>('/api/photos'),
+  saveGraphicAnnotation: (data: Record<string, unknown>) =>
+    request<GraphicAnnotation>('/api/graphic-annotations', { method: 'POST', body: JSON.stringify(data) }),
+  listGraphicAnnotations: (mediaId: number) =>
+    request<GraphicAnnotation[]>(`/api/media/${mediaId}/graphic-annotations`),
+  deleteGraphicAnnotation: (id: number) =>
+    request<{ ok: boolean }>(`/api/graphic-annotations/${id}`, { method: 'DELETE' }),
 
   startReport: (data: Record<string, unknown>) =>
     request<Report>('/api/reports/start', { method: 'POST', body: JSON.stringify(data) }),

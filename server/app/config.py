@@ -96,6 +96,8 @@ class Settings(BaseSettings):
         (base / "snapshots").mkdir(parents=True, exist_ok=True)
         (base / "recordings").mkdir(parents=True, exist_ok=True)
         (base / "reports").mkdir(parents=True, exist_ok=True)
+        (base / "annotations").mkdir(parents=True, exist_ok=True)
+        (base / "annotations" / "rendered").mkdir(parents=True, exist_ok=True)
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)

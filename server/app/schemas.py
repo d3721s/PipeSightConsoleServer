@@ -122,6 +122,26 @@ class AnnotationCreate(BaseModel):
     rendered_path: str = Field(default="", alias="renderedPath")
 
 
+class GraphicAnnotationIn(BaseModel):
+    # Graphical annotation saved from the editor (image or video frame).
+    media_asset_id: int | None = Field(default=None, alias="mediaAssetId")
+    project_id: int | None = Field(default=None, alias="projectId")
+    session_id: int | None = Field(default=None, alias="sessionId")
+    source_type: str = Field(default="photo", alias="sourceType")  # photo | video
+    video_time: float | None = Field(default=None, alias="videoTime")
+    shapes: list[dict[str, Any]] = Field(default_factory=list)
+    base_size: dict[str, Any] = Field(default_factory=dict, alias="baseSize")
+    rendered_png: str | None = Field(default=None, alias="renderedPng")  # data URL
+    # Defect info (also written to a Marker row for reporting/listing).
+    defect_type: str = Field(default="", alias="defectType")
+    defect_code: str = Field(default="", alias="defectCode")
+    severity: str = ""
+    direction: str = ""
+    position: str = ""
+    note: str = ""
+    distance_m: float = Field(default=0, alias="distanceM")
+
+
 class MarkerCreate(BaseModel):
     project_id: int | None = Field(default=None, alias="projectId")
     session_id: int | None = Field(default=None, alias="sessionId")

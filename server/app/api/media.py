@@ -118,6 +118,30 @@ def odometer() -> dict:
     }
 
 
+@router.get("/photos")
+def list_photos(db: Session = Depends(get_db)) -> list[dict]:
+    # Snapshots, for the image annotation tab.
+    assets = db.scalars(
+        select(MediaAsset).where(MediaAsset.type == "photo").order_by(MediaAsset.id.desc())
+    ).all()
+    out: list[dict] = []
+    for asset in assets:
+        url = _storage_url(asset.file_path)
+        out.append(
+            {
+                "id": asset.id,
+                "projectId": asset.project_id,
+                "sessionId": asset.session_id,
+                "name": Path(asset.file_path).name,
+                "capturedAt": asset.captured_at.isoformat(timespec="seconds"),
+                "distanceM": asset.distance_m,
+                "imageUrl": url,
+                "available": url is not None and Path(asset.file_path).exists(),
+            }
+        )
+    return out
+
+
 @router.get("/recordings")
 def list_recordings(db: Session = Depends(get_db)) -> list[dict]:
     # Recorded segments (one MediaAsset per .mp4) for the annotation page to pick.

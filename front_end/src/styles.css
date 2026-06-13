@@ -662,6 +662,93 @@ label span {
   opacity: 0.6;
 }
 
+.annotate-photo {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  background: #000;
+  border-radius: 8px;
+}
+
+.annotate-anno {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid #e1e8ee;
+  border-radius: 8px;
+}
+
+.anno-thumb {
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #000;
+}
+
+/* Graphic annotation editor */
+.annot-editor {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+  min-height: 0;
+}
+
+.annot-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.annot-toolbar button.active {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.annot-toolbar button.danger {
+  background: #d82727;
+  color: #fff;
+}
+
+.annot-color {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.annot-canvas-wrap {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: auto;
+  background: #0b0c0d;
+  border-radius: 8px;
+}
+
+.annot-canvas-wrap canvas {
+  max-width: 100%;
+  max-height: 56vh;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.annot-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.annot-form .annot-note {
+  grid-column: 1 / -1;
+}
+
+.annot-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .toast {
   position: fixed;
   left: 50%;

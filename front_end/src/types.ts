@@ -126,3 +126,26 @@ export interface Marker {
   createdAt: string
 }
 
+export interface Photo {
+  id: number
+  projectId: number | null
+  sessionId: number | null
+  name: string
+  capturedAt: string
+  distanceM: number
+  imageUrl: string | null
+  available: boolean
+}
+
+export interface GraphicAnnotation {
+  id: number
+  mediaAssetId: number | null
+  renderedUrl: string | null
+  sourceType: string | null
+  videoTime: number | null
+  defect: Record<string, unknown>
+  shapes: unknown[]
+  baseSize: { w?: number; h?: number }
+  createdAt: string
+}
+

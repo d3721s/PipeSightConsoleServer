@@ -2,8 +2,9 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { api } from './api'
 import WebRtcPlayer from './components/WebRtcPlayer.vue'
+import AnnotationEditor from './components/AnnotationEditor.vue'
 import { cameraControlSocket, type PtzDirection } from './ws'
-import type { ActiveCamera, CameraCode, CameraDevice, Marker, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Photo, Project, Recording, RecordingStatus, Report, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
 type Page = 'home' | 'project' | 'console' | 'editor' | 'annotate' | 'reports' | 'settings'
 
@@ -23,13 +24,21 @@ const storageManualPath = ref('')
 const storageBusy = ref(false)
 
 // Video annotation page state.
+const annotateTab = ref<'image' | 'video'>('image')
 const recordings = ref<Recording[]>([])
 const activeRecording = ref<Recording | null>(null)
 const annotateVideo = ref<HTMLVideoElement | null>(null)
 const track = ref<TrackData | null>(null)
 const videoCurrentTime = ref(0)
-const markers = ref<Marker[]>([])
-const annotateDraft = reactive({ defectType: '', position: '', note: '' })
+
+const photos = ref<Photo[]>([])
+const activePhoto = ref<Photo | null>(null)
+const editorBaseImage = ref<string>('')      // current image/frame being annotated
+const editorOpen = ref(false)
+const editorSourceType = ref<'photo' | 'video'>('photo')
+const editorVideoTime = ref<number | null>(null)
+const editorDistance = ref(0)
+const graphicAnnotations = ref<GraphicAnnotation[]>([])
 const recording = ref<RecordingStatus>({ active: false })
 const projects = ref<Project[]>([])
 const currentProject = ref<Project | null>(null)
@@ -162,33 +171,46 @@ async function applyStorage(path: string | null) {
 async function openAnnotate() {
   page.value = 'annotate'
   activeRecording.value = null
+  activePhoto.value = null
   track.value = null
-  markers.value = []
+  editorOpen.value = false
+  graphicAnnotations.value = []
   try {
-    recordings.value = await api.listRecordings()
+    const [recs, pics] = await Promise.all([api.listRecordings(), api.listPhotos()])
+    recordings.value = recs
+    photos.value = pics
   } catch (error) {
     show((error as Error).message)
   }
 }
 
+async function loadGraphicAnnotations(mediaId: number) {
+  try {
+    graphicAnnotations.value = await api.listGraphicAnnotations(mediaId)
+  } catch {
+    graphicAnnotations.value = []
+  }
+}
+
 async function selectRecording(recording: Recording) {
   activeRecording.value = recording
+  activePhoto.value = null
   track.value = null
-  markers.value = []
+  editorOpen.value = false
   videoCurrentTime.value = 0
-  annotateDraft.defectType = ''
-  annotateDraft.position = ''
-  annotateDraft.note = ''
   try {
-    const [trackData, markerList] = await Promise.all([
-      api.recordingTrack(recording.id),
-      api.listMarkers(recording.id)
-    ])
-    track.value = trackData
-    markers.value = markerList
+    track.value = await api.recordingTrack(recording.id)
   } catch (error) {
     show((error as Error).message)
   }
+  await loadGraphicAnnotations(recording.id)
+}
+
+async function selectPhoto(photo: Photo) {
+  activePhoto.value = photo
+  activeRecording.value = null
+  editorOpen.value = false
+  await loadGraphicAnnotations(photo.id)
 }
 
 // Mileage (m) at the current video position, from the nearest track sample.
@@ -213,37 +235,72 @@ function onAnnotateTimeUpdate() {
   if (annotateVideo.value) videoCurrentTime.value = annotateVideo.value.currentTime
 }
 
-async function saveMarker() {
-  const recording = activeRecording.value
-  if (!recording) return
-  if (!annotateDraft.defectType.trim()) {
-    show('请填写缺陷类型')
-    return
-  }
+// Open the graphic editor for the selected photo.
+function annotatePhoto() {
+  if (!activePhoto.value?.imageUrl) return
+  editorSourceType.value = 'photo'
+  editorBaseImage.value = activePhoto.value.imageUrl
+  editorVideoTime.value = null
+  editorDistance.value = activePhoto.value.distanceM ?? 0
+  editorOpen.value = true
+}
+
+// Capture the current video frame and open the editor on it.
+function annotateFrame() {
+  const video = annotateVideo.value
+  if (!video) return
+  const c = document.createElement('canvas')
+  c.width = video.videoWidth
+  c.height = video.videoHeight
+  const ctx = c.getContext('2d')
+  if (!ctx) return
+  ctx.drawImage(video, 0, 0, c.width, c.height)
+  editorSourceType.value = 'video'
+  editorBaseImage.value = c.toDataURL('image/png')
+  editorVideoTime.value = video.currentTime
+  editorDistance.value = currentMileageM.value ?? 0
+  editorOpen.value = true
+}
+
+async function saveGraphicAnnotation(payload: {
+  shapes: unknown[]
+  baseSize: { w: number; h: number }
+  renderedPng: string
+  defect: Record<string, unknown>
+}) {
+  const media = editorSourceType.value === 'photo' ? activePhoto.value : activeRecording.value
+  if (!media) return
   try {
-    await api.createMarker({
-      projectId: recording.projectId,
-      sessionId: recording.sessionId,
-      mediaAssetId: recording.id,
-      defectType: annotateDraft.defectType.trim(),
-      position: annotateDraft.position.trim(),
-      note: annotateDraft.note.trim(),
-      distanceM: currentMileageM.value ?? 0
+    await api.saveGraphicAnnotation({
+      mediaAssetId: media.id,
+      projectId: media.projectId,
+      sessionId: media.sessionId,
+      sourceType: editorSourceType.value,
+      videoTime: editorVideoTime.value,
+      shapes: payload.shapes,
+      baseSize: payload.baseSize,
+      renderedPng: payload.renderedPng,
+      defectType: (payload.defect.defectType as string) || '',
+      defectCode: (payload.defect.defectCode as string) || '',
+      severity: (payload.defect.severity as string) || '',
+      direction: (payload.defect.direction as string) || '',
+      position: (payload.defect.position as string) || '',
+      note: (payload.defect.note as string) || '',
+      distanceM: (payload.defect.distanceM as number) ?? 0
     })
-    markers.value = await api.listMarkers(recording.id)
-    annotateDraft.defectType = ''
-    annotateDraft.position = ''
-    annotateDraft.note = ''
-    show('标记已保存')
+    editorOpen.value = false
+    await loadGraphicAnnotations(media.id)
+    show('标注已保存')
   } catch (error) {
     show((error as Error).message)
   }
 }
 
-async function removeMarker(id: number) {
+async function removeGraphicAnnotation(id: number) {
   try {
-    await api.deleteMarker(id)
-    if (activeRecording.value) markers.value = await api.listMarkers(activeRecording.value.id)
+    await api.deleteGraphicAnnotation(id)
+    const media = activePhoto.value ?? activeRecording.value
+    if (media) await loadGraphicAnnotations(media.id)
   } catch (error) {
     show((error as Error).message)
   }
@@ -499,58 +556,107 @@ watch(page, (value) => {
 
       <section v-else-if="page === 'annotate'" class="annotate-page">
         <aside class="annotate-list">
-          <h2>录像列表</h2>
-          <p v-if="recordings.length === 0" class="annotate-empty">暂无录像</p>
-          <button
-            v-for="rec in recordings"
-            :key="rec.id"
-            class="annotate-item"
-            :class="{ active: activeRecording?.id === rec.id }"
-            :disabled="!rec.available"
-            @click="selectRecording(rec)"
-          >
-            <span class="annotate-item-name">{{ rec.name }}</span>
-            <span class="annotate-item-meta">{{ rec.capturedAt }}<span v-if="!rec.available"> · 文件缺失</span></span>
-          </button>
+          <div class="segmented">
+            <button :class="{ active: annotateTab === 'image' }" @click="annotateTab = 'image'">图像</button>
+            <button :class="{ active: annotateTab === 'video' }" @click="annotateTab = 'video'">视频</button>
+          </div>
+
+          <template v-if="annotateTab === 'image'">
+            <p v-if="photos.length === 0" class="annotate-empty">暂无图像</p>
+            <button
+              v-for="p in photos"
+              :key="p.id"
+              class="annotate-item"
+              :class="{ active: activePhoto?.id === p.id }"
+              :disabled="!p.available"
+              @click="selectPhoto(p)"
+            >
+              <span class="annotate-item-name">{{ p.name }}</span>
+              <span class="annotate-item-meta">{{ p.capturedAt }} · {{ p.distanceM.toFixed(2) }}m</span>
+            </button>
+          </template>
+
+          <template v-else>
+            <p v-if="recordings.length === 0" class="annotate-empty">暂无录像</p>
+            <button
+              v-for="rec in recordings"
+              :key="rec.id"
+              class="annotate-item"
+              :class="{ active: activeRecording?.id === rec.id }"
+              :disabled="!rec.available"
+              @click="selectRecording(rec)"
+            >
+              <span class="annotate-item-name">{{ rec.name }}</span>
+              <span class="annotate-item-meta">{{ rec.capturedAt }}<span v-if="!rec.available"> · 文件缺失</span></span>
+            </button>
+          </template>
         </aside>
 
-        <div class="annotate-main" v-if="activeRecording">
-          <video
-            ref="annotateVideo"
-            class="annotate-video"
-            :src="activeRecording.videoUrl || ''"
-            controls
-            @timeupdate="onAnnotateTimeUpdate"
-            @seeked="onAnnotateTimeUpdate"
+        <div class="annotate-main">
+          <!-- Editor overlay -->
+          <AnnotationEditor
+            v-if="editorOpen"
+            :base-image="editorBaseImage"
+            @save="saveGraphicAnnotation"
+            @cancel="editorOpen = false"
           />
-          <div class="annotate-readout">
-            <span>当前时间：{{ videoCurrentTime.toFixed(1) }}s</span>
-            <span>里程：{{ currentMileageM === null ? '—' : currentMileageM.toFixed(2) + ' m' }}</span>
-          </div>
 
-          <div class="annotate-form">
-            <label><span>缺陷类型</span><input v-model="annotateDraft.defectType" placeholder="如：裂纹 / 错口" /></label>
-            <label><span>位置</span><input v-model="annotateDraft.position" placeholder="如：3点钟方向" /></label>
-            <label><span>备注</span><input v-model="annotateDraft.note" /></label>
-            <button class="primary-action" @click="saveMarker">在此处添加标记</button>
-          </div>
-
-          <div class="annotate-markers">
-            <h3>标记（{{ markers.length }}）</h3>
-            <p v-if="markers.length === 0" class="annotate-empty">暂无标记</p>
-            <div v-for="m in markers" :key="m.id" class="annotate-marker">
-              <button class="marker-distance" title="跳转到该里程不可用，按时间排序" disabled>{{ m.distanceM.toFixed(2) }}m</button>
-              <span class="marker-body">
-                <strong>{{ m.defectType || '—' }}</strong>
-                <small>{{ m.position }}<span v-if="m.note"> · {{ m.note }}</span></small>
-              </span>
-              <button class="link-danger" @click="removeMarker(m.id)">删除</button>
+          <!-- Image selected -->
+          <template v-else-if="annotateTab === 'image' && activePhoto">
+            <img class="annotate-photo" :src="activePhoto.imageUrl || ''" alt="snapshot" />
+            <div class="annotate-readout">
+              <span>里程：{{ activePhoto.distanceM.toFixed(2) }} m</span>
+              <button class="primary-action" @click="annotatePhoto">标注此图</button>
             </div>
-          </div>
-        </div>
+            <div class="annotate-markers">
+              <h3>已保存标注（{{ graphicAnnotations.length }}）</h3>
+              <p v-if="graphicAnnotations.length === 0" class="annotate-empty">暂无标注</p>
+              <div v-for="a in graphicAnnotations" :key="a.id" class="annotate-anno">
+                <img v-if="a.renderedUrl" :src="a.renderedUrl" class="anno-thumb" />
+                <span class="marker-body">
+                  <strong>{{ (a.defect.type as string) || '—' }}</strong>
+                  <small>{{ (a.defect.position as string) }} · {{ (a.defect.distanceM as number)?.toFixed?.(2) }}m</small>
+                </span>
+                <button class="link-danger" @click="removeGraphicAnnotation(a.id)">删除</button>
+              </div>
+            </div>
+          </template>
 
-        <div class="annotate-main annotate-empty-main" v-else>
-          请选择左侧录像开始标注
+          <!-- Video selected -->
+          <template v-else-if="annotateTab === 'video' && activeRecording">
+            <video
+              ref="annotateVideo"
+              class="annotate-video"
+              :src="activeRecording.videoUrl || ''"
+              controls
+              @timeupdate="onAnnotateTimeUpdate"
+              @seeked="onAnnotateTimeUpdate"
+            />
+            <div class="annotate-readout">
+              <span>当前时间：{{ videoCurrentTime.toFixed(1) }}s</span>
+              <span>里程：{{ currentMileageM === null ? '—' : currentMileageM.toFixed(2) + ' m' }}</span>
+              <button class="primary-action" @click="annotateFrame">标注当前帧</button>
+            </div>
+            <div class="annotate-markers">
+              <h3>已保存标注（{{ graphicAnnotations.length }}）</h3>
+              <p v-if="graphicAnnotations.length === 0" class="annotate-empty">暂无标注</p>
+              <div v-for="a in graphicAnnotations" :key="a.id" class="annotate-anno">
+                <img v-if="a.renderedUrl" :src="a.renderedUrl" class="anno-thumb" />
+                <span class="marker-body">
+                  <strong>{{ (a.defect.type as string) || '—' }}</strong>
+                  <small>
+                    <span v-if="a.videoTime !== null">{{ a.videoTime.toFixed(1) }}s · </span>
+                    {{ (a.defect.distanceM as number)?.toFixed?.(2) }}m
+                  </small>
+                </span>
+                <button class="link-danger" @click="removeGraphicAnnotation(a.id)">删除</button>
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="annotate-empty-main">
+            请选择左侧{{ annotateTab === 'image' ? '图像' : '录像' }}开始标注
+          </div>
         </div>
       </section>
 

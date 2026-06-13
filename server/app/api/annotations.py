@@ -1,15 +1,28 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
 from app.models import Annotation, Marker, MediaAsset
-from app.schemas import AnnotationCreate, MarkerCreate, MarkerOut
+from app.schemas import AnnotationCreate, GraphicAnnotationIn, MarkerCreate, MarkerOut
+from app.services import annotation_service
 
 
 router = APIRouter(prefix="/api", tags=["annotations"])
+settings = get_settings()
+
+
+def _storage_url(absolute_path: str) -> str | None:
+    try:
+        rel = Path(absolute_path).resolve().relative_to(settings.active_storage_dir.resolve())
+    except (ValueError, OSError):
+        return None
+    return "/storage/" + rel.as_posix()
 
 
 @router.post("/annotations")
@@ -89,6 +102,105 @@ def delete_marker(marker_id: int, db: Session = Depends(get_db)) -> dict:
     if not marker:
         raise HTTPException(status_code=404, detail="marker not found")
     db.delete(marker)
+    db.commit()
+    return {"ok": True}
+
+
+# --- graphical annotations (image / video frame) ---------------------------
+
+
+def _annotation_out(ann: Annotation) -> dict:
+    data = ann.annotation_json or {}
+    return {
+        "id": ann.id,
+        "mediaAssetId": ann.media_asset_id,
+        "renderedUrl": _storage_url(ann.rendered_path) if ann.rendered_path else None,
+        "sourceType": data.get("sourceType"),
+        "videoTime": data.get("videoTime"),
+        "defect": data.get("defect", {}),
+        "shapes": data.get("shapes", []),
+        "baseSize": data.get("baseSize", {}),
+        "createdAt": ann.created_at.isoformat(timespec="seconds"),
+    }
+
+
+@router.post("/graphic-annotations")
+def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depends(get_db)) -> dict:
+    if payload.media_asset_id is not None and db.get(MediaAsset, payload.media_asset_id) is None:
+        raise HTTPException(status_code=404, detail="media asset not found")
+
+    defect = {
+        "type": payload.defect_type,
+        "code": payload.defect_code,
+        "severity": payload.severity,
+        "direction": payload.direction,
+        "position": payload.position,
+        "note": payload.note,
+        "distanceM": payload.distance_m,
+    }
+    annotation_json = {
+        "sourceType": payload.source_type,
+        "mediaAssetId": payload.media_asset_id,
+        "videoTime": payload.video_time,
+        "shapes": payload.shapes,
+        "baseSize": payload.base_size,
+        "defect": defect,
+    }
+
+    try:
+        rendered_path, _json_path, stored = annotation_service.save_annotation(
+            annotation_json=annotation_json,
+            rendered_png_data_url=payload.rendered_png,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    annotation = Annotation(
+        media_asset_id=payload.media_asset_id or 0,
+        annotation_json=stored,
+        rendered_path=str(rendered_path) if rendered_path else "",
+    )
+    db.add(annotation)
+
+    # Mirror the defect into a Marker row for reporting/listing.
+    marker = Marker(
+        project_id=payload.project_id,
+        session_id=payload.session_id,
+        media_asset_id=payload.media_asset_id,
+        defect_type=payload.defect_type,
+        defect_code=payload.defect_code,
+        severity=payload.severity,
+        direction=payload.direction,
+        position=payload.position,
+        note=payload.note,
+        distance_m=payload.distance_m,
+    )
+    db.add(marker)
+    db.commit()
+    db.refresh(annotation)
+    return _annotation_out(annotation)
+
+
+@router.get("/media/{media_id}/graphic-annotations")
+def list_graphic_annotations(media_id: int, db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(
+        select(Annotation).where(Annotation.media_asset_id == media_id).order_by(Annotation.id.desc())
+    ).all()
+    return [_annotation_out(row) for row in rows]
+
+
+@router.delete("/graphic-annotations/{annotation_id}")
+def delete_graphic_annotation(annotation_id: int, db: Session = Depends(get_db)) -> dict:
+    ann = db.get(Annotation, annotation_id)
+    if not ann:
+        raise HTTPException(status_code=404, detail="annotation not found")
+    # Best-effort cleanup of the rendered file.
+    if ann.rendered_path:
+        try:
+            Path(ann.rendered_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+    db.delete(ann)
     db.commit()
     return {"ok": True}
 
