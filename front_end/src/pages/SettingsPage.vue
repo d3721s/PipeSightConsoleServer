@@ -156,14 +156,14 @@ onActivated(loadStorage)
     </header>
 
     <cv-grid class="settings-grid" :full-width="true">
-      <!-- Camera config cards, two-up on wide screens -->
+      <!-- Camera config cards, full width to align with the sections below -->
       <cv-row>
         <cv-column
           v-for="camera in cameras"
           :key="camera.code"
           :sm="4"
-          :md="4"
-          :lg="8"
+          :md="8"
+          :lg="16"
           class="settings-col"
         >
           <cv-tile class="settings-card">
