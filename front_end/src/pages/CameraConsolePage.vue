@@ -13,6 +13,7 @@ import WebRtcPlayer from '../components/WebRtcPlayer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import PtzPad from '../components/PtzPad.vue'
 import CameraSwitcher from '../components/CameraSwitcher.vue'
+import MobileChassisPanel from '../components/MobileChassisPanel.vue'
 import { api } from '../api'
 import { cameraControlSocket, type PtzDirection } from '../ws'
 import {
@@ -164,17 +165,18 @@ async function toggleRecording() {
       </div>
 
       <div class="rail-readout">
-        <div><span>距离</span><strong>{{ distance.toFixed(2) }} m</strong></div>
         <div><span>变焦</span><strong>{{ zoomLabel }}</strong></div>
       </div>
     </aside>
+
+    <mobile-chassis-panel />
   </div>
 </template>
 
 <style scoped>
 .console-page {
   display: grid;
-  grid-template-columns: 1fr 18rem;
+  grid-template-columns: 1fr 18rem 18rem;
   height: calc(100vh - 4rem); /* minus Carbon header */
   background: #000;
 }

@@ -6,6 +6,19 @@ import { api } from '../api'
 
 export const distance = ref(0)
 export const odometerConnected = ref(false)
+
+// --- Mobile-chassis telemetry ----------------------------------------------
+// The current /api/odometer endpoint only returns { connected, mileageCm,
+// mileageM }; it does NOT yet expose per-wheel mileage, a status code, or a
+// chassis id. These refs hold those values for the console's 移动底盘 panel and
+// stay null (shown as "--") until the backend is extended to provide them.
+export const leftWheelM = ref<number | null>(null)
+export const rightWheelM = ref<number | null>(null)
+export const leftWheelSpeed = ref<number | null>(null)
+export const rightWheelSpeed = ref<number | null>(null)
+export const statusCode = ref<string | null>(null)
+export const chassisId = ref<string | null>(null)
+
 let timer: number | null = null
 
 export function startOdometerPolling() {
