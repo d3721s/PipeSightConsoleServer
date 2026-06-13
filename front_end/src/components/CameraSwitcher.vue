@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { CvButton } from '@carbon/vue'
 import type { CameraCode } from '../types'
 
 defineProps<{
@@ -15,29 +14,36 @@ const emit = defineEmits<{
 
 <template>
   <div class="switcher-group">
-    <div class="switcher-row">
-      <cv-button
-        size="field"
-        :kind="device === 'front' ? 'primary' : 'tertiary'"
+    <!-- Device: front / rear — mutually exclusive segmented toggle -->
+    <div class="segmented">
+      <button
+        type="button"
+        class="seg-btn"
+        :class="{ active: device === 'front' }"
         @click="emit('select-device', 'front')"
-      >前摄</cv-button>
-      <cv-button
-        size="field"
-        :kind="device === 'rear' ? 'primary' : 'tertiary'"
+      >前摄</button>
+      <button
+        type="button"
+        class="seg-btn"
+        :class="{ active: device === 'rear' }"
         @click="emit('select-device', 'rear')"
-      >后摄</cv-button>
+      >后摄</button>
     </div>
-    <div class="switcher-row">
-      <cv-button
-        size="field"
-        :kind="channel === 1 ? 'primary' : 'tertiary'"
+
+    <!-- Channel: ptz / fixed — mutually exclusive segmented toggle -->
+    <div class="segmented">
+      <button
+        type="button"
+        class="seg-btn"
+        :class="{ active: channel === 1 }"
         @click="emit('select-channel', 1)"
-      >云台</cv-button>
-      <cv-button
-        size="field"
-        :kind="channel === 2 ? 'primary' : 'tertiary'"
+      >云台</button>
+      <button
+        type="button"
+        class="seg-btn"
+        :class="{ active: channel === 2 }"
         @click="emit('select-channel', 2)"
-      >固定</cv-button>
+      >固定</button>
     </div>
   </div>
 </template>
@@ -48,11 +54,35 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 0.5rem;
 }
-.switcher-row {
+/* Segmented control: buttons joined edge-to-edge; exactly one is active. */
+.segmented {
   display: flex;
-  gap: 0.25rem;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  overflow: hidden;
 }
-.switcher-row :deep(.cv-button) {
+.seg-btn {
   flex: 1;
+  padding: 0.625rem 0.5rem;
+  font-size: 0.9375rem;
+  background: #2a2a2a;
+  color: #c6c6c6;
+  border: none;
+  border-left: 1px solid #4d4d4d;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+.seg-btn:first-child {
+  border-left: none;
+}
+.seg-btn:hover:not(.active) {
+  background: #393939;
+  color: #f4f4f4;
+}
+.seg-btn.active {
+  background: #0f62fe;
+  color: #ffffff;
+  font-weight: 600;
 }
 </style>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { CaretUp24, CaretDown24, CaretLeft24, CaretRight24 } from '@carbon/icons-vue'
 import type { PtzDirection } from '../ws'
 
@@ -17,8 +18,15 @@ const HOLD_MS = 250
 let holdTimer: number | null = null
 let didHold = false
 
+// Which direction is currently pressed, for the highlight. Driven explicitly in
+// JS (not the CSS :active pseudo-class) because :active is unreliable with
+// pointer capture / preventDefault and on touch — it would stick highlighted
+// after release.
+const pressedDir = ref<PtzDirection | null>(null)
+
 function onDown(direction: PtzDirection) {
   if (props.disabled) return
+  pressedDir.value = direction
   didHold = false
   holdTimer = window.setTimeout(() => {
     didHold = true
@@ -28,6 +36,7 @@ function onDown(direction: PtzDirection) {
 
 function onUp(direction: PtzDirection) {
   if (props.disabled) return
+  pressedDir.value = null
   if (holdTimer !== null) {
     window.clearTimeout(holdTimer)
     holdTimer = null
@@ -42,6 +51,7 @@ function onUp(direction: PtzDirection) {
 
 function onLeave() {
   // Pointer left the button mid-hold: stop continuous move, cancel pending step.
+  pressedDir.value = null
   if (holdTimer !== null) {
     window.clearTimeout(holdTimer)
     holdTimer = null
@@ -55,6 +65,7 @@ function onLeave() {
   <div class="ptz-pad" :class="{ disabled }">
     <button
       class="ptz-btn up"
+      :class="{ pressed: pressedDir === 'up' }"
       type="button"
       :disabled="disabled"
       @pointerdown.prevent="onDown('up')"
@@ -66,6 +77,7 @@ function onLeave() {
     </button>
     <button
       class="ptz-btn left"
+      :class="{ pressed: pressedDir === 'left' }"
       type="button"
       :disabled="disabled"
       @pointerdown.prevent="onDown('left')"
@@ -78,6 +90,7 @@ function onLeave() {
     <span class="ptz-hub" />
     <button
       class="ptz-btn right"
+      :class="{ pressed: pressedDir === 'right' }"
       type="button"
       :disabled="disabled"
       @pointerdown.prevent="onDown('right')"
@@ -89,6 +102,7 @@ function onLeave() {
     </button>
     <button
       class="ptz-btn down"
+      :class="{ pressed: pressedDir === 'down' }"
       type="button"
       :disabled="disabled"
       @pointerdown.prevent="onDown('down')"
@@ -123,7 +137,7 @@ function onLeave() {
   cursor: pointer;
   touch-action: none;
 }
-.ptz-btn:not(:disabled):active {
+.ptz-btn.pressed:not(:disabled) {
   background: #0f62fe;
   border-color: #0f62fe;
 }
