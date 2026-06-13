@@ -3,24 +3,21 @@
    resets, the app background, page-layout utilities, and — importantly — the
    global sizing for the 2560x1600 tablet target.
 
-   Carbon sizes nearly everything in `rem`, so raising the root font size scales
-   the whole UI (fonts, paddings, component heights, the 3rem header) in one
-   place. We step it up on larger viewports so a desktop preview stays normal
-   while the tablet gets a comfortably large UI. */
+   Carbon sizes nearly everything in `rem`, so the root font size scales the
+   whole UI (fonts, paddings, component heights, the header) in one place.
+   We do NOT gate this behind width media queries: tablets often report a
+   logical CSS width far below the physical 2560 (so a `min-width: 2200px`
+   query never fires and the UI stays tiny). Instead we set a large
+   unconditional base and let it grow with the viewport via `vw`, clamped to a
+   big floor so it is never small. Bump the multiplier here if you want the
+   whole UI larger or smaller — this single value controls everything. */
 
 html {
-  font-size: 18px;
-}
-@media (min-width: 1600px) {
-  html {
-    font-size: 20px;
-  }
-}
-@media (min-width: 2200px) {
-  html {
-    /* 2560-wide tablet: ~1.5x the Carbon baseline. */
-    font-size: 24px;
-  }
+  /* Single knob for the whole UI's size. Floor is intentionally large so the
+     tablet UI is never small regardless of how the browser reports its width
+     (high-DPR tablets report a small logical CSS width, which would otherwise
+     keep `vw`-based sizing tiny). Raise/lower this 28px floor to taste. */
+  font-size: clamp(28px, 1.8vw, 36px);
 }
 
 * {
