@@ -250,7 +250,6 @@ async function toggleRecording() {
 }
 .rail-top :deep(.cv-button) {
   width: 100%;
-  justify-content: space-between;
 }
 .rail-section {
   display: flex;
@@ -265,7 +264,6 @@ async function toggleRecording() {
 }
 .rail-action {
   width: 100%;
-  justify-content: space-between;
 }
 .rail-readout {
   margin-top: auto;

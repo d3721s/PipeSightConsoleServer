@@ -77,6 +77,10 @@ body {
    relax the fixed widths so larger CJK labels fit. */
 .bx--btn {
   max-width: none;
+  /* Carbon uses justify-content: space-between for its absolutely-positioned
+     icon. Now that the icon flows inline (below), center the label+icon group
+     instead so content isn't pushed to the button's two edges. */
+  justify-content: center;
 }
 .bx--btn .bx--btn__icon {
   position: static;
