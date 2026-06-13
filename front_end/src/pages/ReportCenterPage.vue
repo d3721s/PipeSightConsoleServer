@@ -163,9 +163,14 @@ async function confirmDelete() {
 }
 .report-card-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+/* Full-width buttons so the label sits hard-left and the icon hard-right
+   (Carbon's space-between layout needs width to spread them), matching the
+   console 采集 buttons. */
+.report-card-actions :deep(.bx--btn) {
+  flex: 1;
 }
 .empty {
   color: #6f6f6f;

@@ -177,7 +177,7 @@ onActivated(loadStorage)
                 <template #content>
                   <cv-text-input v-model="cameraDraft[camera.code].ip" label="IP 地址" placeholder="192.168.x.x" />
                   <cv-text-input v-model="cameraDraft[camera.code].username" label="用户名" />
-                  <cv-text-input v-model="cameraDraft[camera.code].password" label="密码" type="password" password-visible />
+                  <cv-text-input v-model="cameraDraft[camera.code].password" label="密码" type="password" />
                   <cv-number-input v-model="cameraDraft[camera.code].rtspPort" label="RTSP 端口" :min="1" :max="65535" />
                 </template>
               </cv-form-group>
