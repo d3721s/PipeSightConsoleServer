@@ -2,6 +2,16 @@ import type { CameraCode } from './types'
 
 export type PtzDirection = 'up' | 'down' | 'left' | 'right'
 
+// crypto.randomUUID() only exists in a secure context (https or localhost).
+// Over plain http://<lan-ip> it is undefined, which used to throw inside send()
+// and silently swallow every PTZ command. This ref only needs to be unique for
+// ack matching, so a counter+timestamp is enough and works in any context.
+let refCounter = 0
+function nextRef(): string {
+  refCounter += 1
+  return `ref-${Date.now().toString(36)}-${refCounter}`
+}
+
 export class CameraControlSocket {
   private ws: WebSocket | null = null
   private queue: Array<Record<string, unknown>> = []
@@ -33,7 +43,7 @@ export class CameraControlSocket {
   }
 
   private send(message: Record<string, unknown>) {
-    const payload = { ...message, ref: crypto.randomUUID() }
+    const payload = { ...message, ref: nextRef() }
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this.queue.push(payload)
       this.connect()
