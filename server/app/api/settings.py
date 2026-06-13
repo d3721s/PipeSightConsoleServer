@@ -66,11 +66,13 @@ def read_recording(db: Session = Depends(get_db)) -> dict:
 
 
 class RecordingSettingsIn(BaseModel):
-    segment_minutes: int = Field(default=30, alias="segmentMinutes", ge=1)
+    segment_minutes: int = Field(default=30, alias="segmentMinutes")
 
 
 @router.put("/recording")
 def write_recording(payload: RecordingSettingsIn, db: Session = Depends(get_db)) -> dict:
-    set_setting(db, "recording", {"segmentMinutes": payload.segment_minutes})
+    # Clamp to a sane range (1 min .. 2 hours) rather than rejecting.
+    minutes = max(1, min(120, payload.segment_minutes))
+    set_setting(db, "recording", {"segmentMinutes": minutes})
     return read_recording(db)
 
