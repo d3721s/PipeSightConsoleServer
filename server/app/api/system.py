@@ -33,5 +33,5 @@ def info() -> dict:
         "version": "0.1.0",
         "mediamtxExe": str(settings.resolved_mediamtx_exe) if settings.resolved_mediamtx_exe else "",
         "mediamtxConfig": str(settings.mediamtx_config),
-        "storageDir": str(settings.storage_dir),
+        "storageDir": str(settings.active_storage_dir),
     }

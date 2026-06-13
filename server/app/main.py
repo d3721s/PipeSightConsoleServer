@@ -50,8 +50,11 @@ app.include_router(reports.router)
 app.include_router(camera_control.router)
 app.include_router(media_proxy.router)
 
-if settings_obj.storage_dir.exists():
-    app.mount("/storage", StaticFiles(directory=str(settings_obj.storage_dir)), name="storage")
+# Serve stored media from the active storage dir (resolved at startup; changing
+# the path in settings requires a restart — that's the documented behavior).
+storage_root = settings_obj.active_storage_dir
+if storage_root.exists():
+    app.mount("/storage", StaticFiles(directory=str(storage_root)), name="storage")
 
 frontend_dist = Path(__file__).resolve().parents[2] / "front_end" / "dist"
 if frontend_dist.exists():

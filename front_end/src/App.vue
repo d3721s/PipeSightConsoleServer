@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { api } from './api'
 import WebRtcPlayer from './components/WebRtcPlayer.vue'
 import { cameraControlSocket, type PtzDirection } from './ws'
-import type { ActiveCamera, CameraCode, CameraDevice, Project, RecordingStatus, Report, Session, StreamInfo } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, Project, RecordingStatus, Report, Session, StorageOptions, StreamInfo } from './types'
 
 type Page = 'home' | 'project' | 'console' | 'editor' | 'reports' | 'settings'
 
@@ -18,6 +18,9 @@ const distance = ref(0)
 const odometerConnected = ref(false)
 let odometerTimer: number | null = null
 const segmentMinutes = ref(30)
+const storage = ref<StorageOptions | null>(null)
+const storageManualPath = ref('')
+const storageBusy = ref(false)
 const recording = ref<RecordingStatus>({ active: false })
 const projects = ref<Project[]>([])
 const currentProject = ref<Project | null>(null)
@@ -118,6 +121,33 @@ async function probeCamera(device: CameraCode) {
   await api.probeCamera(device)
   show('ONVIF 连接成功')
   cameras.value = await api.listCameras()
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null) return '—'
+  const gb = bytes / 1024 ** 3
+  return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1024 ** 2).toFixed(0)} MB`
+}
+
+async function loadStorage() {
+  try {
+    storage.value = await api.getStorage()
+  } catch (error) {
+    show((error as Error).message)
+  }
+}
+
+async function applyStorage(path: string | null) {
+  if (storageBusy.value) return
+  storageBusy.value = true
+  try {
+    storage.value = await api.setStorage(path)
+    show('存储路径已保存，请重启后端使其生效')
+  } catch (error) {
+    show((error as Error).message)
+  } finally {
+    storageBusy.value = false
+  }
 }
 
 async function createProject() {
@@ -221,6 +251,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (odometerTimer !== null) window.clearInterval(odometerTimer)
+})
+
+// Refresh storage options (incl. currently-mounted USB drives) each time the
+// settings page is opened.
+watch(page, (value) => {
+  if (value === 'settings') loadStorage()
 })
 </script>
 
@@ -384,6 +420,53 @@ onUnmounted(() => {
             <div class="control-row">
               <button @click="saveCamera(camera.code)">保存</button>
               <button @click="probeCamera(camera.code)">ONVIF 测试</button>
+            </div>
+          </article>
+
+          <article class="settings-card storage-card">
+            <h2>存储路径</h2>
+            <p class="storage-current">
+              当前：<code>{{ storage?.currentPath || '加载中…' }}</code>
+              <span v-if="storage && !storage.usingDefault" class="storage-tag">外部</span>
+              <span v-else-if="storage" class="storage-tag">内部</span>
+            </p>
+            <p class="storage-hint">切换后需重启后端生效；旧文件保留在原路径，不会迁移。</p>
+
+            <div class="storage-list" v-if="storage">
+              <button
+                class="storage-option"
+                :class="{ active: storage.currentPath === storage.internal.path }"
+                :disabled="storageBusy"
+                @click="applyStorage(null)"
+              >
+                <span class="storage-option-main">内部存储</span>
+                <span class="storage-option-path">{{ storage.internal.path }}</span>
+                <span class="storage-option-meta">剩余 {{ formatBytes(storage.internal.freeBytes) }}</span>
+              </button>
+
+              <button
+                v-for="drive in storage.removable"
+                :key="drive.path"
+                class="storage-option"
+                :class="{ active: storage.currentPath === drive.path }"
+                :disabled="storageBusy || !drive.writable"
+                @click="applyStorage(drive.path)"
+              >
+                <span class="storage-option-main">{{ drive.label }} <span v-if="!drive.writable" class="storage-ro">只读</span></span>
+                <span class="storage-option-path">{{ drive.path }}</span>
+                <span class="storage-option-meta">剩余 {{ formatBytes(drive.freeBytes) }}</span>
+              </button>
+
+              <p v-if="storage.removable.length === 0" class="storage-empty">未检测到外部存储（U盘）</p>
+            </div>
+
+            <label class="storage-manual">
+              <span>手动指定路径</span>
+              <input v-model="storageManualPath" placeholder="/mnt/usb" :disabled="storageBusy" />
+            </label>
+            <div class="control-row">
+              <button :disabled="storageBusy || !storageManualPath.trim()" @click="applyStorage(storageManualPath.trim())">保存路径</button>
+              <button :disabled="storageBusy" @click="loadStorage">刷新</button>
             </div>
           </article>
         </div>

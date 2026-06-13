@@ -70,7 +70,7 @@ class RecorderService:
         if self.state.active:
             raise RuntimeError("recording already active")
 
-        recording_dir = settings.storage_dir / "recordings"
+        recording_dir = settings.active_storage_dir / "recordings"
         recording_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         pattern = recording_dir / f"PipeSight_{stamp}_%03d.mp4"

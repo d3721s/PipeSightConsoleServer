@@ -10,7 +10,7 @@ settings = get_settings()
 
 
 def take_snapshot(rtsp_url: str) -> str:
-    snapshot_dir = settings.storage_dir / "snapshots"
+    snapshot_dir = settings.active_storage_dir / "snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     name = f"PipeSight_snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]}.png"
     path = snapshot_dir / name

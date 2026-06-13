@@ -70,3 +70,21 @@ export interface RecordingStatus {
   error?: string | null
 }
 
+export interface StorageTarget {
+  path: string
+  label: string
+  isMount: boolean
+  writable: boolean
+  totalBytes: number | null
+  freeBytes: number | null
+}
+
+export interface StorageOptions {
+  currentPath: string
+  defaultPath: string
+  usingDefault: boolean
+  internal: StorageTarget
+  removable: StorageTarget[]
+  restartRequired?: boolean
+}
+

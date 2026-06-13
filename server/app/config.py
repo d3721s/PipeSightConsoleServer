@@ -52,12 +52,55 @@ class Settings(BaseSettings):
             return self.database_url
         return f"sqlite:///{self.data_dir / 'pipesight.db'}"
 
+    @property
+    def active_storage_dir(self) -> Path:
+        """Storage root actually used for snapshots/recordings/reports.
+
+        Returns the runtime override saved in the DB ("storage" setting, key
+        "path") if it is set and usable, otherwise the env/default storage_dir.
+        Read lazily and defensively so an unavailable DB or a vanished USB drive
+        never breaks startup — we just fall back to the default.
+        """
+        override = self._storage_override()
+        if override is not None:
+            try:
+                override.mkdir(parents=True, exist_ok=True)
+                self._ensure_subdirs(override)
+                return override
+            except OSError:
+                pass  # e.g. unplugged USB -> fall back to default
+        return self.storage_dir
+
+    @staticmethod
+    def _storage_override() -> Path | None:
+        # Imported lazily to avoid a config<->db import cycle.
+        try:
+            from app.db import SessionLocal
+            from app.models import SystemSetting
+            from sqlalchemy import select
+        except Exception:
+            return None
+        try:
+            with SessionLocal() as db:
+                row = db.scalar(select(SystemSetting).where(SystemSetting.key == "storage"))
+        except Exception:
+            return None
+        value = (row.value_json or {}) if row else {}
+        path = value.get("path")
+        if isinstance(path, str) and path.strip():
+            return Path(path.strip())
+        return None
+
+    @staticmethod
+    def _ensure_subdirs(base: Path) -> None:
+        (base / "snapshots").mkdir(parents=True, exist_ok=True)
+        (base / "recordings").mkdir(parents=True, exist_ok=True)
+        (base / "reports").mkdir(parents=True, exist_ok=True)
+
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
-        (self.storage_dir / "snapshots").mkdir(parents=True, exist_ok=True)
-        (self.storage_dir / "recordings").mkdir(parents=True, exist_ok=True)
-        (self.storage_dir / "reports").mkdir(parents=True, exist_ok=True)
+        self._ensure_subdirs(self.storage_dir)
         self.mediamtx_config.parent.mkdir(parents=True, exist_ok=True)
 
     @property

@@ -14,7 +14,7 @@ settings = get_settings()
 
 
 def export_report_pdf(db: Session, report: Report) -> str:
-    report_dir = settings.storage_dir / "reports"
+    report_dir = settings.active_storage_dir / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = report_dir / f"PipeSight_report_{report.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     project = db.get(Project, report.project_id)
