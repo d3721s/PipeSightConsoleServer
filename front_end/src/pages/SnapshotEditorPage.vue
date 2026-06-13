@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue'
-import { CvTabs, CvTab, CvButton, CvTag, CvTile } from '@carbon/vue'
-import { Image24, VideoFilled24, Edit24, TrashCan16 } from '@carbon/icons-vue'
+import { CvTabs, CvTab, CvButton, CvTag, CvTile, CvModal } from '@carbon/vue'
+import { Image24, VideoFilled24, Edit24, TrashCan16, TrashCan24 } from '@carbon/icons-vue'
 import AnnotationEditor from '../components/AnnotationEditor.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
@@ -166,6 +166,38 @@ async function removeAnnotation(id: number) {
     notify((e as Error).message, 'error')
   }
 }
+
+// --- Delete the selected media (photo / recording) -------------------------
+const confirmVisible = ref(false)
+const pendingDelete = ref<Photo | Recording | null>(null)
+const deleting = ref(false)
+
+function askDeleteMedia(media: Photo | Recording | null) {
+  if (!media) return
+  pendingDelete.value = media
+  confirmVisible.value = true
+}
+
+async function confirmDeleteMedia() {
+  const media = pendingDelete.value
+  if (!media || deleting.value) return
+  deleting.value = true
+  try {
+    await api.deleteMedia(media.id)
+    confirmVisible.value = false
+    pendingDelete.value = null
+    activePhoto.value = null
+    activeRecording.value = null
+    editorOpen.value = false
+    graphicAnnotations.value = []
+    await reload()
+    notify(tab.value === 'image' ? '图片已删除' : '视频已删除', 'success')
+  } catch (e) {
+    notify((e as Error).message, 'error')
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -226,7 +258,9 @@ async function removeAnnotation(id: number) {
         </div>
         <div class="preview-bar">
           <cv-tag kind="cool-gray" :label="`里程 ${activePhoto.distanceM.toFixed(2)} m`" />
+          <span class="preview-bar-spacer" />
           <cv-button size="sm" :icon="Edit24" @click="annotatePhoto">标注此图</cv-button>
+          <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此图</cv-button>
         </div>
         <div class="anno-saved">
           <h3>已保存标注（{{ graphicAnnotations.length }}）</h3>
@@ -256,7 +290,9 @@ async function removeAnnotation(id: number) {
         <div class="preview-bar">
           <cv-tag kind="cool-gray" :label="`时间 ${videoCurrentTime.toFixed(1)} s`" />
           <cv-tag kind="cool-gray" :label="`里程 ${currentMileageM === null ? '—' : currentMileageM.toFixed(2) + ' m'}`" />
+          <span class="preview-bar-spacer" />
           <cv-button size="sm" :icon="Edit24" @click="annotateFrame">标注当前帧</cv-button>
+          <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activeRecording)">删除此视频</cv-button>
         </div>
         <div class="anno-saved">
           <h3>已保存标注（{{ graphicAnnotations.length }}）</h3>
@@ -280,6 +316,25 @@ async function removeAnnotation(id: number) {
         <p>请选择左侧{{ tab === 'image' ? '图像' : '录像' }}开始标注</p>
       </div>
     </section>
+
+    <cv-modal
+      kind="danger"
+      :visible="confirmVisible"
+      :primary-button-disabled="deleting"
+      @update:visible="confirmVisible = $event"
+      @primary-click="confirmDeleteMedia"
+      @secondary-click="confirmVisible = false"
+    >
+      <template #title>{{ tab === 'image' ? '删除图片' : '删除视频' }}</template>
+      <template #content>
+        <p>
+          确定删除「{{ pendingDelete?.name }}」吗？
+          此操作会同时删除该{{ tab === 'image' ? '图片' : '视频' }}文件及其全部标注，且不可恢复。
+        </p>
+      </template>
+      <template #secondary-button>取消</template>
+      <template #primary-button>删除</template>
+    </cv-modal>
   </div>
 </template>
 
@@ -364,6 +419,9 @@ async function removeAnnotation(id: number) {
   align-items: center;
   gap: 0.75rem;
   margin: 0.75rem 0;
+}
+.preview-bar-spacer {
+  flex: 1;
 }
 .anno-saved {
   margin-top: 0.5rem;
