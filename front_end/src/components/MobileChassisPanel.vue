@@ -64,7 +64,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
       <div class="readout-row"><span>左轮速度</span><strong>{{ fmtSpeed(leftWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>右轮速度</span><strong>{{ fmtSpeed(rightWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
-      <div class="readout-row"><span>底盘 ID</span><strong>{{ fmtText(chassisId) }}</strong></div>
+      <div class="readout-row"><span>ID</span><strong>{{ fmtText(chassisId) }}</strong></div>
     </div>
   </div>
 </template>

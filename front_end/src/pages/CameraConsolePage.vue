@@ -13,7 +13,6 @@ import WebRtcPlayer from '../components/WebRtcPlayer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import PtzPad from '../components/PtzPad.vue'
 import CameraSwitcher from '../components/CameraSwitcher.vue'
-import MobileChassisPanel from '../components/MobileChassisPanel.vue'
 import { api } from '../api'
 import { cameraControlSocket, type PtzDirection } from '../ws'
 import {
@@ -163,12 +162,6 @@ async function toggleRecording() {
           @click="toggleRecording"
         >{{ recording.active ? '停止录像' : '开始录像' }}</cv-button>
       </div>
-
-      <mobile-chassis-panel />
-
-      <div class="rail-readout">
-        <div><span>变焦</span><strong>{{ zoomLabel }}</strong></div>
-      </div>
     </aside>
   </div>
 </template>
@@ -266,23 +259,5 @@ async function toggleRecording() {
 }
 .rail-action {
   width: 100%;
-}
-.rail-readout {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #393939;
-}
-.rail-readout > div {
-  display: flex;
-  justify-content: space-between;
-}
-.rail-readout span {
-  color: #8d8d8d;
-}
-.rail-readout strong {
-  color: #f4f4f4;
-  font-variant-numeric: tabular-nums;
 }
 </style>
