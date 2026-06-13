@@ -171,7 +171,7 @@ onActivated(loadStorage)
               <h3>{{ camera.name }}</h3>
               <cv-tag :kind="statusKind(camera.status)" :label="camera.status || '未知'" />
             </div>
-            <cv-form @submit.prevent="saveCamera(camera.code)">
+            <cv-form @submit.prevent>
               <cv-form-group>
                 <template #label>连接参数</template>
                 <template #content>
@@ -183,7 +183,7 @@ onActivated(loadStorage)
               </cv-form-group>
               <div class="form-actions">
                 <cv-button kind="tertiary" :icon="Connect24" @click="probeCamera(camera.code)">ONVIF 测试</cv-button>
-                <cv-button type="submit" :icon="Save24">保存配置</cv-button>
+                <cv-button :icon="Save24" @click="saveCamera(camera.code)">保存配置</cv-button>
               </div>
             </cv-form>
           </cv-tile>
@@ -272,7 +272,7 @@ onActivated(loadStorage)
         <cv-column :sm="4" :md="8" :lg="16" class="settings-col">
           <cv-tile class="settings-card">
             <h3>录像设置</h3>
-            <cv-form @submit.prevent="saveRecordingSettings">
+            <cv-form @submit.prevent>
               <cv-number-input
                 v-model="segmentMinutes"
                 label="分段时长（分钟）"
@@ -282,7 +282,7 @@ onActivated(loadStorage)
                 helper-text="每段录像达到该时长后自动切分为新文件。范围 1–120 分钟。"
               />
               <div class="form-actions">
-                <cv-button type="submit" :icon="Save24">保存</cv-button>
+                <cv-button :icon="Save24" @click="saveRecordingSettings">保存</cv-button>
               </div>
             </cv-form>
           </cv-tile>
