@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onActivated, onBeforeUnmount, onDeactivated, ref, watch } from 'vue'
+import { onActivated, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps<{
   src: string
@@ -19,6 +19,9 @@ const error = ref('')
 const loading = ref(false)
 let pc: RTCPeerConnection | null = null
 let abortController: AbortController | null = null
+// The live MediaStream from ontrack. Kept so that under <keep-alive> we can
+// re-attach it to the <video> on reactivation without reconnecting.
+let currentStream: MediaStream | null = null
 
 // Pan offset (in CSS pixels) applied before scale. Lets the user drag around a
 // digitally-zoomed image to inspect different regions.
@@ -157,9 +160,12 @@ async function start() {
   peer.addTransceiver('video', { direction: 'recvonly' })
   peer.addTransceiver('audio', { direction: 'recvonly' })
   peer.ontrack = (event) => {
-    if (video.value && event.streams[0]) {
-      video.value.srcObject = event.streams[0]
-      video.value.play().catch(() => undefined)
+    if (event.streams[0]) {
+      currentStream = event.streams[0]
+      if (video.value) {
+        video.value.srcObject = currentStream
+        video.value.play().catch(() => undefined)
+      }
     }
   }
 
@@ -198,6 +204,7 @@ function stop(clearError = true) {
     pc.close()
     pc = null
   }
+  currentStream = null
   if (video.value) {
     video.value.pause()
     video.value.srcObject = null
@@ -206,37 +213,30 @@ function stop(clearError = true) {
   if (clearError) error.value = ''
 }
 
-// `mounted` tracks whether the very first start has happened. Under
-// <keep-alive>, onBeforeUnmount does NOT fire on navigate-away (the component
-// is cached, not destroyed), so a WebRTC peer would linger and the stream would
-// freeze on return. We tear the connection down on deactivate and rebuild it on
-// activate. The `immediate` watch already starts it on first mount, so the
-// first onActivated must not double-start.
-let started = false
+// Reconnect only when the stream source actually changes.
+watch(() => props.src, start, { immediate: true })
 
-watch(
-  () => props.src,
-  () => {
-    started = true
-    start()
-  },
-  { immediate: true }
-)
-
+// Under <keep-alive> the component is cached, not destroyed, on navigate-away —
+// onBeforeUnmount does NOT fire, so we deliberately keep the RTCPeerConnection
+// alive in the background (true keep-alive: no reconnect on return). The only
+// thing that can go stale is the <video> element, which the browser may pause
+// while it's detached. On reactivation we just re-attach the existing stream
+// and resume playback — no new WebRTC handshake.
 onActivated(() => {
-  // Skip the activation that immediately follows the initial mount.
-  if (started) {
-    started = false
-    return
+  if (currentStream) {
+    // Stream is live — just re-attach to the (possibly paused) <video>.
+    if (video.value) {
+      if (video.value.srcObject !== currentStream) video.value.srcObject = currentStream
+      video.value.play().catch(() => undefined)
+    }
+  } else if (!pc) {
+    // No connection at all (genuinely died). A pc that exists but hasn't
+    // delivered a stream yet is still connecting — leave it alone.
+    start()
   }
-  start()
 })
 
-onDeactivated(() => {
-  started = false
-  stop()
-})
-
+// Full teardown only when the component is truly destroyed.
 onBeforeUnmount(() => stop())
 </script>
 
