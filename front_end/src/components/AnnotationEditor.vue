@@ -57,7 +57,7 @@ const defect = reactive({
 const tools: { id: Tool; label: string; icon: unknown }[] = [
   { id: 'select', label: '选择', icon: Cursor_124 },
   { id: 'pen', label: '画笔', icon: Pen24 },
-  { id: 'rect', label: '标记框', icon: Crop24 },
+  { id: 'rect', label: '矩形', icon: Crop24 },
   { id: 'text', label: '文字', icon: TextScale24 }
 ]
 
@@ -294,15 +294,18 @@ onMounted(loadBase)
 <template>
   <div class="annot-editor">
     <div class="annot-toolbar">
-      <div class="annot-tools">
-        <cv-button
+      <div class="tool-segmented">
+        <button
           v-for="t in tools"
           :key="t.id"
-          size="sm"
-          :kind="tool === t.id ? 'primary' : 'ghost'"
-          :icon="t.icon"
+          type="button"
+          class="tool-btn"
+          :class="{ active: tool === t.id }"
           @click="tool = t.id"
-        >{{ t.label }}</cv-button>
+        >
+          <component :is="t.icon" class="tool-icon" />
+          <span>{{ t.label }}</span>
+        </button>
       </div>
       <div class="annot-tools">
         <cv-button size="sm" kind="ghost" :icon="Undo24" @click="undo">撤销</cv-button>
@@ -362,6 +365,42 @@ onMounted(loadBase)
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+/* Tool picker: mutually-exclusive segmented control (select / pen / rect / text). */
+.tool-segmented {
+  display: flex;
+  border: 1px solid #c6c6c6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.9375rem;
+  background: #ffffff;
+  color: #393939;
+  border: none;
+  border-left: 1px solid #c6c6c6;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+.tool-btn:first-child {
+  border-left: none;
+}
+.tool-btn:hover:not(.active) {
+  background: #e8e8e8;
+}
+.tool-btn.active {
+  background: #0f62fe;
+  color: #ffffff;
+  font-weight: 600;
+}
+.tool-icon {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 .annot-color {
   display: flex;
