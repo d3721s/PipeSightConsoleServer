@@ -10,7 +10,9 @@ dependencies = [
   "sqlalchemy",
   "httpx",
   "python-multipart",
-  "reportlab"
+  "reportlab",
+  "pymodbus",
+  "pyserial"
 ]
 
 [tool.pytest.ini_options]

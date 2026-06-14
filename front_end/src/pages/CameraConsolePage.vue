@@ -12,6 +12,7 @@ import { Camera24, VideoAdd24, StopFilledAlt24, ZoomIn24, ZoomOut24, Report24, C
 import WebRtcPlayer from '../components/WebRtcPlayer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import PtzPad from '../components/PtzPad.vue'
+import Joystick from '../components/Joystick.vue'
 import CameraSwitcher from '../components/CameraSwitcher.vue'
 import MobileChassisPanel from '../components/MobileChassisPanel.vue'
 import { api } from '../api'
@@ -49,6 +50,10 @@ function ptzStart(direction: PtzDirection) {
 }
 function ptzStop() {
   cameraControlSocket.stop(active.device, active.channel)
+}
+
+function onChassisMove(v: { x: number; y: number }) {
+  cameraControlSocket.chassisMove(v.x, v.y)
 }
 
 async function takeSnapshot() {
@@ -113,7 +118,12 @@ async function toggleRecording() {
 
       <cv-tag v-if="recording.active" kind="red" label="● REC" class="rec-badge" />
 
-      <!-- Bottom-left: zoom cluster -->
+      <!-- Bottom-left: chassis joystick -->
+      <div class="chassis-cluster">
+        <joystick @move="onChassisMove" />
+      </div>
+
+      <!-- Bottom-center: zoom cluster -->
       <div class="zoom-cluster">
         <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomOut24" :disabled="digitalZoom <= MIN_ZOOM" @click="nudgeZoom(-ZOOM_STEP)" />
         <span class="zoom-readout">{{ zoomLabel }}</span>
@@ -212,6 +222,11 @@ async function toggleRecording() {
   background: rgba(22, 22, 22, 0.7);
   border-radius: 999px;
   padding: 0.25rem 0.5rem;
+}
+.chassis-cluster {
+  position: absolute;
+  left: 1.25rem;
+  bottom: 1.25rem;
 }
 .zoom-readout {
   min-width: 2.5rem;

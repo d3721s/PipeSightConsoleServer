@@ -319,7 +319,7 @@ async function confirmDeleteMedia() {
       <template v-else-if="tab === '3d'">
         <div class="empty-main">
           <component :is="CubeView24" class="empty-icon" />
-          <p>3D 标注开发中，敬请期待</p>
+          <p>3D 标注开发中</p>
         </div>
       </template>
 

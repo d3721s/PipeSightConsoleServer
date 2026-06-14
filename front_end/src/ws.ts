@@ -42,6 +42,11 @@ export class CameraControlSocket {
     this.send({ type: 'ptz_stop', device, channel })
   }
 
+  // Chassis joystick: x = horizontal, y = vertical, both -800..800.
+  chassisMove(x: number, y: number) {
+    this.send({ type: 'chassis_move', x: Math.round(x), y: Math.round(y) })
+  }
+
   private send(message: Record<string, unknown>) {
     const payload = { ...message, ref: nextRef() }
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {

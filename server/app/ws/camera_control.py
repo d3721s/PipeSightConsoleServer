@@ -7,6 +7,7 @@ from app.db import SessionLocal
 from app.drivers.onvif_client import OnvifError
 from app.drivers.onvif_ptz import ptz_driver
 from app.models import CameraDevice
+from app.services.modbus_service import modbus_chassis_service
 
 
 router = APIRouter()
@@ -39,6 +40,14 @@ async def camera_control(websocket: WebSocket) -> None:
 
 async def handle_control(payload: dict) -> None:
     msg_type = payload.get("type")
+
+    # Chassis joystick has no camera context — handle before the camera lookup.
+    if msg_type == "chassis_move":
+        x = float(payload.get("x", 0))
+        y = float(payload.get("y", 0))
+        modbus_chassis_service.set_joystick(x, y)
+        return
+
     device = payload.get("device", "front")
     channel = int(payload.get("channel", 1))
     if channel != 1:

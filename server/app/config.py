@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     ffmpeg_exe: str = "ffmpeg"
     recording_segment_minutes: int = 30
 
+    # Chassis Modbus RTU (485 joystick control). The serial device is expected to
+    # be a stable udev symlink. Override via PIPESIGHT_CHASSIS_SERIAL_PORT etc.
+    chassis_serial_port: str = "/dev/ttyUSB-Chassis"
+    chassis_baudrate: int = 38400
+    chassis_slave_id: int = 1
+
     model_config = SettingsConfigDict(env_file=".env", env_prefix="PIPESIGHT_")
 
     @field_validator("mediamtx_webrtc_additional_hosts", mode="before")

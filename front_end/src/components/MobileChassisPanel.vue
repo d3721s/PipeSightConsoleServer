@@ -43,7 +43,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
     </div>
 
     <div class="chassis-section">
-      <span class="chassis-label">控制模式</span>
+      <span class="chassis-label">移动控制模式</span>
       <div class="segmented">
         <button
           v-for="m in modes"
