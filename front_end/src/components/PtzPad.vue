@@ -121,8 +121,8 @@ function onLeave() {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 4px;
-  width: 9.5rem;
-  height: 9.5rem;
+  width: 13rem;
+  height: 13rem;
 }
 .ptz-pad.disabled {
   opacity: 0.4;
@@ -136,6 +136,12 @@ function onLeave() {
   border: 1px solid #525252;
   cursor: pointer;
   touch-action: none;
+}
+/* Enlarge the arrow glyphs to match the bigger pad / touch target. */
+.ptz-btn :deep(svg),
+.ptz-btn svg {
+  width: 2.25rem;
+  height: 2.25rem;
 }
 .ptz-btn.pressed:not(:disabled) {
   background: #0f62fe;
