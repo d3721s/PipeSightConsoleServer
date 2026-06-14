@@ -9,7 +9,10 @@ import {
   rightWheelSpeed,
   statusCode,
   chassisLight,
-  chassisMode
+  chassisMode,
+  eulerRoll,
+  eulerPitch,
+  eulerYaw
 } from '../stores/odometer'
 
 // Light: 1 off / 2 low beam / 3 high beam (Modbus reg 0x3D).
@@ -59,6 +62,7 @@ async function selectMode(value: number) {
 const fmtPulses = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtSpeed = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
+const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 </script>
 
 <template>
@@ -99,9 +103,9 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
       <div class="readout-row"><span>左轮速度</span><strong>{{ fmtSpeed(leftWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>右轮速度</span><strong>{{ fmtSpeed(rightWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
-      <div class="readout-row"><span>欧拉角 X</span><strong>--</strong></div>
-      <div class="readout-row"><span>欧拉角 Y</span><strong>--</strong></div>
-      <div class="readout-row"><span>欧拉角 Z</span><strong>--</strong></div>
+      <div class="readout-row"><span>横滚角 Roll</span><strong>{{ fmtDeg(eulerRoll) }}</strong></div>
+      <div class="readout-row"><span>俯仰角 Pitch</span><strong>{{ fmtDeg(eulerPitch) }}</strong></div>
+      <div class="readout-row"><span>航向角 Yaw</span><strong>{{ fmtDeg(eulerYaw) }}</strong></div>
     </div>
   </div>
 </template>

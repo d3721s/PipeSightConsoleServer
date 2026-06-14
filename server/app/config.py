@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     chassis_baudrate: int = 38400
     chassis_slave_id: int = 1
 
+    # IMU (ATK-MS901M) — Euler angles over UART. Default baud 115200 per manual.
+    imu_serial_port: str = "/dev/ttyusb-IMU"
+    imu_baudrate: int = 115200
+
     model_config = SettingsConfigDict(env_file=".env", env_prefix="PIPESIGHT_")
 
     @field_validator("mediamtx_webrtc_additional_hosts", mode="before")

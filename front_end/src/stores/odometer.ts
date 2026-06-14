@@ -17,6 +17,11 @@ export const chassisId = ref<string | null>(null)
 export const chassisConnected = ref(false)
 export const chassisLight = ref<number | null>(null) // 1 off / 2 low / 3 high
 export const chassisMode = ref<number | null>(null)  // 0 remote / 1 speed / 3 pos / 4 joystick
+// IMU Euler angles (deg) from ATK-MS901M.
+export const imuConnected = ref(false)
+export const eulerRoll = ref<number | null>(null)
+export const eulerPitch = ref<number | null>(null)
+export const eulerYaw = ref<number | null>(null)
 
 let timer: number | null = null
 let chassisTimer: number | null = null
@@ -46,6 +51,10 @@ export function startOdometerPolling() {
         chassisLight.value = t.light
         chassisMode.value = t.mode
         statusCode.value = t.error === null ? null : `0x${t.error.toString(16).padStart(2, '0')}`
+        imuConnected.value = t.imuConnected
+        eulerRoll.value = t.roll
+        eulerPitch.value = t.pitch
+        eulerYaw.value = t.yaw
       } catch {
         chassisConnected.value = false
       }

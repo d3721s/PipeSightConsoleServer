@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.db import init_db
 from app.services.mediamtx_service import mediamtx_service
 from app.services.modbus_service import modbus_chassis_service
+from app.services.imu_service import imu_service
 from app.services.odometer_service import odometer_service
 from app.ws import camera_control
 
@@ -34,6 +35,7 @@ def on_startup() -> None:
     mediamtx_service.start()
     odometer_service.start()
     modbus_chassis_service.start()
+    imu_service.start()
 
 
 @app.on_event("shutdown")
@@ -41,6 +43,7 @@ def on_shutdown() -> None:
     mediamtx_service.stop()
     odometer_service.stop()
     modbus_chassis_service.stop()
+    imu_service.stop()
 
 
 app.include_router(system.router)
