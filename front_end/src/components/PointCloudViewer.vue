@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
     <div ref="container" class="pcv-canvas" />
     <div class="pcv-status">
       <span :class="['pcv-dot', connected ? 'on' : 'off']" />
-      {{ connected ? '深度相机已连接' : (wsUrl ? '等待深度相机…(演示数据)' : '演示数据') }}
+      {{ connected ? '深度相机已连接' : (wsUrl ? '等待深度相机…' : '') }}
       · {{ pointCount.toLocaleString() }} 点
     </div>
   </div>

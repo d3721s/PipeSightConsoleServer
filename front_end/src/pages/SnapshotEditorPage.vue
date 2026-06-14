@@ -363,6 +363,30 @@ async function confirmDeleteMedia() {
   padding: 0.5rem;
   overflow-y: auto;
 }
+/* Make the 3 source tabs (图像/视频/3D) share the rail width and fit without
+   horizontal scrolling: full-width nav, equal-width items, tighter padding,
+   and no overflow scroller (Carbon adds one when items exceed the width). */
+.media-rail :deep(.bx--tabs__nav) {
+  display: flex;
+  width: 100%;
+  overflow: visible;
+  max-width: none;
+}
+.media-rail :deep(.bx--tabs__nav-item) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.media-rail :deep(.bx--tabs__nav-link) {
+  width: 100%;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  text-align: center;
+  justify-content: center;
+}
+/* Hide Carbon's mobile overflow/dropdown trigger if it shows on narrow widths. */
+.media-rail :deep(.bx--tabs-trigger) {
+  display: none;
+}
 .media-list {
   display: flex;
   flex-direction: column;

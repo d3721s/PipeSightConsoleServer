@@ -89,6 +89,15 @@ class SnapshotIn(BaseModel):
     project_location: str = Field(default="", alias="projectLocation")
 
 
+class ImageSnapshotIn(BaseModel):
+    # A client-rendered image (e.g. 3D point-cloud canvas) saved as a snapshot.
+    project_id: int | None = Field(default=None, alias="projectId")
+    session_id: int | None = Field(default=None, alias="sessionId")
+    distance_m: float = Field(default=0, alias="distanceM")
+    image: str  # PNG data URL
+    source: str = "3d"  # tag for the snapshot origin
+
+
 class MediaAssetOut(BaseModel):
     id: int
     project_id: int | None = Field(alias="projectId")

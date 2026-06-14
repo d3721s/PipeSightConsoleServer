@@ -46,7 +46,7 @@ async function saveCamera(code: CameraCode) {
 async function probeCamera(code: CameraCode) {
   try {
     await api.probeCamera(code)
-    notify('ONVIF 连接成功', 'success')
+    notify('连接成功', 'success')
     await loadCameras()
     syncDraft()
   } catch (e) {
@@ -182,7 +182,7 @@ onActivated(loadStorage)
                 </template>
               </cv-form-group>
               <div class="form-actions">
-                <cv-button kind="tertiary" :icon="Connect24" @click="probeCamera(camera.code)">ONVIF 测试</cv-button>
+                <cv-button kind="tertiary" :icon="Connect24" @click="probeCamera(camera.code)">连接测试</cv-button>
                 <cv-button :icon="Save24" @click="saveCamera(camera.code)">保存配置</cv-button>
               </div>
             </cv-form>
@@ -199,7 +199,7 @@ onActivated(loadStorage)
               v-if="storage"
               kind="info"
               :title="storage.usingDefault ? '当前使用内部存储' : '当前使用外部存储'"
-              :sub-title="`${storage.currentPath} · 切换后需重启后端生效，旧文件不迁移`"
+              :sub-title="`${storage.currentPath}`"
               :low-contrast="true"
               hide-close-button
             />

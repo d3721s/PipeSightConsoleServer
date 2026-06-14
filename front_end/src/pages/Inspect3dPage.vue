@@ -5,8 +5,9 @@ import { CvButton } from '@carbon/vue'
 import { Camera24, ZoomIn24, ZoomOut24, Report24, ChevronLeft24 } from '@carbon/icons-vue'
 import PointCloudViewer from '../components/PointCloudViewer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
+import { api } from '../api'
 import { distance } from '../stores/odometer'
-import { activeReport, currentProject, notify, toggleReport } from '../stores/session'
+import { activeReport, currentProject, currentSession, notify, toggleReport } from '../stores/session'
 
 const router = useRouter()
 
@@ -25,19 +26,24 @@ function nudgeZoom(dir: number) {
   zoomLabel.value = `${zoomFactor.toFixed(1)}x`
 }
 
-function capture3d() {
+async function capture3d() {
   const dataUrl = viewer.value?.snapshot()
   if (!dataUrl) {
     notify('点云画面未就绪', 'warning')
     return
   }
-  // No server-side endpoint for 3D images yet — download to the browser.
-  const a = document.createElement('a')
-  a.href = dataUrl
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  a.download = `PipeSight_3d_${stamp}.png`
-  a.click()
-  notify('3D 截图已保存到浏览器下载', 'success')
+  try {
+    const asset = await api.imageSnapshot({
+      projectId: currentProject.value?.id,
+      sessionId: currentSession.value?.id,
+      distanceM: distance.value,
+      image: dataUrl,
+      source: '3d'
+    })
+    notify(`3D 截图已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
+  } catch (e) {
+    notify((e as Error).message, 'error')
+  }
 }
 </script>
 

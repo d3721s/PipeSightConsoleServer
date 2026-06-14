@@ -49,6 +49,8 @@ export const api = {
 
   snapshot: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/api/snapshots', { method: 'POST', body: JSON.stringify(data) }),
+  imageSnapshot: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/api/snapshots/image', { method: 'POST', body: JSON.stringify(data) }),
   startRecording: (data: Record<string, unknown>) =>
     request<RecordingStatus>('/api/recordings/start', { method: 'POST', body: JSON.stringify(data) }),
   stopRecording: () => request<RecordingStatus>('/api/recordings/stop', { method: 'POST' }),

@@ -19,8 +19,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'home', label: '首页', to: '/' },
   { name: 'project', label: '项目', to: '/project' },
-  { name: 'console', label: '控制', to: '/console' },
-  { name: 'inspect3d', label: '3D巡检', to: '/inspect3d' },
+  { name: 'console', label: '控制采集', to: '/console' },
+  { name: 'inspect3d', label: '3D采集', to: '/inspect3d' },
   { name: 'annotate', label: '标注', to: '/annotate' },
   { name: 'reports', label: '报告', to: '/reports' },
   { name: 'settings', label: '设置', to: '/settings' }

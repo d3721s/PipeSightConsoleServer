@@ -11,11 +11,11 @@ from app.config import get_settings
 from app.db import get_db
 from app.drivers.rtsp import build_rtsp_url
 from app.models import Annotation, CameraDevice, Marker, MediaAsset, Project
-from app.schemas import MediaAssetOut, RecordingStartIn, RecordingStatusOut, SnapshotIn
+from app.schemas import ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut, SnapshotIn
 from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
 from app.services.settings_service import get_setting
-from app.services.snapshot_service import take_snapshot
+from app.services.snapshot_service import save_png_snapshot, take_snapshot
 
 
 router = APIRouter(prefix="/api", tags=["media"])
@@ -69,6 +69,29 @@ def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)) -> Media
         session_id=payload.session_id,
         camera_device=camera.code,
         camera_channel=channel,
+        type="photo",
+        file_path=path,
+        distance_m=payload.distance_m,
+    )
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+@router.post("/snapshots/image", response_model=MediaAssetOut)
+def create_image_snapshot(payload: ImageSnapshotIn, db: Session = Depends(get_db)) -> MediaAsset:
+    # A client-rendered image (3D point-cloud canvas) saved like a photo so it
+    # appears in the image list and reports.
+    try:
+        path = save_png_snapshot(payload.image, prefix=f"PipeSight_{payload.source}")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    asset = MediaAsset(
+        project_id=payload.project_id,
+        session_id=payload.session_id,
+        camera_device=payload.source,
+        camera_channel=0,
         type="photo",
         file_path=path,
         distance_m=payload.distance_m,
