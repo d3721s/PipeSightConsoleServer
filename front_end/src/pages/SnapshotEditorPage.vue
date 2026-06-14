@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { CvTabs, CvTab, CvButton, CvTag, CvTile, CvModal } from '@carbon/vue'
-import { Image24, VideoFilled24, Edit24, TrashCan16, TrashCan24 } from '@carbon/icons-vue'
+import { Image24, VideoFilled24, CubeView24, Edit24, TrashCan16, TrashCan24 } from '@carbon/icons-vue'
 import AnnotationEditor from '../components/AnnotationEditor.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import type { GraphicAnnotation, Photo, Recording, TrackData } from '../types'
 
-type Tab = 'image' | 'video'
+type Tab = 'image' | 'video' | '3d'
 const tab = ref<Tab>('image')
 
 const photos = ref<Photo[]>([])
@@ -39,7 +39,7 @@ onMounted(reload)
 onActivated(reload)
 
 function onTabSelected(index: number) {
-  tab.value = index === 0 ? 'image' : 'video'
+  tab.value = index === 0 ? 'image' : index === 1 ? 'video' : '3d'
 }
 
 async function loadAnnotations(mediaId: number) {
@@ -239,6 +239,11 @@ async function confirmDeleteMedia() {
             </button>
           </div>
         </cv-tab>
+        <cv-tab label="3D">
+          <div class="media-list">
+            <p class="empty">3D 标注开发中</p>
+          </div>
+        </cv-tab>
       </cv-tabs>
     </aside>
 
@@ -308,6 +313,13 @@ async function confirmDeleteMedia() {
             </div>
             <cv-button kind="danger--ghost" size="sm" :icon="TrashCan16" @click="removeAnnotation(a.id)" />
           </cv-tile>
+        </div>
+      </template>
+
+      <template v-else-if="tab === '3d'">
+        <div class="empty-main">
+          <component :is="CubeView24" class="empty-icon" />
+          <p>3D 标注开发中，敬请期待</p>
         </div>
       </template>
 
