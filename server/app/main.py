@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import annotations, cameras, media, media_proxy, projects, reports, settings, system
+from app.api import annotations, cameras, chassis, media, media_proxy, projects, reports, settings, system
 from app.config import get_settings
 from app.db import init_db
 from app.services.mediamtx_service import mediamtx_service
@@ -52,6 +52,7 @@ app.include_router(annotations.router)
 app.include_router(reports.router)
 app.include_router(camera_control.router)
 app.include_router(media_proxy.router)
+app.include_router(chassis.router)
 
 # Serve stored media from the active storage dir (resolved at startup; changing
 # the path in settings requires a restart — that's the documented behavior).

@@ -1,4 +1,4 @@
-import type { ActiveCamera, CameraCode, CameraDevice, GraphicAnnotation, Marker, Photo, Project, Recording, RecordingStatus, Report, ReportDetail, Session, StorageOptions, StreamInfo, TrackData } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, ChassisTelemetry, GraphicAnnotation, Marker, Photo, Project, Recording, RecordingStatus, Report, ReportDetail, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -56,6 +56,12 @@ export const api = {
   stopRecording: () => request<RecordingStatus>('/api/recordings/stop', { method: 'POST' }),
   recordingStatus: () => request<RecordingStatus>('/api/recordings/status'),
   odometer: () => request<{ connected: boolean; mileageCm: number | null; mileageM: number | null }>('/api/odometer'),
+
+  chassisTelemetry: () => request<ChassisTelemetry>('/api/chassis/telemetry'),
+  setChassisLight: (value: number) =>
+    request<{ ok: boolean; light: number }>('/api/chassis/light', { method: 'POST', body: JSON.stringify({ value }) }),
+  setChassisMode: (value: number) =>
+    request<{ ok: boolean; mode: number }>('/api/chassis/mode', { method: 'POST', body: JSON.stringify({ value }) }),
 
   getStorage: () => request<StorageOptions>('/api/settings/storage'),
   setStorage: (path: string | null) =>

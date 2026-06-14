@@ -1,68 +1,107 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { leftWheelM, rightWheelM, leftWheelSpeed, rightWheelSpeed, statusCode, chassisId } from '../stores/odometer'
+import { api } from '../api'
+import { notify } from '../stores/session'
+import {
+  leftWheelM,
+  rightWheelM,
+  leftWheelSpeed,
+  rightWheelSpeed,
+  statusCode,
+  chassisLight,
+  chassisMode
+} from '../stores/odometer'
 
-// Mobile-chassis controls. The backend has no light / control-mode endpoints
-// yet, so these toggles only hold UI state for now (mutually exclusive). When
-// the backend gains commands, emit from here / call the API.
-type Light = 'off' | 'low' | 'high'
-type Mode = 'app' | 'remote'
-
-const light = ref<Light>('off')
-const mode = ref<Mode>('app')
-
-const lights: { id: Light; label: string }[] = [
-  { id: 'off', label: '关闭' },
-  { id: 'low', label: '近光' },
-  { id: 'high', label: '远光' }
+// Light: 1 off / 2 low beam / 3 high beam (Modbus reg 0x3D).
+// Mode: APP = 485 joystick mode (4), 遥控器 = wireless remote (0) (reg 0x50).
+const lights: { value: number; label: string }[] = [
+  { value: 1, label: '关闭' },
+  { value: 2, label: '近光' },
+  { value: 3, label: '远光' }
 ]
-const modes: { id: Mode; label: string }[] = [
-  { id: 'app', label: 'APP' },
-  { id: 'remote', label: '遥控器' }
+const modes: { value: number; label: string }[] = [
+  { value: 4, label: 'APP' },
+  { value: 0, label: '遥控器' }
 ]
 
-const fmt = (v: number | null) => (v === null ? '--' : `${v.toFixed(2)} m`)
-const fmtSpeed = (v: number | null) => (v === null ? '--' : `${v.toFixed(2)} m/s`)
+// Disable the group while a write is awaiting the chassis confirmation.
+const lightPending = ref(false)
+const modePending = ref(false)
+
+async function selectLight(value: number) {
+  if (lightPending.value || chassisLight.value === value) return
+  lightPending.value = true
+  try {
+    await api.setChassisLight(value)
+    chassisLight.value = value // optimistic; telemetry poll will reconcile
+    notify('灯光已设置', 'success')
+  } catch (e) {
+    notify((e as Error).message || '底盘未确认灯光指令', 'error')
+  } finally {
+    lightPending.value = false
+  }
+}
+
+async function selectMode(value: number) {
+  if (modePending.value || chassisMode.value === value) return
+  modePending.value = true
+  try {
+    await api.setChassisMode(value)
+    chassisMode.value = value
+    notify('控制模式已设置', 'success')
+  } catch (e) {
+    notify((e as Error).message || '底盘未确认控制模式指令', 'error')
+  } finally {
+    modePending.value = false
+  }
+}
+
+const fmtPulses = (v: number | null) => (v === null ? '--' : `${v}`)
+const fmtSpeed = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 </script>
 
 <template>
   <div class="chassis-group">
     <div class="chassis-section">
-      <span class="chassis-label">灯光控制</span>
-      <div class="segmented">
+      <span class="chassis-label">灯光控制{{ lightPending ? '（设置中…）' : '' }}</span>
+      <div class="segmented" :class="{ pending: lightPending }">
         <button
           v-for="l in lights"
-          :key="l.id"
+          :key="l.value"
           type="button"
           class="seg-btn"
-          :class="{ active: light === l.id }"
-          @click="light = l.id"
+          :class="{ active: chassisLight === l.value }"
+          :disabled="lightPending"
+          @click="selectLight(l.value)"
         >{{ l.label }}</button>
       </div>
     </div>
 
     <div class="chassis-section">
-      <span class="chassis-label">移动控制模式</span>
-      <div class="segmented">
+      <span class="chassis-label">控制模式{{ modePending ? '（设置中…）' : '' }}</span>
+      <div class="segmented" :class="{ pending: modePending }">
         <button
           v-for="m in modes"
-          :key="m.id"
+          :key="m.value"
           type="button"
           class="seg-btn"
-          :class="{ active: mode === m.id }"
-          @click="mode = m.id"
+          :class="{ active: chassisMode === m.value }"
+          :disabled="modePending"
+          @click="selectMode(m.value)"
         >{{ m.label }}</button>
       </div>
     </div>
 
     <div class="chassis-readout">
-      <div class="readout-row"><span>左轮里程</span><strong>{{ fmt(leftWheelM) }}</strong></div>
-      <div class="readout-row"><span>右轮里程</span><strong>{{ fmt(rightWheelM) }}</strong></div>
+      <div class="readout-row"><span>左轮里程</span><strong>{{ fmtPulses(leftWheelM) }}</strong></div>
+      <div class="readout-row"><span>右轮里程</span><strong>{{ fmtPulses(rightWheelM) }}</strong></div>
       <div class="readout-row"><span>左轮速度</span><strong>{{ fmtSpeed(leftWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>右轮速度</span><strong>{{ fmtSpeed(rightWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
-      <div class="readout-row"><span>ID</span><strong>{{ fmtText(chassisId) }}</strong></div>
+      <div class="readout-row"><span>欧拉角 X</span><strong>--</strong></div>
+      <div class="readout-row"><span>欧拉角 Y</span><strong>--</strong></div>
+      <div class="readout-row"><span>欧拉角 Z</span><strong>--</strong></div>
     </div>
   </div>
 </template>
@@ -87,12 +126,14 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-/* Mutually-exclusive segmented control, consistent with CameraSwitcher. */
 .segmented {
   display: flex;
   border: 1px solid #4d4d4d;
   border-radius: 4px;
   overflow: hidden;
+}
+.segmented.pending {
+  opacity: 0.6;
 }
 .seg-btn {
   flex: 1;
@@ -109,7 +150,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 .seg-btn:first-child {
   border-left: none;
 }
-.seg-btn:hover:not(.active) {
+.seg-btn:hover:not(.active):not(:disabled) {
   background: #393939;
   color: #f4f4f4;
 }
@@ -117,6 +158,9 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   background: #0f62fe;
   color: #ffffff;
   font-weight: 600;
+}
+.seg-btn:disabled {
+  cursor: not-allowed;
 }
 .chassis-readout {
   display: flex;

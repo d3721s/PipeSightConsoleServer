@@ -7,36 +7,59 @@ import { api } from '../api'
 export const distance = ref(0)
 export const odometerConnected = ref(false)
 
-// --- Mobile-chassis telemetry ----------------------------------------------
-// The current /api/odometer endpoint only returns { connected, mileageCm,
-// mileageM }; it does NOT yet expose per-wheel mileage, a status code, or a
-// chassis id. These refs hold those values for the console's 移动底盘 panel and
-// stay null (shown as "--") until the backend is extended to provide them.
+// --- Mobile-chassis telemetry (from Modbus via /api/chassis/telemetry) ------
 export const leftWheelM = ref<number | null>(null)
 export const rightWheelM = ref<number | null>(null)
 export const leftWheelSpeed = ref<number | null>(null)
 export const rightWheelSpeed = ref<number | null>(null)
 export const statusCode = ref<string | null>(null)
 export const chassisId = ref<string | null>(null)
+export const chassisConnected = ref(false)
+export const chassisLight = ref<number | null>(null) // 1 off / 2 low / 3 high
+export const chassisMode = ref<number | null>(null)  // 0 remote / 1 speed / 3 pos / 4 joystick
 
 let timer: number | null = null
+let chassisTimer: number | null = null
 
 export function startOdometerPolling() {
-  if (timer !== null) return
-  timer = window.setInterval(async () => {
-    try {
-      const data = await api.odometer()
-      odometerConnected.value = data.connected
-      if (data.mileageM !== null) distance.value = data.mileageM
-    } catch {
-      // keep last known distance
-    }
-  }, 250)
+  if (timer === null) {
+    timer = window.setInterval(async () => {
+      try {
+        const data = await api.odometer()
+        odometerConnected.value = data.connected
+        if (data.mileageM !== null) distance.value = data.mileageM
+      } catch {
+        // keep last known distance
+      }
+    }, 250)
+  }
+  if (chassisTimer === null) {
+    chassisTimer = window.setInterval(async () => {
+      try {
+        const t = await api.chassisTelemetry()
+        chassisConnected.value = t.connected
+        leftWheelSpeed.value = t.leftSpeed
+        rightWheelSpeed.value = t.rightSpeed
+        // Mileage is raw encoder pulses for now (no line-count to convert).
+        leftWheelM.value = t.leftMileage
+        rightWheelM.value = t.rightMileage
+        chassisLight.value = t.light
+        chassisMode.value = t.mode
+        statusCode.value = t.error === null ? null : `0x${t.error.toString(16).padStart(2, '0')}`
+      } catch {
+        chassisConnected.value = false
+      }
+    }, 500)
+  }
 }
 
 export function stopOdometerPolling() {
   if (timer !== null) {
     window.clearInterval(timer)
     timer = null
+  }
+  if (chassisTimer !== null) {
+    window.clearInterval(chassisTimer)
+    chassisTimer = null
   }
 }
