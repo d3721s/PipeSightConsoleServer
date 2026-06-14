@@ -27,7 +27,7 @@ const router = useRouter()
         <div class="action-tile-icon"><report24 /></div>
         <div class="action-tile-body">
           <h3>报告中心</h3>
-          <p>查看往期巡检报告与 PDF 导出</p>
+          <p>查看往期巡检报告</p>
         </div>
         <chevron-right16 class="action-tile-go" />
       </cv-tile>
@@ -36,7 +36,7 @@ const router = useRouter()
         <div class="action-tile-icon"><settings-adjust24 /></div>
         <div class="action-tile-body">
           <h3>系统设置</h3>
-          <p>相机配置、存储路径、录像分段</p>
+          <p>相机等设备配置</p>
         </div>
         <chevron-right16 class="action-tile-go" />
       </cv-tile>
