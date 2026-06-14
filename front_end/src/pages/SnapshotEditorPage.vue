@@ -364,27 +364,28 @@ async function confirmDeleteMedia() {
   overflow-y: auto;
 }
 /* Make the 3 source tabs (图像/视频/3D) share the rail width and fit without
-   horizontal scrolling: full-width nav, equal-width items, tighter padding,
-   and no overflow scroller (Carbon adds one when items exceed the width). */
-.media-rail :deep(.bx--tabs__nav) {
+   the scrollable-tabs overflow arrow. @carbon/vue renders SCROLLABLE tabs, so
+   the classes carry "scrollable" — target those, make the nav full-width with
+   equal-width items and tight padding so scrollWidth never exceeds clientWidth
+   (which is what triggers Carbon's "›" overflow button). */
+.media-rail :deep(.bx--tabs--scrollable__nav) {
   display: flex;
   width: 100%;
-  overflow: visible;
-  max-width: none;
 }
-.media-rail :deep(.bx--tabs__nav-item) {
+.media-rail :deep(.bx--tabs--scrollable__nav-item) {
   flex: 1 1 0;
   min-width: 0;
 }
-.media-rail :deep(.bx--tabs__nav-link) {
+.media-rail :deep(.bx--tabs--scrollable__nav-link) {
   width: 100%;
+  min-width: 0;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   text-align: center;
   justify-content: center;
 }
-/* Hide Carbon's mobile overflow/dropdown trigger if it shows on narrow widths. */
-.media-rail :deep(.bx--tabs-trigger) {
+/* Hide the left/right scroll arrows entirely — everything fits now. */
+.media-rail :deep(.bx--tab--overflow-nav-button) {
   display: none;
 }
 .media-list {
