@@ -25,6 +25,21 @@ import { clearNotice, notice } from '../stores/session'
   z-index: 9000;
   min-width: 18rem;
 }
+/* Carbon's toast status icon + close button use fixed-px SVGs that don't track
+   our enlarged root font, so they look tiny on the tablet. Scale them up and
+   give the close button a comfortable tap target. */
+.app-toast :deep(.bx--toast-notification__icon),
+.app-toast :deep(.bx--toast-notification__close-icon) {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.app-toast :deep(.bx--toast-notification__close-button) {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .toast-fade-enter-active,
 .toast-fade-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
