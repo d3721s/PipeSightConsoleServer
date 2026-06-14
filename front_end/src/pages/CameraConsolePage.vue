@@ -173,7 +173,7 @@ async function toggleRecording() {
 .console-page {
   display: grid;
   grid-template-columns: 1fr 18rem;
-  height: calc(100vh - 4rem); /* minus Carbon header */
+  height: 100%; /* fill .app-content (pinned to viewport-minus-header) */
   background: #000;
 }
 .video-area {

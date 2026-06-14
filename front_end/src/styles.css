@@ -114,10 +114,16 @@ body {
   min-height: calc(100vh - 4rem);
 }
 
-/* Console page wants the full bleed with no content padding. */
+/* Console / 3D pages want full bleed with no content padding, and must fit the
+   viewport exactly (no scroll / no white strip at the bottom). We pin the
+   content box to exactly viewport-minus-header and clip overflow; the page
+   inside fills it with height:100%. */
 .app-content:has(.console-page) {
   padding: 0;
   background: #000;
+  height: calc(100vh - 4rem);
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* --- Page layout utilities ------------------------------------------------ */

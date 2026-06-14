@@ -89,7 +89,7 @@ async function capture3d() {
 .console-page {
   display: grid;
   grid-template-columns: 1fr 18rem;
-  height: calc(100vh - 4rem);
+  height: 100%;
   background: #000;
 }
 .video-area {
