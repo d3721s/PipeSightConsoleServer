@@ -93,6 +93,8 @@ curl http://127.0.0.1:8000/api/chassis/telemetry   # 看 connected / imuConnecte
 - **软链接没出现**：多半是 vid/pid/serial 写错，或设备号查错。重做第 1 步确认。
   也可单独测一条规则是否匹配：`udevadm test $(udevadm info -q path -n /dev/ttyUSB0)`。
 - **权限**：串口访问需要 `dialout` 组（`install.sh` 已把你加进去）。改完组要重新登录或重启。
-- **大小写**：`ttyUSB-Chassis` vs `ttyUSB-IMU` 大小写不同，别写反——后端按这俩名字找。
+- **名字要完全一致**：底盘 `ttyUSB-Chassis`、IMU `ttyUSB-IMU`，和后端
+  （`server/app/config.py` 的 `chassis_serial_port` / `imu_serial_port`）必须逐字相同，
+  否则后端找不到设备。
 - **波特率不在 udev 管**：udev 只负责命名；底盘 38400 / IMU 115200 在 `server/.env`
   的 `PIPESIGHT_CHASSIS_BAUDRATE` / `PIPESIGHT_IMU_BAUDRATE` 配。
