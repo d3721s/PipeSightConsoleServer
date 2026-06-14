@@ -155,13 +155,15 @@ async function toggleRecording() {
 
       <div class="rail-section">
         <span class="rail-label">采集</span>
-        <cv-button class="rail-action" :icon="Camera24" @click="takeSnapshot">拍照</cv-button>
-        <cv-button
-          class="rail-action"
-          :kind="recording.active ? 'danger' : 'primary'"
-          :icon="recording.active ? StopFilledAlt24 : VideoAdd24"
-          @click="toggleRecording"
-        >{{ recording.active ? '停止录像' : '开始录像' }}</cv-button>
+        <div class="capture-row">
+          <cv-button class="capture-btn" :icon="Camera24" @click="takeSnapshot">拍照</cv-button>
+          <cv-button
+            class="capture-btn"
+            :kind="recording.active ? 'danger' : 'primary'"
+            :icon="recording.active ? StopFilledAlt24 : VideoAdd24"
+            @click="toggleRecording"
+          >{{ recording.active ? '停止录像' : '开始录像' }}</cv-button>
+        </div>
       </div>
 
       <mobile-chassis-panel />
@@ -278,7 +280,19 @@ async function toggleRecording() {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.rail-action {
-  width: 100%;
+.capture-row {
+  display: flex;
+  gap: 0.5rem;
+}
+/* .capture-btn IS the Carbon <button> (cv-button + bx--btn on one element).
+   Two buttons share the 18rem rail, so trim Carbon's wide icon reserve and let
+   each flex to half width, keeping "拍照"/"开始录像" on one line. */
+.capture-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  /* Override Carbon's wide icon reserve (.bx--btn:has(icon) sets 3rem) so two
+     buttons fit side by side in the 18rem rail without the label clipping. */
+  padding-left: 0.75rem !important;
+  padding-right: 2rem !important;
 }
 </style>

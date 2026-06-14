@@ -45,7 +45,7 @@ onMounted(() => {
 <template>
   <div class="app-shell">
     <cv-header aria-label="PipeSight">
-      <cv-header-name prefix="PipeSight">风电叶片内腔巡检</cv-header-name>
+      <cv-header-name prefix="PipeSight">风电叶片内腔巡检系统</cv-header-name>
       <cv-header-nav aria-label="主导航">
         <cv-header-menu-item
           v-for="item in navItems"

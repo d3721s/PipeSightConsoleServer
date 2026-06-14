@@ -121,8 +121,8 @@ function onLeave() {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 4px;
-  width: 13rem;
-  height: 13rem;
+  width: 9.5rem;
+  height: 9.5rem;
 }
 .ptz-pad.disabled {
   opacity: 0.4;
