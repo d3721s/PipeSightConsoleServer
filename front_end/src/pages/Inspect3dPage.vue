@@ -99,7 +99,8 @@ async function capture3d() {
 }
 .zoom-cluster {
   position: absolute;
-  left: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 1.25rem;
   display: flex;
   align-items: center;
