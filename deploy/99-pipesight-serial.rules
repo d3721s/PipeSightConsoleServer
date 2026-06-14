@@ -1,0 +1,39 @@
+# PipeSight udev rules — stable names for the USB-serial devices.
+#
+# Goal: always expose the chassis controller as /dev/ttyUSB-Chassis and the IMU
+# as /dev/ttyUSB-IMU regardless of plug order or which ttyUSB* the kernel picks.
+#
+# !!! The match attributes below are PLACEHOLDERS — you MUST fill them with your
+#     actual devices' identifiers (see deploy/UDEV_SETUP.md for how to find them).
+#     Case matters: the symlink names are exactly as the backend expects.
+#
+# Install:
+#   sudo cp deploy/99-pipesight-serial.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#   (then replug the devices, or reboot)
+#
+# Verify:
+#   ls -l /dev/ttyUSB-Chassis /dev/ttyUSB-IMU
+#
+# --------------------------------------------------------------------------
+# Pick ONE matching strategy per device and delete the others.
+#
+# Strategy A — by serial number (BEST when each adapter has a unique serial):
+#   match the converter chip's idVendor/idProduct AND its serial.
+#
+# Strategy B — by physical USB port path (use when adapters share vid/pid/serial,
+#   e.g. two identical CH340/CP210x): match KERNELS (the USB topology path).
+#   This binds "whatever is plugged into THIS port" — keep devices in fixed ports.
+# --------------------------------------------------------------------------
+
+# === Chassis (Modbus RTU) -> /dev/ttyUSB-Chassis ===========================
+# --- Strategy A: by serial ---
+SUBSYSTEM=="tty", ATTRS{idVendor}=="__CHASSIS_VID__", ATTRS{idProduct}=="__CHASSIS_PID__", ATTRS{serial}=="__CHASSIS_SERIAL__", SYMLINK+="ttyUSB-Chassis"
+# --- Strategy B: by physical port (uncomment and fill, delete Strategy A above) ---
+#SUBSYSTEM=="tty", KERNELS=="__CHASSIS_USB_PORT__", SYMLINK+="ttyUSB-Chassis"
+
+# === IMU (ATK-MS901M) -> /dev/ttyUSB-IMU ===================================
+# --- Strategy A: by serial ---
+SUBSYSTEM=="tty", ATTRS{idVendor}=="__IMU_VID__", ATTRS{idProduct}=="__IMU_PID__", ATTRS{serial}=="__IMU_SERIAL__", SYMLINK+="ttyUSB-IMU"
+# --- Strategy B: by physical port (uncomment and fill, delete Strategy A above) ---
+#SUBSYSTEM=="tty", KERNELS=="__IMU_USB_PORT__", SYMLINK+="ttyUSB-IMU"

@@ -1,0 +1,21 @@
+[Unit]
+Description=PipeSight point-cloud bridge (depth camera -> WebSocket :9090)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+Group=__USER__
+WorkingDirectory=__BRIDGE_DIR__
+# The bridge binary; SDK .so path is baked in via -rpath at build time and also
+# exported here belt-and-suspenders.
+Environment=LD_LIBRARY_PATH=__SDK_LIB_DIR__
+ExecStart=__BRIDGE_DIR__/pointcloud_bridge
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

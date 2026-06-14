@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import shutil
 from functools import lru_cache
 from pathlib import Path
-import shutil
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,13 +13,22 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    data_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[1] / "data")
-    storage_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[1] / "storage")
+    data_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[1] / "data"
+    )
+    storage_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[1] / "storage"
+    )
     database_url: str | None = None
 
     mediamtx_exe: Path | None = None
     mediamtx_config: Path = Field(
-        default_factory=lambda: Path(__file__).resolve().parents[2] / "third_party" / "mediamtx" / "mediamtx.yml"
+        default_factory=lambda: (
+            Path(__file__).resolve().parents[2]
+            / "third_party"
+            / "mediamtx"
+            / "mediamtx.yml"
+        )
     )
     mediamtx_rtsp_port: int = 8554
     mediamtx_webrtc_port: int = 8889
@@ -39,7 +48,7 @@ class Settings(BaseSettings):
     chassis_slave_id: int = 1
 
     # IMU (ATK-MS901M) — Euler angles over UART. Default baud 115200 per manual.
-    imu_serial_port: str = "/dev/ttyusb-IMU"
+    imu_serial_port: str = "/dev/ttyUSB-IMU"
     imu_baudrate: int = 115200
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="PIPESIGHT_")
@@ -85,14 +94,17 @@ class Settings(BaseSettings):
     def _storage_override() -> Path | None:
         # Imported lazily to avoid a config<->db import cycle.
         try:
+            from sqlalchemy import select
+
             from app.db import SessionLocal
             from app.models import SystemSetting
-            from sqlalchemy import select
         except Exception:
             return None
         try:
             with SessionLocal() as db:
-                row = db.scalar(select(SystemSetting).where(SystemSetting.key == "storage"))
+                row = db.scalar(
+                    select(SystemSetting).where(SystemSetting.key == "storage")
+                )
         except Exception:
             return None
         value = (row.value_json or {}) if row else {}
