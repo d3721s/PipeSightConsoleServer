@@ -78,7 +78,7 @@ install_mediamtx() {
   [ -n "$ver" ] || ver="$MEDIAMTX_FALLBACK_VERSION"
 
   asset="mediamtx_${ver}_linux_${arch}.tar.gz"
-  url="https://github.com/bluenviron/mediamtx/releases/download/${ver}/${asset}"
+  url="https://gh-proxy.org/https://github.com/bluenviron/mediamtx/releases/download/${ver}/${asset}"
   echo "==> Downloading MediaMTX ${ver} (${arch})..."
   tmp="$(mktemp -d)"
   if curl -fsSL "$url" -o "$tmp/mtx.tar.gz"; then
