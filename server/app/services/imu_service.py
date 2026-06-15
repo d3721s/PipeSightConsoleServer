@@ -16,6 +16,11 @@ settings = get_settings()
 FRAME_HEAD = b"\x55\x55"
 ID_EULER = 0x01
 LEN_EULER = 0x06
+CMD_HEAD = b"\x55\xAF"
+CMD_RETURNSET = 0x08
+CMD_RETURNRATE = 0x0A
+RETURNSET_EULER_ONLY = 0x01
+RETURNRATE_10HZ = 0x06
 
 RECONNECT_S = 2.0
 
@@ -57,6 +62,7 @@ class ImuService:
                 time.sleep(RECONNECT_S)
                 continue
             self._connected = True
+            self._configure_stream(ser)
             buf = bytearray()
             try:
                 while not self._stop.is_set():
@@ -92,6 +98,19 @@ class ImuService:
             )
         except Exception:
             return None
+
+    def _configure_stream(self, ser) -> None:
+        try:
+            self._write_command(ser, CMD_RETURNSET, bytes([RETURNSET_EULER_ONLY]))
+            self._write_command(ser, CMD_RETURNRATE, bytes([RETURNRATE_10HZ]))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _write_command(ser, frame_id: int, data: bytes) -> None:
+        length = len(data)
+        checksum = (0x55 + 0xAF + frame_id + length + sum(data)) & 0xFF
+        ser.write(CMD_HEAD + bytes([frame_id, length]) + data + bytes([checksum]))
 
     def _parse(self, buf: bytearray) -> None:
         # Consume as many complete frames as are buffered; keep the remainder.
