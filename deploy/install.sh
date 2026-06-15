@@ -73,6 +73,18 @@ fi
 
 # Serial access for the chassis + IMU.
 usermod -aG dialout "$RUN_USER" || true
+# Depth cameras expose UVC/video devices; keep the service user in the usual
+# video/access groups and install the vendor udev rules below.
+usermod -aG video "$RUN_USER" || true
+getent group plugdev >/dev/null 2>&1 && usermod -aG plugdev "$RUN_USER" || true
+
+ANGSTRONG_RULES="$REPO_DIR/3d_camera/linux/scripts/angstrong-camera.rules"
+if [ -f "$ANGSTRONG_RULES" ]; then
+  echo "==> Installing Angstrong depth-camera udev rules..."
+  cp "$ANGSTRONG_RULES" /etc/udev/rules.d/angstrong-camera.rules
+  udevadm control --reload-rules || true
+  udevadm trigger || true
+fi
 
 # --- 1b. MediaMTX binary (not in apt; the backend auto-launches it) ---------
 MEDIAMTX_FALLBACK_VERSION="v1.15.2"
