@@ -26,6 +26,7 @@ let raf = 0
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
 let resizeObs: ResizeObserver | null = null
+let framedFirstCloud = false
 
 function initThree() {
   const el = container.value!
@@ -95,6 +96,28 @@ function setPoints(xyz: Float32Array) {
   geometry.setAttribute('position', new THREE.BufferAttribute(xyz, 3))
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
   geometry.computeBoundingSphere()
+  if (!framedFirstCloud) {
+    frameCloud()
+    framedFirstCloud = true
+  }
+}
+
+function frameCloud() {
+  if (!geometry || !camera || !controls) return
+  geometry.computeBoundingBox()
+  const box = geometry.boundingBox
+  if (!box || box.isEmpty()) return
+  const center = new THREE.Vector3()
+  const size = new THREE.Vector3()
+  box.getCenter(center)
+  box.getSize(size)
+  const radius = Math.max(size.x, size.y, size.z, 0.1)
+  controls.target.copy(center)
+  camera.position.set(center.x, center.y, center.z + radius * 1.8)
+  camera.near = Math.max(radius / 1000, 0.001)
+  camera.far = Math.max(radius * 20, 10)
+  camera.updateProjectionMatrix()
+  controls.update()
 }
 
 function demoCloud() {
@@ -121,6 +144,7 @@ function connectWs() {
     ws.binaryType = 'arraybuffer'
     ws.onopen = () => {
       connected.value = true
+      framedFirstCloud = false
     }
     ws.onmessage = (ev) => {
       const buf = ev.data as ArrayBuffer

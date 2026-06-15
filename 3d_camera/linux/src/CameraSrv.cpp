@@ -340,16 +340,32 @@ int CameraSrv::getConfigFile(AS_CAM_PTR pCamera, std::string &configfile, AS_SDK
         break;
     }
 
-    // get json
-    std::vector<std::string> files;
-    scanDir("../configurationfiles", files);
+    // Try the common runtime layouts first. The bridge service runs from the
+    // repo root's pointcloud_bridge/ dir, while the SDK demo runs from
+    // 3d_camera/linux/build/. Both need to find 3d_camera/linux/configurationfiles.
+    std::vector<std::string> candidates = {
+        "../3d_camera/linux/configurationfiles",
+        "./3d_camera/linux/configurationfiles",
+        "../configurationfiles",
+        "./configurationfiles",
+    };
+
     ret = -1;
-    for (auto it = files.begin(); it != files.end(); it++) {
-        std::string filename = (*it).substr((*it).find_last_of("/"));
-        if (filename.find(name_key) < filename.size()) {
-            LOG(INFO) << "get file: " << *it << std::endl;
-            configfile = (*it);
-            ret = 0;
+    for (const auto &candidate_dir : candidates) {
+        std::vector<std::string> files;
+        if (scanDir(candidate_dir, files) != 0) {
+            continue;
+        }
+        for (const auto &file_path : files) {
+            std::string filename = file_path.substr(file_path.find_last_of("/"));
+            if (filename.find(name_key) < filename.size()) {
+                LOG(INFO) << "get file: " << file_path << std::endl;
+                configfile = file_path;
+                ret = 0;
+                break;
+            }
+        }
+        if (ret == 0) {
             break;
         }
     }
@@ -388,7 +404,6 @@ int CameraSrv::scanDir(const std::string &dir, std::vector<std::string> &file)
             scanDir(childpath, file);
         }
     }
-    delete ent;
     closedir(directory);
     return ret;
 #elif _WIN32

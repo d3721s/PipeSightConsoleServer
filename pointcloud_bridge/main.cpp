@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <thread>
 #include <vector>
 
@@ -45,6 +46,20 @@ std::atomic<bool> g_running{true};
 
 void handleSigint(int) { g_running = false; }
 
+void appendFloat(std::vector<uint8_t> &msg, float value) {
+    const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&value);
+    msg.insert(msg.end(), bytes, bytes + sizeof(float));
+}
+
+bool appendPoint(std::vector<uint8_t> &msg, float x, float y, float z) {
+    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) return false;
+    if (x == 0.0f && y == 0.0f && z == 0.0f) return false;
+    appendFloat(msg, x);
+    appendFloat(msg, y);
+    appendFloat(msg, z);
+    return true;
+}
+
 class PointCloudBridge : public ICameraStatus {
 public:
     int onCameraAttached(AS_CAM_PTR, const AS_SDK_CAM_MODEL_E &) override {
@@ -62,55 +77,106 @@ public:
 
     void onCameraNewFrame(AS_CAM_PTR, const AS_SDK_Data_s *pstData) override {
         if (pstData == nullptr) return;
-        const AS_Frame_s &pc = pstData->pointCloud;
-        if (pc.size == 0 || pc.data == nullptr) return;
-
-        // Log the layout on the first few frames so the stride can be confirmed.
-        if (logCount_ < 3) {
-            unsigned long pixels = (unsigned long)pc.width * pc.height;
-            printf("[bridge] pointCloud: size=%u bytes, %ux%u (%lu px), floats=%u, floats/px=%.2f\n",
-                   pc.size, pc.width, pc.height, pixels, pc.size / (unsigned)sizeof(float),
-                   pixels ? (double)(pc.size / sizeof(float)) / pixels : 0.0);
-            logCount_++;
-        }
-
+        logFrame(pstData->depthImg, pstData->pointCloud, "frame");
         if (g_ws.clientCount() == 0) return; // nobody watching; skip work
+        if (broadcastSdkPointCloud(pstData->pointCloud)) return;
+        broadcastDepthImage(pstData->depthImg);
+    }
 
+    void onCameraNewMergeFrame(AS_CAM_PTR, const AS_SDK_MERGE_s *pstData) override {
+        if (pstData == nullptr) return;
+        logFrame(pstData->depthImg, pstData->pointCloud, "merge");
+        if (g_ws.clientCount() == 0) return;
+        if (broadcastSdkPointCloud(pstData->pointCloud)) return;
+        broadcastDepthImage(pstData->depthImg);
+    }
+
+private:
+    void logFrame(const AS_Frame_s &depth, const AS_Frame_s &pc, const char *kind) {
+        if (logCount_ >= 10) return;
+        unsigned long depthPixels = (unsigned long)depth.width * depth.height;
+        unsigned long pcPixels = (unsigned long)pc.width * pc.height;
+        printf("[bridge] %s depth: size=%u bytes, %ux%u (%lu px); pointCloud: size=%u bytes, %ux%u (%lu px)\n",
+               kind, depth.size, depth.width, depth.height, depthPixels,
+               pc.size, pc.width, pc.height, pcPixels);
+        logCount_++;
+    }
+
+    bool broadcastSdkPointCloud(const AS_Frame_s &pc) {
+        if (pc.size == 0 || pc.data == nullptr) return false;
         const float *src = static_cast<const float *>(pc.data);
         uint32_t totalFloats = pc.size / sizeof(float);
         uint32_t totalPoints = totalFloats / kStride;
-        if (totalPoints == 0) return;
+        if (totalPoints == 0) return false;
 
-        // Software decimation fallback: keep at most kMaxPoints by striding.
-        uint32_t step = (totalPoints + kMaxPoints - 1) / kMaxPoints; // ceil
+        uint32_t step = (totalPoints + kMaxPoints - 1) / kMaxPoints;
         if (step < 1) step = 1;
-        uint32_t outCount = 0;
 
         std::vector<uint8_t> msg;
         msg.reserve(8 + (size_t)(totalPoints / step) * 3 * sizeof(float));
         msg.resize(8);
         std::memcpy(msg.data(), "PCD1", 4);
 
+        uint32_t outCount = 0;
         for (uint32_t i = 0; i < totalPoints; i += step) {
             const float *p = src + (size_t)i * kStride;
-            float x = p[0], y = p[1], z = p[2];
-            // Skip invalid/zero points (common sentinel for "no return").
-            if (x == 0.0f && y == 0.0f && z == 0.0f) continue;
-            const uint8_t *xb = reinterpret_cast<const uint8_t *>(&x);
-            const uint8_t *yb = reinterpret_cast<const uint8_t *>(&y);
-            const uint8_t *zb = reinterpret_cast<const uint8_t *>(&z);
-            msg.insert(msg.end(), xb, xb + 4);
-            msg.insert(msg.end(), yb, yb + 4);
-            msg.insert(msg.end(), zb, zb + 4);
-            outCount++;
+            if (appendPoint(msg, p[0], p[1], p[2])) outCount++;
         }
+        if (outCount == 0) return false;
         std::memcpy(msg.data() + 4, &outCount, 4);
         g_ws.broadcastBinary(msg.data(), msg.size());
+        return true;
     }
 
-    void onCameraNewMergeFrame(AS_CAM_PTR, const AS_SDK_MERGE_s *) override {}
+    bool broadcastDepthImage(const AS_Frame_s &depth) {
+        if (depth.size == 0 || depth.data == nullptr || depth.width == 0 || depth.height == 0) {
+            return false;
+        }
 
-private:
+        const uint32_t totalPixels = depth.width * depth.height;
+        if (totalPixels == 0) return false;
+        const bool isU16 = depth.size == totalPixels * sizeof(uint16_t);
+        const bool isF32 = depth.size == totalPixels * sizeof(float);
+        if (!isU16 && !isF32) return false;
+
+        uint32_t step = (totalPixels + kMaxPoints - 1) / kMaxPoints;
+        if (step < 1) step = 1;
+
+        std::vector<uint8_t> msg;
+        msg.reserve(8 + (size_t)(totalPixels / step) * 3 * sizeof(float));
+        msg.resize(8);
+        std::memcpy(msg.data(), "PCD1", 4);
+
+        const float cx = (float)(depth.width - 1) * 0.5f;
+        const float cy = (float)(depth.height - 1) * 0.5f;
+        const float invScale = 1.0f / (float)((depth.width > depth.height) ? depth.width : depth.height);
+        uint32_t outCount = 0;
+
+        for (uint32_t i = 0; i < totalPixels; i += step) {
+            float z = 0.0f;
+            if (isU16) {
+                uint16_t raw = static_cast<const uint16_t *>(depth.data)[i];
+                if (raw == 0) continue;
+                z = (float)raw * 0.001f; // common SDK depth unit: millimetres.
+            } else {
+                z = static_cast<const float *>(depth.data)[i];
+                if (!std::isfinite(z) || z <= 0.0f) continue;
+                if (z > 20.0f) z *= 0.001f;
+            }
+
+            uint32_t row = i / depth.width;
+            uint32_t col = i - row * depth.width;
+            float x = ((float)col - cx) * invScale * z;
+            float y = -(float)((float)row - cy) * invScale * z;
+            if (appendPoint(msg, x, y, z)) outCount++;
+        }
+
+        if (outCount == 0) return false;
+        std::memcpy(msg.data() + 4, &outCount, 4);
+        g_ws.broadcastBinary(msg.data(), msg.size());
+        return true;
+    }
+
     int logCount_ = 0;
 };
 
