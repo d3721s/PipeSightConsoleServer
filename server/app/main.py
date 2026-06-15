@@ -14,7 +14,7 @@ from app.services.modbus_service import modbus_chassis_service
 from app.services.imu_service import imu_service
 from app.services.odometer_service import odometer_service
 from app.services.storage_service import enforce_media_quota
-from app.ws import camera_control
+from app.ws import camera_control, pointcloud
 
 
 settings_obj = get_settings()
@@ -59,6 +59,7 @@ app.include_router(media.router)
 app.include_router(annotations.router)
 app.include_router(reports.router)
 app.include_router(camera_control.router)
+app.include_router(pointcloud.router)
 app.include_router(media_proxy.router)
 app.include_router(chassis.router)
 

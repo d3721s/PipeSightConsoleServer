@@ -11,9 +11,8 @@ import { activeReport, currentProject, currentSession, notify, toggleReport } fr
 
 const router = useRouter()
 
-// The C++ point-cloud bridge runs on the same host as the backend (the cart),
-// on a fixed WS port. Connect to that host as seen by the browser.
-const bridgeWsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:9090`
+// Use the backend proxy so the browser only needs to reach the main app port.
+const bridgeWsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/pointcloud`
 
 const viewer = ref<InstanceType<typeof PointCloudViewer> | null>(null)
 const zoomLabel = ref('1.0x')

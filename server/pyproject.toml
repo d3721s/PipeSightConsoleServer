@@ -12,7 +12,8 @@ dependencies = [
   "python-multipart",
   "reportlab",
   "pymodbus",
-  "pyserial"
+  "pyserial",
+  "websockets"
 ]
 
 [tool.pytest.ini_options]
