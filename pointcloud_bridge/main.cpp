@@ -45,9 +45,9 @@ constexpr uint16_t kWsPort = 9090;
 constexpr uint16_t kDepthWsPort = 9091;
 // Cap points sent per frame to keep the browser/WebGL smooth. Hardware
 // decimation is preferred (configured on the camera), this is a safety net.
-constexpr uint32_t kMaxPoints = 60000;
-constexpr auto kPointcloudInterval = std::chrono::milliseconds(50);
-constexpr auto kDepthInterval = std::chrono::milliseconds(50);
+constexpr uint32_t kMaxPoints = 30000;
+constexpr auto kPointcloudInterval = std::chrono::milliseconds(66);
+constexpr auto kDepthInterval = std::chrono::milliseconds(66);
 // Floats per point in pointCloud.data. Verified from the first-frame log:
 // size / (width*height) should equal this. xyz = 3 is the SDK default.
 constexpr int kStride = 3;

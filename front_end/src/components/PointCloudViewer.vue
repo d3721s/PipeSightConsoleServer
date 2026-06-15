@@ -16,7 +16,7 @@ const container = ref<HTMLDivElement | null>(null)
 const connected = ref(false)
 const pointCount = ref(0)
 
-const MIN_FRAME_INTERVAL_MS = 50
+const MIN_FRAME_INTERVAL_MS = 66
 const COLOR_STEPS = 512
 
 let renderer: THREE.WebGLRenderer | null = null
@@ -36,6 +36,8 @@ let positionAttribute: THREE.BufferAttribute | null = null
 let colorAttribute: THREE.BufferAttribute | null = null
 let colorArray: Float32Array | null = null
 let disposed = false
+let renderQueued = false
+const onControlsChange = () => requestRender()
 
 const pointColorPalette = buildPointColorPalette()
 
@@ -68,6 +70,7 @@ function initThree() {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
+  controls.addEventListener('change', onControlsChange)
 
   // A subtle grid + axes for spatial reference.
   const grid = new THREE.GridHelper(4, 16, 0x393939, 0x262626)
@@ -83,24 +86,34 @@ function initThree() {
   points = new THREE.Points(geometry, material)
   scene.add(points)
 
-  animate()
+  requestRender()
 }
 
-function animate() {
-  raf = requestAnimationFrame(animate)
-  flushPendingFrame()
-  controls?.update()
+function requestRender() {
+  if (disposed || renderQueued) return
+  renderQueued = true
+  raf = requestAnimationFrame(renderFrame)
+}
+
+function renderFrame() {
+  renderQueued = false
+  const processed = flushPendingFrame()
+  const controlsChanged = controls?.update() ?? false
   if (renderer && scene && camera) renderer.render(scene, camera)
+  if (pendingFrame || processed || controlsChanged) {
+    requestRender()
+  }
 }
 
-function flushPendingFrame(force = false) {
-  if (!pendingFrame) return
+function flushPendingFrame(force = false): boolean {
+  if (!pendingFrame) return false
   const now = performance.now()
-  if (!force && now - lastAppliedFrameAt < MIN_FRAME_INTERVAL_MS) return
+  if (!force && now - lastAppliedFrameAt < MIN_FRAME_INTERVAL_MS) return false
   const buf = pendingFrame
   pendingFrame = null
   processFrame(buf)
   lastAppliedFrameAt = now
+  return true
 }
 
 function processFrame(buf: ArrayBuffer) {
@@ -208,7 +221,10 @@ function connectWs() {
       framedFirstCloud = false
     }
     ws.onmessage = (ev) => {
-      if (ev.data instanceof ArrayBuffer) pendingFrame = ev.data
+      if (ev.data instanceof ArrayBuffer) {
+        pendingFrame = ev.data
+        requestRender()
+      }
     }
     ws.onclose = () => {
       connected.value = false
@@ -245,6 +261,7 @@ function zoomBy(factor: number) {
   const target = controls.target
   camera.position.sub(target).multiplyScalar(factor).add(target)
   controls.update()
+  requestRender()
 }
 
 defineExpose({ snapshot, setPoints, zoomBy })
@@ -270,6 +287,7 @@ onBeforeUnmount(() => {
   ws?.close()
   ws = null
   pendingFrame = null
+  controls?.removeEventListener('change', onControlsChange)
   resizeObs?.disconnect()
   controls?.dispose()
   geometry?.dispose()

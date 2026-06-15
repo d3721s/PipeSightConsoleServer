@@ -17,7 +17,7 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 const connected = ref(false)
 const frameInfo = ref('0x0')
 
-const MIN_FRAME_INTERVAL_MS = 50
+const MIN_FRAME_INTERVAL_MS = 66
 
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
@@ -26,6 +26,7 @@ let raf = 0
 let pendingFrame: ArrayBuffer | null = null
 let lastAppliedFrameAt = 0
 let disposed = false
+let renderQueued = false
 
 const palette = buildPalette()
 
@@ -65,6 +66,7 @@ function connectWs() {
     ws.onmessage = (ev) => {
       if (disposed || !(ev.data instanceof ArrayBuffer)) return
       pendingFrame = ev.data
+      requestRender()
     }
     ws.onclose = () => {
       connected.value = false
@@ -88,9 +90,16 @@ function scheduleReconnect() {
   }, 2000)
 }
 
-function animate() {
-  raf = requestAnimationFrame(animate)
+function requestRender() {
+  if (disposed || renderQueued) return
+  renderQueued = true
+  raf = requestAnimationFrame(renderQueuedFrame)
+}
+
+function renderQueuedFrame() {
+  renderQueued = false
   flushPendingFrame()
+  if (pendingFrame) requestRender()
 }
 
 function flushPendingFrame(force = false) {
@@ -259,7 +268,6 @@ defineExpose({ snapshot })
 
 onMounted(() => {
   disposed = false
-  animate()
   connectWs()
 })
 
