@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CvButton } from '@carbon/vue'
-import { Camera24, ZoomIn24, ZoomOut24, Report24, ChevronLeft24 } from '@carbon/icons-vue'
+import { Camera24, ChevronLeft24, CubeView24, Image24, Report24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
 import PointCloudViewer from '../components/PointCloudViewer.vue'
+import DepthMapViewer from '../components/DepthMapViewer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import { api } from '../api'
 import { distance } from '../stores/odometer'
@@ -11,16 +12,37 @@ import { activeReport, currentProject, currentSession, notify, toggleReport } fr
 
 const router = useRouter()
 
-// Use the backend proxy so the browser only needs to reach the main app port.
-const bridgeWsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/pointcloud`
+type ViewMode = 'pointcloud' | 'depth'
+type ViewerHandle = {
+  snapshot: () => string
+  zoomBy?: (factor: number) => void
+}
 
-const viewer = ref<InstanceType<typeof PointCloudViewer> | null>(null)
+const mode = ref<ViewMode>('pointcloud')
+const modeLabel = computed(() => (mode.value === 'pointcloud' ? '点云' : '深度图'))
+const viewerComponent = computed(() => (mode.value === 'pointcloud' ? PointCloudViewer : DepthMapViewer))
+
+// Use backend proxies so the browser only needs to reach the main app port.
+const bridgeWsUrl = computed(() => {
+  const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
+  const path = mode.value === 'pointcloud' ? '/ws/pointcloud' : '/ws/depth'
+  return `${protocol}://${location.host}${path}`
+})
+
+const viewer = ref<ViewerHandle | null>(null)
 const zoomLabel = ref('1.0x')
 let zoomFactor = 1
 
+function setMode(next: ViewMode) {
+  if (mode.value === next) return
+  mode.value = next
+  viewer.value = null
+}
+
 function nudgeZoom(dir: number) {
+  if (mode.value !== 'pointcloud') return
   // dir>0 zoom in (camera dolly closer), dir<0 zoom out.
-  viewer.value?.zoomBy(dir > 0 ? 0.8 : 1.25)
+  viewer.value?.zoomBy?.(dir > 0 ? 0.8 : 1.25)
   zoomFactor = Math.max(0.2, Math.min(8, zoomFactor * (dir > 0 ? 1.25 : 0.8)))
   zoomLabel.value = `${zoomFactor.toFixed(1)}x`
 }
@@ -28,7 +50,7 @@ function nudgeZoom(dir: number) {
 async function capture3d() {
   const dataUrl = viewer.value?.snapshot()
   if (!dataUrl) {
-    notify('点云画面未就绪', 'warning')
+    notify(`${modeLabel.value}画面未就绪`, 'warning')
     return
   }
   try {
@@ -37,9 +59,9 @@ async function capture3d() {
       sessionId: currentSession.value?.id,
       distanceM: distance.value,
       image: dataUrl,
-      source: '3d'
+      source: mode.value === 'depth' ? 'depth' : '3d'
     })
-    notify(`3D 截图已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
+    notify(`${modeLabel.value}截图已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
   } catch (e) {
     notify((e as Error).message, 'error')
   }
@@ -49,7 +71,7 @@ async function capture3d() {
 <template>
   <div class="console-page">
     <div class="video-area">
-      <point-cloud-viewer ref="viewer" :ws-url="bridgeWsUrl" />
+      <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" />
 
       <osd-overlay
         :distance="distance"
@@ -57,8 +79,7 @@ async function capture3d() {
         :location="currentProject?.location || ''"
       />
 
-      <!-- Bottom-left: zoom cluster (same as console) -->
-      <div class="zoom-cluster">
+      <div v-if="mode === 'pointcloud'" class="zoom-cluster">
         <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomOut24" @click="nudgeZoom(-1)" />
         <span class="zoom-readout">{{ zoomLabel }}</span>
         <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomIn24" @click="nudgeZoom(1)" />
@@ -77,8 +98,30 @@ async function capture3d() {
       </div>
 
       <div class="rail-section">
+        <span class="rail-label">显示</span>
+        <div class="mode-switch">
+          <cv-button
+            class="mode-btn"
+            size="sm"
+            :kind="mode === 'pointcloud' ? 'secondary' : 'ghost'"
+            :icon="CubeView24"
+            :aria-pressed="mode === 'pointcloud'"
+            @click="setMode('pointcloud')"
+          >点云</cv-button>
+          <cv-button
+            class="mode-btn"
+            size="sm"
+            :kind="mode === 'depth' ? 'secondary' : 'ghost'"
+            :icon="Image24"
+            :aria-pressed="mode === 'depth'"
+            @click="setMode('depth')"
+          >深度图</cv-button>
+        </div>
+      </div>
+
+      <div class="rail-section">
         <span class="rail-label">采集</span>
-        <cv-button class="rail-action" :icon="Camera24" @click="capture3d">拍照</cv-button>
+        <cv-button class="rail-action" :icon="Camera24" @click="capture3d">截图</cv-button>
       </div>
     </aside>
   </div>
@@ -144,6 +187,14 @@ async function capture3d() {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.mode-btn {
+  width: 100%;
 }
 .rail-label {
   color: #8d8d8d;

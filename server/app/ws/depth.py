@@ -12,11 +12,11 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.websocket("/ws/pointcloud")
-async def pointcloud(websocket: WebSocket) -> None:
+@router.websocket("/ws/depth")
+async def depth(websocket: WebSocket) -> None:
     await proxy_bridge_stream(
         websocket,
-        get_settings().pointcloud_bridge_ws_url,
+        get_settings().depth_bridge_ws_url,
         logger,
-        "pointcloud bridge",
+        "depth bridge",
     )

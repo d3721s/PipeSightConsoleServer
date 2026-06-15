@@ -1,13 +1,21 @@
 // PipeSight point-cloud bridge.
 //
 // Uses the Angstrong camera SDK (CameraSrv / ICameraStatus) to receive depth
-// camera frames over USB, extracts the point cloud, and broadcasts it to any
-// connected browser over a minimal built-in WebSocket server (ws_server.h).
+// camera frames over USB, extracts the point cloud and raw depth image, and
+// broadcasts them to connected browsers over minimal built-in WebSocket servers
+// (ws_server.h).
 //
 // Wire format (binary WebSocket frame), little-endian:
 //   char[4]  magic  = "PCD1"
 //   uint32   count  = number of points
 //   float32  xyz[count*3]   (x,y,z per point, in the SDK's native units)
+//
+// Depth image wire format (binary WebSocket frame), little-endian:
+//   char[4]  magic  = "DPT1"
+//   uint32   width
+//   uint32   height
+//   uint32   format = 1 for uint16 depth, 2 for float32 depth
+//   uint8    payload[width*height*(format == 1 ? 2 : 4)]
 //
 // Build:  ./build.sh      (see build.sh in this folder)
 // Run:    ./run.sh        (sets LD_LIBRARY_PATH then runs ./pointcloud_bridge)
@@ -34,6 +42,7 @@
 namespace {
 
 constexpr uint16_t kWsPort = 9090;
+constexpr uint16_t kDepthWsPort = 9091;
 // Cap points sent per frame to keep the browser/WebGL smooth. Hardware
 // decimation is preferred (configured on the camera), this is a safety net.
 constexpr uint32_t kMaxPoints = 60000;
@@ -41,7 +50,8 @@ constexpr uint32_t kMaxPoints = 60000;
 // size / (width*height) should equal this. xyz = 3 is the SDK default.
 constexpr int kStride = 3;
 
-ws::Server g_ws;
+ws::Server g_pointcloudWs;
+ws::Server g_depthWs;
 std::atomic<bool> g_running{true};
 
 void handleSigint(int) { g_running = false; }
@@ -49,6 +59,11 @@ void handleSigint(int) { g_running = false; }
 void appendFloat(std::vector<uint8_t> &msg, float value) {
     const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&value);
     msg.insert(msg.end(), bytes, bytes + sizeof(float));
+}
+
+void appendU32(std::vector<uint8_t> &msg, uint32_t value) {
+    const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&value);
+    msg.insert(msg.end(), bytes, bytes + sizeof(uint32_t));
 }
 
 bool appendPoint(std::vector<uint8_t> &msg, float x, float y, float z) {
@@ -78,17 +93,23 @@ public:
     void onCameraNewFrame(AS_CAM_PTR, const AS_SDK_Data_s *pstData) override {
         if (pstData == nullptr) return;
         logFrame(pstData->depthImg, pstData->pointCloud, "frame");
-        if (g_ws.clientCount() == 0) return; // nobody watching; skip work
+        if (g_depthWs.clientCount() > 0) {
+            broadcastDepthFrame(pstData->depthImg);
+        }
+        if (g_pointcloudWs.clientCount() == 0) return; // nobody watching; skip work
         if (broadcastSdkPointCloud(pstData->pointCloud)) return;
-        broadcastDepthImage(pstData->depthImg);
+        broadcastDepthAsPointCloud(pstData->depthImg);
     }
 
     void onCameraNewMergeFrame(AS_CAM_PTR, const AS_SDK_MERGE_s *pstData) override {
         if (pstData == nullptr) return;
         logFrame(pstData->depthImg, pstData->pointCloud, "merge");
-        if (g_ws.clientCount() == 0) return;
+        if (g_depthWs.clientCount() > 0) {
+            broadcastDepthFrame(pstData->depthImg);
+        }
+        if (g_pointcloudWs.clientCount() == 0) return;
         if (broadcastSdkPointCloud(pstData->pointCloud)) return;
-        broadcastDepthImage(pstData->depthImg);
+        broadcastDepthAsPointCloud(pstData->depthImg);
     }
 
 private:
@@ -124,11 +145,11 @@ private:
         }
         if (outCount == 0) return false;
         std::memcpy(msg.data() + 4, &outCount, 4);
-        g_ws.broadcastBinary(msg.data(), msg.size());
+        g_pointcloudWs.broadcastBinary(msg.data(), msg.size());
         return true;
     }
 
-    bool broadcastDepthImage(const AS_Frame_s &depth) {
+    bool broadcastDepthAsPointCloud(const AS_Frame_s &depth) {
         if (depth.size == 0 || depth.data == nullptr || depth.width == 0 || depth.height == 0) {
             return false;
         }
@@ -173,7 +194,34 @@ private:
 
         if (outCount == 0) return false;
         std::memcpy(msg.data() + 4, &outCount, 4);
-        g_ws.broadcastBinary(msg.data(), msg.size());
+        g_pointcloudWs.broadcastBinary(msg.data(), msg.size());
+        return true;
+    }
+
+    bool broadcastDepthFrame(const AS_Frame_s &depth) {
+        if (depth.size == 0 || depth.data == nullptr || depth.width == 0 || depth.height == 0) {
+            return false;
+        }
+
+        const uint32_t totalPixels = depth.width * depth.height;
+        if (totalPixels == 0) return false;
+        const bool isU16 = depth.size == totalPixels * sizeof(uint16_t);
+        const bool isF32 = depth.size == totalPixels * sizeof(float);
+        if (!isU16 && !isF32) return false;
+
+        const uint32_t format = isU16 ? 1 : 2;
+        const size_t payloadBytes = isU16 ? (size_t)totalPixels * sizeof(uint16_t)
+                                          : (size_t)totalPixels * sizeof(float);
+        std::vector<uint8_t> msg;
+        msg.reserve(16 + payloadBytes);
+        msg.insert(msg.end(), {'D', 'P', 'T', '1'});
+        appendU32(msg, depth.width);
+        appendU32(msg, depth.height);
+        appendU32(msg, format);
+        const uint8_t *payload = static_cast<const uint8_t *>(depth.data);
+        msg.insert(msg.end(), payload, payload + payloadBytes);
+
+        g_depthWs.broadcastBinary(msg.data(), msg.size());
         return true;
     }
 
@@ -186,17 +234,24 @@ int main() {
     std::signal(SIGINT, handleSigint);
     std::signal(SIGTERM, handleSigint);
 
-    if (!g_ws.start(kWsPort)) {
+    if (!g_pointcloudWs.start(kWsPort)) {
         fprintf(stderr, "[bridge] failed to start WebSocket server on port %u\n", kWsPort);
         return 1;
     }
-    printf("[bridge] WebSocket server listening on ws://0.0.0.0:%u\n", kWsPort);
+    if (!g_depthWs.start(kDepthWsPort)) {
+        fprintf(stderr, "[bridge] failed to start depth WebSocket server on port %u\n", kDepthWsPort);
+        g_pointcloudWs.stop();
+        return 1;
+    }
+    printf("[bridge] point-cloud WebSocket listening on ws://0.0.0.0:%u\n", kWsPort);
+    printf("[bridge] depth WebSocket listening on ws://0.0.0.0:%u\n", kDepthWsPort);
 
     PointCloudBridge bridge;
     CameraSrv srv(&bridge);
     if (srv.start() != 0) {
         fprintf(stderr, "[bridge] CameraSrv start failed (no camera / permissions?)\n");
-        g_ws.stop();
+        g_pointcloudWs.stop();
+        g_depthWs.stop();
         return 1;
     }
     printf("[bridge] camera service started; waiting for frames. Ctrl-C to quit.\n");
@@ -207,6 +262,7 @@ int main() {
 
     printf("[bridge] shutting down...\n");
     srv.stop();
-    g_ws.stop();
+    g_pointcloudWs.stop();
+    g_depthWs.stop();
     return 0;
 }

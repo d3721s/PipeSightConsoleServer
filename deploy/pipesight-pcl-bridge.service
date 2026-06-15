@@ -1,5 +1,5 @@
 [Unit]
-Description=PipeSight point-cloud bridge (depth camera -> WebSocket :9090)
+Description=PipeSight 3D camera bridge (point cloud :9090, depth :9091)
 After=network-online.target
 Wants=network-online.target
 
