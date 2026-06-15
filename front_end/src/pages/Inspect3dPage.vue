@@ -22,11 +22,12 @@ const mode = ref<ViewMode>('pointcloud')
 const modeLabel = computed(() => (mode.value === 'pointcloud' ? '点云' : '深度图'))
 const viewerComponent = computed(() => (mode.value === 'pointcloud' ? PointCloudViewer : DepthMapViewer))
 
-// Use backend proxies so the browser only needs to reach the main app port.
+// Connect directly to the C++ bridge for the live stream; backend API still
+// handles snapshots and other app calls.
 const bridgeWsUrl = computed(() => {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
-  const path = mode.value === 'pointcloud' ? '/ws/pointcloud' : '/ws/depth'
-  return `${protocol}://${location.host}${path}`
+  const port = mode.value === 'pointcloud' ? 9090 : 9091
+  return `${protocol}://${location.hostname}:${port}`
 })
 
 const viewer = ref<ViewerHandle | null>(null)
