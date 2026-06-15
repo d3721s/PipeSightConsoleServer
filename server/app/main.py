@@ -13,6 +13,7 @@ from app.services.mediamtx_service import mediamtx_service
 from app.services.modbus_service import modbus_chassis_service
 from app.services.imu_service import imu_service
 from app.services.odometer_service import odometer_service
+from app.services.storage_service import enforce_media_quota
 from app.ws import camera_control
 
 
@@ -32,6 +33,10 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    try:
+        enforce_media_quota()
+    except Exception:
+        pass
     mediamtx_service.start()
     odometer_service.start()
     modbus_chassis_service.start()

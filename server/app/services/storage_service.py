@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +18,7 @@ settings = get_settings()
 MEDIA_ROLLING_LIMIT_BYTES = 32 * 1024 * 1024 * 1024
 _ROLLING_MEDIA_TYPES = ("photo", "video")
 _ROLLING_MEDIA_SUFFIXES = {".jpg", ".jpeg", ".json", ".mp4", ".png"}
+_ORPHAN_DELETE_GRACE_S = 300
 
 # Where Linux auto-mounts removable drives. /media/<user>/<label> for desktop
 # auto-mount, /mnt/* and /media/* for manual/legacy mounts, /run/media/<user>/*
@@ -146,16 +148,21 @@ def _managed_media_roots() -> list[Path]:
     ]
 
 
-def _managed_media_usage() -> int:
-    total = 0
+def _managed_media_files() -> list[Path]:
+    files: list[Path] = []
     for root in _managed_media_roots():
         if not root.exists():
             continue
         for path in root.rglob("*"):
             if path.suffix.lower() not in _ROLLING_MEDIA_SUFFIXES:
                 continue
-            total += _file_size(path)
-    return total
+            if path.is_file():
+                files.append(path)
+    return files
+
+
+def _managed_media_usage() -> int:
+    return sum(_file_size(path) for path in _managed_media_files())
 
 
 def _asset_paths(asset: MediaAsset, rendered_paths: list[str]) -> list[Path]:
@@ -198,6 +205,13 @@ def _unlink_managed(path: Path) -> None:
         pass
 
 
+def _path_key(path: Path) -> Path:
+    try:
+        return path.resolve()
+    except OSError:
+        return path
+
+
 def _delete_media_asset(db: Session, asset: MediaAsset, paths: list[Path]) -> None:
     for path in paths:
         _unlink_managed(path)
@@ -213,6 +227,29 @@ def _delete_media_asset(db: Session, asset: MediaAsset, paths: list[Path]) -> No
         db.delete(marker)
 
     db.delete(asset)
+
+
+def _delete_old_orphans(total: int, max_bytes: int, registered_paths: set[Path]) -> int:
+    now = time.time()
+    orphans: list[tuple[float, Path, int]] = []
+    for path in _managed_media_files():
+        key = _path_key(path)
+        if key in registered_paths:
+            continue
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        if now - stat.st_mtime < _ORPHAN_DELETE_GRACE_S:
+            continue
+        orphans.append((stat.st_mtime, path, stat.st_size))
+
+    for _, path, size in sorted(orphans):
+        if total <= max_bytes:
+            break
+        _unlink_managed(path)
+        total -= size
+    return total
 
 
 def enforce_media_quota(
@@ -250,10 +287,12 @@ def enforce_media_quota(
                 rendered_by_asset.setdefault(annotation.media_asset_id, []).append(annotation.rendered_path)
 
     entries: list[tuple[MediaAsset, list[Path], int]] = []
+    registered_paths: set[Path] = set()
     db_total = 0
     for asset in assets:
         paths = _asset_paths(asset, rendered_by_asset.get(asset.id, []))
         size = sum(_file_size(path) for path in paths)
+        registered_paths.update(_path_key(path) for path in paths)
         if size > 0:
             entries.append((asset, paths, size))
             db_total += size
@@ -270,6 +309,9 @@ def enforce_media_quota(
             continue
         _delete_media_asset(db, asset, paths)
         total -= size
+
+    if total > max_bytes:
+        total = _delete_old_orphans(total, max_bytes, registered_paths)
 
     db.commit()
     return max(total, 0)
