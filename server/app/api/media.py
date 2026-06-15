@@ -16,6 +16,7 @@ from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
 from app.services.settings_service import get_setting
 from app.services.snapshot_service import save_png_snapshot, take_snapshot
+from app.services.storage_service import enforce_media_quota
 
 
 router = APIRouter(prefix="/api", tags=["media"])
@@ -76,6 +77,7 @@ def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)) -> Media
     db.add(asset)
     db.commit()
     db.refresh(asset)
+    enforce_media_quota(db, protected_asset_ids={asset.id})
     return asset
 
 
@@ -99,6 +101,7 @@ def create_image_snapshot(payload: ImageSnapshotIn, db: Session = Depends(get_db
     db.add(asset)
     db.commit()
     db.refresh(asset)
+    enforce_media_quota(db, protected_asset_ids={asset.id})
     return asset
 
 

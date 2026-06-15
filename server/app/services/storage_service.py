@@ -5,10 +5,18 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.config import get_settings
+from app.models import Annotation, Marker, MediaAsset
 
 
 settings = get_settings()
+
+MEDIA_ROLLING_LIMIT_BYTES = 32 * 1024 * 1024 * 1024
+_ROLLING_MEDIA_TYPES = ("photo", "video")
+_ROLLING_MEDIA_SUFFIXES = {".jpg", ".jpeg", ".json", ".mp4", ".png"}
 
 # Where Linux auto-mounts removable drives. /media/<user>/<label> for desktop
 # auto-mount, /mnt/* and /media/* for manual/legacy mounts, /run/media/<user>/*
@@ -107,3 +115,161 @@ def validate_path(raw: str) -> StorageTarget:
     if not _is_writable(path):
         raise ValueError(f"路径不可写或无法创建：{path}")
     return describe_target(path)
+
+
+def _path_in_active_storage(path: str | Path | None) -> Path | None:
+    if not path:
+        return None
+    candidate = Path(path)
+    try:
+        candidate.resolve().relative_to(settings.active_storage_dir.resolve())
+    except (OSError, ValueError):
+        return None
+    return candidate
+
+
+def _file_size(path: Path | None) -> int:
+    if path is None:
+        return 0
+    try:
+        return path.stat().st_size if path.is_file() else 0
+    except OSError:
+        return 0
+
+
+def _managed_media_roots() -> list[Path]:
+    root = settings.active_storage_dir
+    return [
+        root / "snapshots",
+        root / "recordings",
+        root / "annotations" / "rendered",
+    ]
+
+
+def _managed_media_usage() -> int:
+    total = 0
+    for root in _managed_media_roots():
+        if not root.exists():
+            continue
+        for path in root.rglob("*"):
+            if path.suffix.lower() not in _ROLLING_MEDIA_SUFFIXES:
+                continue
+            total += _file_size(path)
+    return total
+
+
+def _asset_paths(asset: MediaAsset, rendered_paths: list[str]) -> list[Path]:
+    paths: list[Path] = []
+    media_path = _path_in_active_storage(asset.file_path)
+    if media_path is not None:
+        paths.append(media_path)
+        if asset.type == "video":
+            paths.append(media_path.with_suffix(".json"))
+
+    thumbnail_path = _path_in_active_storage(asset.thumbnail_path)
+    if thumbnail_path is not None:
+        paths.append(thumbnail_path)
+
+    for rendered_path in rendered_paths:
+        path = _path_in_active_storage(rendered_path)
+        if path is not None:
+            paths.append(path)
+
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        try:
+            key = path.resolve()
+        except OSError:
+            key = path
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
+
+
+def _unlink_managed(path: Path) -> None:
+    if _path_in_active_storage(path) is None:
+        return
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def _delete_media_asset(db: Session, asset: MediaAsset, paths: list[Path]) -> None:
+    for path in paths:
+        _unlink_managed(path)
+
+    annotations = db.scalars(
+        select(Annotation).where(Annotation.media_asset_id == asset.id)
+    ).all()
+    for annotation in annotations:
+        db.delete(annotation)
+
+    markers = db.scalars(select(Marker).where(Marker.media_asset_id == asset.id)).all()
+    for marker in markers:
+        db.delete(marker)
+
+    db.delete(asset)
+
+
+def enforce_media_quota(
+    db: Session | None = None,
+    *,
+    max_bytes: int = MEDIA_ROLLING_LIMIT_BYTES,
+    protected_asset_ids: set[int] | None = None,
+) -> int:
+    """Keep photo/video files under the rolling media quota."""
+    if db is None:
+        from app.db import SessionLocal
+
+        with SessionLocal() as owned_db:
+            return enforce_media_quota(
+                owned_db,
+                max_bytes=max_bytes,
+                protected_asset_ids=protected_asset_ids,
+            )
+
+    protected = protected_asset_ids or set()
+    assets = db.scalars(
+        select(MediaAsset)
+        .where(MediaAsset.type.in_(_ROLLING_MEDIA_TYPES))
+        .order_by(MediaAsset.captured_at.asc(), MediaAsset.id.asc())
+    ).all()
+
+    rendered_by_asset: dict[int, list[str]] = {}
+    if assets:
+        asset_ids = [asset.id for asset in assets]
+        annotations = db.scalars(
+            select(Annotation).where(Annotation.media_asset_id.in_(asset_ids))
+        ).all()
+        for annotation in annotations:
+            if annotation.rendered_path:
+                rendered_by_asset.setdefault(annotation.media_asset_id, []).append(annotation.rendered_path)
+
+    entries: list[tuple[MediaAsset, list[Path], int]] = []
+    db_total = 0
+    for asset in assets:
+        paths = _asset_paths(asset, rendered_by_asset.get(asset.id, []))
+        size = sum(_file_size(path) for path in paths)
+        if size > 0:
+            entries.append((asset, paths, size))
+            db_total += size
+
+    total = max(db_total, _managed_media_usage())
+
+    if total <= max_bytes:
+        return total
+
+    for asset, paths, size in entries:
+        if total <= max_bytes:
+            break
+        if asset.id in protected:
+            continue
+        _delete_media_asset(db, asset, paths)
+        total -= size
+
+    db.commit()
+    return max(total, 0)

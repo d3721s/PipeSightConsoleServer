@@ -323,6 +323,12 @@ class RecorderService:
                 )
                 db.add(asset)
                 db.commit()
+                try:
+                    from app.services.storage_service import enforce_media_quota
+
+                    enforce_media_quota(db, protected_asset_ids={asset.id})
+                except Exception:
+                    pass
         except Exception:
             pass
 
