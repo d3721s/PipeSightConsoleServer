@@ -58,7 +58,7 @@ export function startOdometerPolling() {
       } catch {
         chassisConnected.value = false
       }
-    }, 500)
+    }, 400)
   }
 }
 
