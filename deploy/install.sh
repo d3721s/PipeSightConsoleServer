@@ -46,8 +46,30 @@ apt-get install -y \
   python3 python3-venv python3-pip \
   ffmpeg fonts-wqy-zenhei fonts-noto-cjk \
   build-essential g++ \
-  nodejs npm \
-  curl
+  curl ca-certificates
+
+# Vite 7 requires Node.js 20.19+ or 22.12+. Ubuntu's default apt repository can
+# install Node 12 on some target images, which makes npm install warn and the
+# frontend build fail. Use NodeSource 22.x when the current node is too old.
+node_version_ok() {
+  command -v node >/dev/null 2>&1 && node -e "
+    const [major, minor] = process.versions.node.split('.').map(Number);
+    process.exit((major === 20 && minor >= 19) || (major === 22 && minor >= 12) || major > 22 ? 0 : 1);
+  " >/dev/null 2>&1
+}
+
+if node_version_ok; then
+  echo "==> Node.js OK: $(node -v)"
+else
+  echo "==> Installing Node.js 22.x for front-end build..."
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt-get install -y nodejs
+  if ! node_version_ok; then
+    echo "ERROR: Node.js 20.19+ or 22.12+ is required. Current: $(node -v 2>/dev/null || echo missing)" >&2
+    exit 1
+  fi
+  echo "==> Node.js installed: $(node -v), npm $(npm -v)"
+fi
 
 # Serial access for the chassis + IMU.
 usermod -aG dialout "$RUN_USER" || true
