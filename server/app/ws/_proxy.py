@@ -20,7 +20,13 @@ async def proxy_bridge_stream(
 ) -> None:
     await websocket.accept()
     try:
-        async with websockets.connect(target, max_size=None, max_queue=1, open_timeout=3) as upstream:
+        async with websockets.connect(
+            target,
+            max_size=None,
+            max_queue=1,
+            open_timeout=3,
+            ping_interval=None,
+        ) as upstream:
             latest_frame: bytes | str | None = None
             frame_available = asyncio.Event()
 
