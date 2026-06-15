@@ -136,7 +136,7 @@ watch(() => props.digitalZoom, clampOffsets)
 function waitIceGatheringComplete(peer: RTCPeerConnection): Promise<void> {
   if (peer.iceGatheringState === 'complete') return Promise.resolve()
   return new Promise((resolve) => {
-    const timeout = window.setTimeout(resolve, 1200)
+    const timeout = window.setTimeout(resolve, 3000)
     const listener = () => {
       if (peer.iceGatheringState === 'complete') {
         window.clearTimeout(timeout)
@@ -158,7 +158,6 @@ async function start() {
   const peer = new RTCPeerConnection()
   pc = peer
   peer.addTransceiver('video', { direction: 'recvonly' })
-  peer.addTransceiver('audio', { direction: 'recvonly' })
   peer.ontrack = (event) => {
     if (event.streams[0]) {
       currentStream = event.streams[0]
@@ -182,7 +181,10 @@ async function start() {
       body: localDescription.sdp,
       signal: abortController.signal
     })
-    if (!response.ok) throw new Error(`WHEP 连接失败：HTTP ${response.status}`)
+    if (!response.ok) {
+      const detail = (await response.text()).trim()
+      throw new Error(`WHEP connection failed: HTTP ${response.status}${detail ? `: ${detail}` : ''}`)
+    }
     const answer = await response.text()
     await peer.setRemoteDescription({ type: 'answer', sdp: answer })
   } catch (err) {
