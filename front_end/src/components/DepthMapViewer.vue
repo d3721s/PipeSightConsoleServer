@@ -17,9 +17,15 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 const connected = ref(false)
 const frameInfo = ref('0x0')
 
+const MIN_FRAME_INTERVAL_MS = 50
+
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
 let imageData: ImageData | null = null
+let raf = 0
+let pendingFrame: ArrayBuffer | null = null
+let lastAppliedFrameAt = 0
+let disposed = false
 
 const palette = buildPalette()
 
@@ -57,11 +63,12 @@ function connectWs() {
       connected.value = true
     }
     ws.onmessage = (ev) => {
-      if (!(ev.data instanceof ArrayBuffer)) return
-      renderFrame(ev.data)
+      if (disposed || !(ev.data instanceof ArrayBuffer)) return
+      pendingFrame = ev.data
     }
     ws.onclose = () => {
       connected.value = false
+      if (disposed) return
       scheduleReconnect()
     }
     ws.onerror = () => {
@@ -73,11 +80,27 @@ function connectWs() {
 }
 
 function scheduleReconnect() {
+  if (disposed) return
   if (reconnectTimer !== null) return
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null
     connectWs()
   }, 2000)
+}
+
+function animate() {
+  raf = requestAnimationFrame(animate)
+  flushPendingFrame()
+}
+
+function flushPendingFrame(force = false) {
+  if (!pendingFrame) return
+  const now = performance.now()
+  if (!force && now - lastAppliedFrameAt < MIN_FRAME_INTERVAL_MS) return
+  const buf = pendingFrame
+  pendingFrame = null
+  renderFrame(buf)
+  lastAppliedFrameAt = now
 }
 
 function renderFrame(buf: ArrayBuffer) {
@@ -105,14 +128,14 @@ function renderFrame(buf: ArrayBuffer) {
   const expected = HEADER_BYTES + pixelCount * bytesPerPixel
   if (buf.byteLength < expected) return
 
-  const values =
-    format === FORMAT_U16
-      ? new Uint16Array(buf, HEADER_BYTES, pixelCount)
-      : new Float32Array(buf, HEADER_BYTES, pixelCount)
-  renderDepth(values, width, height, format)
+  if (format === FORMAT_U16) {
+    renderDepthU16(new Uint16Array(buf, HEADER_BYTES, pixelCount), width, height)
+  } else {
+    renderDepthF32(new Float32Array(buf, HEADER_BYTES, pixelCount), width, height)
+  }
 }
 
-function renderDepth(values: Uint16Array | Float32Array, width: number, height: number, format: number) {
+function renderDepthU16(values: Uint16Array, width: number, height: number) {
   const el = canvas.value
   const ctx = el?.getContext('2d')
   if (!el || !ctx) return
@@ -127,7 +150,61 @@ function renderDepth(values: Uint16Array | Float32Array, width: number, height: 
   let maxDepth = -Infinity
   let valid = 0
   for (let i = 0; i < values.length; i++) {
-    const depth = toMeters(values[i], format)
+    const raw = values[i]
+    if (!raw) continue
+    const depth = raw * 0.001
+    valid++
+    if (depth < minDepth) minDepth = depth
+    if (depth > maxDepth) maxDepth = depth
+  }
+
+  if (!valid) {
+    ctx.clearRect(0, 0, width, height)
+    frameInfo.value = `${width}x${height} · 无有效深度`
+    return
+  }
+
+  const span = maxDepth > minDepth ? maxDepth - minDepth : 0.001
+  imageData = imageData ?? ctx.createImageData(width, height)
+  const rgba = imageData.data
+  for (let i = 0, o = 0; i < values.length; i++, o += 4) {
+    const raw = values[i]
+    if (!raw) {
+      rgba[o] = 0
+      rgba[o + 1] = 0
+      rgba[o + 2] = 0
+      rgba[o + 3] = 255
+      continue
+    }
+
+    const t = Math.max(0, Math.min(1, (raw * 0.001 - minDepth) / span))
+    const p = Math.round(t * (PALETTE_SIZE - 1)) * 3
+    rgba[o] = palette[p]
+    rgba[o + 1] = palette[p + 1]
+    rgba[o + 2] = palette[p + 2]
+    rgba[o + 3] = 255
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+  frameInfo.value = `${width}x${height} · ${minDepth.toFixed(2)}-${maxDepth.toFixed(2)} m`
+}
+
+function renderDepthF32(values: Float32Array, width: number, height: number) {
+  const el = canvas.value
+  const ctx = el?.getContext('2d')
+  if (!el || !ctx) return
+
+  if (el.width !== width || el.height !== height) {
+    el.width = width
+    el.height = height
+    imageData = null
+  }
+
+  let minDepth = Infinity
+  let maxDepth = -Infinity
+  let valid = 0
+  for (let i = 0; i < values.length; i++) {
+    const depth = normalizeF32Depth(values[i])
     if (!Number.isFinite(depth) || depth <= 0) continue
     valid++
     if (depth < minDepth) minDepth = depth
@@ -145,7 +222,7 @@ function renderDepth(values: Uint16Array | Float32Array, width: number, height: 
   const rgba = imageData.data
 
   for (let i = 0, o = 0; i < values.length; i++, o += 4) {
-    const depth = toMeters(values[i], format)
+    const depth = normalizeF32Depth(values[i])
     if (!Number.isFinite(depth) || depth <= 0) {
       rgba[o] = 0
       rgba[o + 1] = 0
@@ -166,13 +243,13 @@ function renderDepth(values: Uint16Array | Float32Array, width: number, height: 
   frameInfo.value = `${width}x${height} · ${minDepth.toFixed(2)}-${maxDepth.toFixed(2)} m`
 }
 
-function toMeters(value: number, format: number): number {
-  if (format === FORMAT_U16) return value * 0.001
+function normalizeF32Depth(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0
   return value > 20 ? value * 0.001 : value
 }
 
 function snapshot(): string {
+  flushPendingFrame(true)
   const el = canvas.value
   if (!el || el.width === 0 || el.height === 0) return ''
   return el.toDataURL('image/png')
@@ -180,12 +257,19 @@ function snapshot(): string {
 
 defineExpose({ snapshot })
 
-onMounted(connectWs)
+onMounted(() => {
+  disposed = false
+  animate()
+  connectWs()
+})
 
 onBeforeUnmount(() => {
+  disposed = true
+  cancelAnimationFrame(raf)
   if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
   ws?.close()
   ws = null
+  pendingFrame = null
 })
 </script>
 

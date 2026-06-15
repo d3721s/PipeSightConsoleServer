@@ -16,6 +16,9 @@ const container = ref<HTMLDivElement | null>(null)
 const connected = ref(false)
 const pointCount = ref(0)
 
+const MIN_FRAME_INTERVAL_MS = 50
+const COLOR_STEPS = 512
+
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
@@ -27,6 +30,27 @@ let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
 let resizeObs: ResizeObserver | null = null
 let framedFirstCloud = false
+let pendingFrame: ArrayBuffer | null = null
+let lastAppliedFrameAt = 0
+let positionAttribute: THREE.BufferAttribute | null = null
+let colorAttribute: THREE.BufferAttribute | null = null
+let colorArray: Float32Array | null = null
+let disposed = false
+
+const pointColorPalette = buildPointColorPalette()
+
+function buildPointColorPalette(): Float32Array {
+  const out = new Float32Array(COLOR_STEPS * 3)
+  const color = new THREE.Color()
+  for (let i = 0; i < COLOR_STEPS; i++) {
+    const t = i / (COLOR_STEPS - 1)
+    color.setHSL(0.7 - 0.7 * t, 0.9, 0.5)
+    out[i * 3] = color.r
+    out[i * 3 + 1] = color.g
+    out[i * 3 + 2] = color.b
+  }
+  return out
+}
 
 function initThree() {
   const el = container.value!
@@ -36,8 +60,8 @@ function initThree() {
   camera = new THREE.PerspectiveCamera(60, el.clientWidth / el.clientHeight, 0.01, 1000)
   camera.position.set(0, 0, 2)
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
   renderer.setSize(el.clientWidth, el.clientHeight)
   el.appendChild(renderer.domElement)
 
@@ -64,8 +88,31 @@ function initThree() {
 
 function animate() {
   raf = requestAnimationFrame(animate)
+  flushPendingFrame()
   controls?.update()
   if (renderer && scene && camera) renderer.render(scene, camera)
+}
+
+function flushPendingFrame(force = false) {
+  if (!pendingFrame) return
+  const now = performance.now()
+  if (!force && now - lastAppliedFrameAt < MIN_FRAME_INTERVAL_MS) return
+  const buf = pendingFrame
+  pendingFrame = null
+  processFrame(buf)
+  lastAppliedFrameAt = now
+}
+
+function processFrame(buf: ArrayBuffer) {
+  if (buf.byteLength < 8) return
+  const view = new DataView(buf)
+  // magic "PCD1"
+  if (view.getUint8(0) !== 0x50 || view.getUint8(1) !== 0x43) return
+  const count = view.getUint32(4, true)
+  const expected = 8 + count * 3 * 4
+  if (buf.byteLength < expected) return
+  const xyz = new Float32Array(buf, 8, count * 3)
+  setPoints(xyz)
 }
 
 // Replace the point cloud. `xyz` is a flat Float32Array [x,y,z, x,y,z, ...].
@@ -74,8 +121,23 @@ function setPoints(xyz: Float32Array) {
   const count = Math.floor(xyz.length / 3)
   pointCount.value = count
 
+  if (positionAttribute && positionAttribute.array instanceof Float32Array && positionAttribute.array.length === xyz.length) {
+    positionAttribute.array.set(xyz)
+    positionAttribute.needsUpdate = true
+  } else {
+    positionAttribute = new THREE.BufferAttribute(xyz, 3)
+    positionAttribute.setUsage(THREE.DynamicDrawUsage)
+    geometry.setAttribute('position', positionAttribute)
+  }
+
   // Color points by depth (z) for readability.
-  const colors = new Float32Array(count * 3)
+  if (!colorArray || colorArray.length !== count * 3) {
+    colorArray = new Float32Array(count * 3)
+    colorAttribute = new THREE.BufferAttribute(colorArray, 3)
+    colorAttribute.setUsage(THREE.DynamicDrawUsage)
+    geometry.setAttribute('color', colorAttribute)
+  }
+  const colors = colorArray
   let zmin = Infinity
   let zmax = -Infinity
   for (let i = 0; i < count; i++) {
@@ -84,18 +146,17 @@ function setPoints(xyz: Float32Array) {
     if (z > zmax) zmax = z
   }
   const span = zmax - zmin || 1
-  const color = new THREE.Color()
   for (let i = 0; i < count; i++) {
     const t = (xyz[i * 3 + 2] - zmin) / span
-    color.setHSL(0.7 - 0.7 * t, 0.9, 0.5) // blue(far) -> red(near)
-    colors[i * 3] = color.r
-    colors[i * 3 + 1] = color.g
-    colors[i * 3 + 2] = color.b
+    const p = Math.max(0, Math.min(COLOR_STEPS - 1, Math.floor(t * (COLOR_STEPS - 1)))) * 3
+    colors[i * 3] = pointColorPalette[p]
+    colors[i * 3 + 1] = pointColorPalette[p + 1]
+    colors[i * 3 + 2] = pointColorPalette[p + 2]
   }
 
-  geometry.setAttribute('position', new THREE.BufferAttribute(xyz, 3))
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  geometry.computeBoundingSphere()
+  if (colorAttribute) {
+    colorAttribute.needsUpdate = true
+  }
   if (!framedFirstCloud) {
     frameCloud()
     framedFirstCloud = true
@@ -147,20 +208,11 @@ function connectWs() {
       framedFirstCloud = false
     }
     ws.onmessage = (ev) => {
-      const buf = ev.data as ArrayBuffer
-      if (buf.byteLength < 8) return
-      const view = new DataView(buf)
-      // magic "PCD1"
-      if (view.getUint8(0) !== 0x50 || view.getUint8(1) !== 0x43) return
-      const count = view.getUint32(4, true)
-      const expected = 8 + count * 3 * 4
-      if (buf.byteLength < expected) return
-      const xyz = new Float32Array(buf, 8, count * 3)
-      // Copy out (the view is backed by the socket buffer).
-      setPoints(new Float32Array(xyz))
+      if (ev.data instanceof ArrayBuffer) pendingFrame = ev.data
     }
     ws.onclose = () => {
       connected.value = false
+      if (disposed) return
       scheduleReconnect()
     }
     ws.onerror = () => {
@@ -172,6 +224,7 @@ function connectWs() {
 }
 
 function scheduleReconnect() {
+  if (disposed) return
   if (reconnectTimer !== null) return
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null
@@ -181,6 +234,7 @@ function scheduleReconnect() {
 
 // Capture the current 3D view as a PNG data URL (for snapshots).
 function snapshot(): string {
+  flushPendingFrame(true)
   if (renderer && scene && camera) renderer.render(scene, camera)
   return renderer ? renderer.domElement.toDataURL('image/png') : ''
 }
@@ -196,6 +250,7 @@ function zoomBy(factor: number) {
 defineExpose({ snapshot, setPoints, zoomBy })
 
 onMounted(() => {
+  disposed = false
   initThree()
   connectWs()
   resizeObs = new ResizeObserver(() => {
@@ -209,10 +264,12 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   cancelAnimationFrame(raf)
   if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
   ws?.close()
   ws = null
+  pendingFrame = null
   resizeObs?.disconnect()
   controls?.dispose()
   geometry?.dispose()

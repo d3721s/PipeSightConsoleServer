@@ -46,6 +46,8 @@ constexpr uint16_t kDepthWsPort = 9091;
 // Cap points sent per frame to keep the browser/WebGL smooth. Hardware
 // decimation is preferred (configured on the camera), this is a safety net.
 constexpr uint32_t kMaxPoints = 60000;
+constexpr auto kPointcloudInterval = std::chrono::milliseconds(50);
+constexpr auto kDepthInterval = std::chrono::milliseconds(50);
 // Floats per point in pointCloud.data. Verified from the first-frame log:
 // size / (width*height) should equal this. xyz = 3 is the SDK default.
 constexpr int kStride = 3;
@@ -93,10 +95,11 @@ public:
     void onCameraNewFrame(AS_CAM_PTR, const AS_SDK_Data_s *pstData) override {
         if (pstData == nullptr) return;
         logFrame(pstData->depthImg, pstData->pointCloud, "frame");
-        if (g_depthWs.clientCount() > 0) {
+        if (g_depthWs.clientCount() > 0 && shouldSendDepth()) {
             broadcastDepthFrame(pstData->depthImg);
         }
         if (g_pointcloudWs.clientCount() == 0) return; // nobody watching; skip work
+        if (!shouldSendPointcloud()) return;
         if (broadcastSdkPointCloud(pstData->pointCloud)) return;
         broadcastDepthAsPointCloud(pstData->depthImg);
     }
@@ -104,15 +107,31 @@ public:
     void onCameraNewMergeFrame(AS_CAM_PTR, const AS_SDK_MERGE_s *pstData) override {
         if (pstData == nullptr) return;
         logFrame(pstData->depthImg, pstData->pointCloud, "merge");
-        if (g_depthWs.clientCount() > 0) {
+        if (g_depthWs.clientCount() > 0 && shouldSendDepth()) {
             broadcastDepthFrame(pstData->depthImg);
         }
         if (g_pointcloudWs.clientCount() == 0) return;
+        if (!shouldSendPointcloud()) return;
         if (broadcastSdkPointCloud(pstData->pointCloud)) return;
         broadcastDepthAsPointCloud(pstData->depthImg);
     }
 
 private:
+    bool shouldSendDepth() {
+        return shouldSend(lastDepthSend_, kDepthInterval);
+    }
+
+    bool shouldSendPointcloud() {
+        return shouldSend(lastPointcloudSend_, kPointcloudInterval);
+    }
+
+    bool shouldSend(std::chrono::steady_clock::time_point &last, std::chrono::milliseconds interval) {
+        const auto now = std::chrono::steady_clock::now();
+        if (last.time_since_epoch().count() != 0 && now - last < interval) return false;
+        last = now;
+        return true;
+    }
+
     void logFrame(const AS_Frame_s &depth, const AS_Frame_s &pc, const char *kind) {
         if (logCount_ >= 10) return;
         unsigned long depthPixels = (unsigned long)depth.width * depth.height;
@@ -226,6 +245,8 @@ private:
     }
 
     int logCount_ = 0;
+    std::chrono::steady_clock::time_point lastPointcloudSend_{};
+    std::chrono::steady_clock::time_point lastDepthSend_{};
 };
 
 } // namespace
