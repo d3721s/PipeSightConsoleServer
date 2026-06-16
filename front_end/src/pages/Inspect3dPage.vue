@@ -62,7 +62,7 @@ async function capture3d() {
       image: dataUrl,
       source: mode.value === 'depth' ? 'depth' : '3d'
     })
-    notify(`${modeLabel.value}截图已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
+    notify(`${modeLabel.value}拍照已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
   } catch (e) {
     notify((e as Error).message, 'error')
   }
@@ -123,7 +123,7 @@ async function capture3d() {
 
       <div class="rail-section">
         <span class="rail-label">采集</span>
-        <cv-button class="rail-action" :icon="Camera24" @click="capture3d">截图</cv-button>
+        <cv-button class="rail-action" :icon="Camera24" @click="capture3d">拍照</cv-button>
       </div>
     </aside>
   </div>
