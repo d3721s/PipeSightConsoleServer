@@ -8,6 +8,7 @@ import type { Project, Report, Session } from '../types'
 export const currentProject = ref<Project | null>(null)
 export const currentSession = ref<Session | null>(null)
 export const activeReport = ref<Report | null>(null)
+export const reportToggling = ref(false)
 
 // --- Global toast notification ----------------------------------------------
 export interface Notice {
@@ -46,20 +47,29 @@ export async function createProjectWithSession(form: Record<string, unknown>) {
 }
 
 export async function toggleReport() {
-  if (activeReport.value) {
-    activeReport.value = await api.stopReport(activeReport.value.id)
-    notify('报告记录已停止', 'info')
-    return
+  if (reportToggling.value) return
+  reportToggling.value = true
+  try {
+    if (activeReport.value) {
+      await api.stopReport(activeReport.value.id)
+      activeReport.value = null
+      notify('报告记录已停止', 'info')
+      return
+    }
+    if (!currentProject.value) {
+      notify('请先新建项目', 'warning')
+      return
+    }
+    activeReport.value = await api.startReport({
+      projectId: currentProject.value.id,
+      sessionId: currentSession.value?.id,
+      title: `${currentProject.value.name} 巡检报告`,
+      location: currentProject.value.location
+    })
+    notify('报告记录已开启', 'success')
+  } catch (e) {
+    notify((e as Error).message, 'error')
+  } finally {
+    reportToggling.value = false
   }
-  if (!currentProject.value) {
-    notify('请先新建项目', 'warning')
-    return
-  }
-  activeReport.value = await api.startReport({
-    projectId: currentProject.value.id,
-    sessionId: currentSession.value?.id,
-    title: `${currentProject.value.name} 巡检报告`,
-    location: currentProject.value.location
-  })
-  notify('报告记录已开启', 'success')
 }

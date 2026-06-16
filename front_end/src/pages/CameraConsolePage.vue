@@ -28,7 +28,7 @@ import {
   stream
 } from '../stores/cameras'
 import { distance } from '../stores/odometer'
-import { activeReport, currentProject, currentSession, notify, toggleReport } from '../stores/session'
+import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 
 const router = useRouter()
 
@@ -149,8 +149,9 @@ async function toggleRecording() {
           size="sm"
           :kind="activeReport ? 'danger' : 'secondary'"
           :icon="Report24"
+          :disabled="reportToggling"
           @click="toggleReport"
-        >{{ activeReport ? '停止报告' : '开启报告' }}</cv-button>
+        >{{ reportToggling ? '处理中' : activeReport ? '停止报告' : '开启报告' }}</cv-button>
       </div>
 
       <div class="rail-section">
