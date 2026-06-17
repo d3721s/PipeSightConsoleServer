@@ -15,12 +15,6 @@ def telemetry() -> dict:
     t = modbus_chassis_service.get_telemetry()
     imu = imu_service.snapshot()
     imu_fresh = bool(imu["fresh"])
-    imu_last_frame_age_s = imu["lastFrameAgeS"]
-    imu_stalled = (
-        imu["portOpen"]
-        and imu_last_frame_age_s is not None
-        and imu_last_frame_age_s > 2.0
-    )
     return {
         "connected": t.connected,
         "leftSpeed": t.left_speed,
@@ -32,21 +26,6 @@ def telemetry() -> dict:
         "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
         "imuConnected": imu_fresh,
-        "imuDiagnostics": True,
-        "imuPortOpen": imu["portOpen"],
-        "imuFresh": imu_fresh,
-        "imuStalled": imu_stalled,
-        "imuLastFrameAgeS": imu_last_frame_age_s,
-        "imuLastRxAgeS": imu["lastRxAgeS"],
-        "imuRxBytes": imu["rxBytes"],
-        "imuValidFrames": imu["validFrames"],
-        "imuBadFrames": imu["badFrames"],
-        "imuSkippedBytes": imu["skippedBytes"],
-        "imuBufferedBytes": imu["bufferedBytes"],
-        "imuLastRxHex": imu["lastRxHex"],
-        "imuLastFrameHex": imu["lastFrameHex"],
-        "imuLastBadFrameHex": imu["lastBadFrameHex"],
-        "imuLastError": imu["lastError"],
         "roll": imu["roll"] if imu_fresh else None,
         "pitch": imu["pitch"] if imu_fresh else None,
         "yaw": imu["yaw"] if imu_fresh else None,

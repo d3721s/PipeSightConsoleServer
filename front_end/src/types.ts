@@ -80,21 +80,6 @@ export interface ChassisTelemetry {
   mode: number | null    // 0 remote, 1 speed, 3 position, 4 joystick
   error: number | null
   imuConnected: boolean
-  imuDiagnostics?: boolean
-  imuPortOpen?: boolean
-  imuFresh?: boolean
-  imuStalled?: boolean
-  imuLastFrameAgeS?: number | null
-  imuLastRxAgeS?: number | null
-  imuRxBytes?: number
-  imuValidFrames?: number
-  imuBadFrames?: number
-  imuSkippedBytes?: number
-  imuBufferedBytes?: number
-  imuLastRxHex?: string | null
-  imuLastFrameHex?: string | null
-  imuLastBadFrameHex?: string | null
-  imuLastError?: string | null
   roll: number | null
   pitch: number | null
   yaw: number | null
