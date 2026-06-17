@@ -57,10 +57,8 @@ def build_ffmpeg_osd_filter(textfile: str | Path, *, fontfile: str = OSD_FONT, r
     text_y = OSD_PANEL_Y + OSD_PADDING_Y
     panel_h = OSD_PADDING_Y * 2 + OSD_LINE_HEIGHT * OSD_LINE_COUNT
 
-    # Keep this compatible with older ffmpeg builds: some drawtext versions only
-    # accept a single integer for boxborderw, not the four-side "a|b|c|d" form.
-    # Draw the panel and accent with drawbox, then render text without drawtext's
-    # own box.
+    # Keep this compatible with older ffmpeg builds by drawing the panel and
+    # accent separately, then rendering text without drawtext's own box.
     panel_w = "iw*0.62"
     reload_opt = ":reload=1" if reload else ""
 

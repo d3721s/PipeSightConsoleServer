@@ -202,10 +202,12 @@ async function toggleRecording() {
   bottom: 0;
   z-index: 0;
   height: auto;
+  opacity: 0;
   pointer-events: none;
 }
 .console-page.persistent-console.is-active {
   z-index: 2;
+  opacity: 1;
   pointer-events: auto;
 }
 .video-area {
