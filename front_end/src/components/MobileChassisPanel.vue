@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { CvSlider } from '@carbon/vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
