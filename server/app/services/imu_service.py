@@ -93,7 +93,7 @@ class ImuService:
 
         period = self._bounded_u16(settings.imu_light_pwm_period_us, minimum=1)
         d1_pulse, d3_pulse = self._light_pulses(value, period)
-        commands = [
+        final_commands = [
             (CMD_D1MODE, bytes([PORT_MODE_PWM])),
             (CMD_D3MODE, bytes([PORT_MODE_PWM])),
             (CMD_D1PERIOD, self._u16le(period)),
@@ -101,12 +101,22 @@ class ImuService:
             (CMD_D1PULSE, self._u16le(d1_pulse)),
             (CMD_D3PULSE, self._u16le(d3_pulse)),
         ]
+        write_commands = [
+            (CMD_D1MODE, bytes([PORT_MODE_PWM])),
+            (CMD_D3MODE, bytes([PORT_MODE_PWM])),
+            (CMD_D1PULSE, self._u16le(0)),
+            (CMD_D3PULSE, self._u16le(0)),
+            (CMD_D1PERIOD, self._u16le(period)),
+            (CMD_D3PERIOD, self._u16le(period)),
+            (CMD_D1PULSE, self._u16le(d1_pulse)),
+            (CMD_D3PULSE, self._u16le(d3_pulse)),
+        ]
 
         with self._command_lock:
-            for command_id, data in commands:
+            for command_id, data in write_commands:
                 if not self._write_command(command_id, data):
                     return False
-            for command_id, expected in commands:
+            for command_id, expected in final_commands:
                 actual = self._read_command(command_id)
                 if actual != expected:
                     return False
