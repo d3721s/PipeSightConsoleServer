@@ -15,13 +15,14 @@ def telemetry() -> dict:
     t = modbus_chassis_service.get_telemetry()
     imu = imu_service.snapshot()
     imu_fresh = bool(imu["fresh"])
+    light = imu_service.get_light()
     return {
         "connected": t.connected,
         "leftSpeed": t.left_speed,
         "rightSpeed": t.right_speed,
         "leftMileage": t.left_mileage,   # raw encoder pulses
         "rightMileage": t.right_mileage,
-        "light": t.light,                # 1 off / 2 low / 3 high
+        "light": light,                  # IMU D1/D3 PWM: 1 off / 2 low / 3 high
         "mode": t.mode,                  # 0 remote / 1 speed / 3 position / 4 joystick
         "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
@@ -37,9 +38,8 @@ class LightIn(BaseModel):
 
 @router.post("/light")
 def set_light(payload: LightIn) -> dict:
-    # Writes the register then reads it back; only reports success on confirm.
-    if not modbus_chassis_service.set_light(payload.value):
-        raise HTTPException(status_code=502, detail="底盘未确认灯光指令")
+    if not imu_service.set_light(payload.value):
+        raise HTTPException(status_code=502, detail="IMU未确认灯光PWM指令")
     return {"ok": True, "light": payload.value}
 
 

@@ -76,7 +76,7 @@ export interface ChassisTelemetry {
   rightSpeed: number | null
   leftMileage: number | null
   rightMileage: number | null
-  light: number | null   // 1 off, 2 low, 3 high
+  light: number | null   // IMU D1/D3 PWM: 1 off, 2 low, 3 high
   mode: number | null    // 0 remote, 1 speed, 3 position, 4 joystick
   error: number | null
   roll: number | null

@@ -7,7 +7,7 @@ import { api } from '../api'
 export const distance = ref(0)
 export const odometerConnected = ref(false)
 
-// --- Mobile-chassis telemetry (from Modbus via /api/chassis/telemetry) ------
+// --- Mobile-chassis telemetry (Modbus chassis + IMU light/attitude) ---------
 export const leftWheelM = ref<number | null>(null)
 export const rightWheelM = ref<number | null>(null)
 export const leftWheelSpeed = ref<number | null>(null)

@@ -15,7 +15,7 @@ import {
   eulerYaw
 } from '../stores/odometer'
 
-// Light: 1 off / 2 low beam / 3 high beam (Modbus reg 0x3D).
+// Light: 1 off / 2 low beam / 3 high beam (IMU D1/D3 PWM).
 // Mode: APP = 485 joystick mode (4), 遥控器 = wireless remote (0) (reg 0x50).
 const lights: { value: number; label: string }[] = [
   { value: 1, label: '关闭' },
@@ -39,7 +39,7 @@ async function selectLight(value: number) {
     chassisLight.value = value // optimistic; telemetry poll will reconcile
     notify('灯光已设置', 'success')
   } catch (e) {
-    notify((e as Error).message || '底盘未确认灯光指令', 'error')
+    notify((e as Error).message || 'IMU未确认灯光PWM指令', 'error')
   } finally {
     lightPending.value = false
   }
