@@ -93,7 +93,7 @@ async function clearOdometer() {
 const fmtPulses = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtBattery = (v: number | null) => (v === null ? '--' : v.toFixed(2))
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
-const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
+const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(4)}°`)
 </script>
 
 <template>
@@ -167,14 +167,18 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   opacity: 0.88;
 }
 .pwm-row {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0;
 }
 .pwm-label {
-  color: #ffffff;
+  color: #8d8d8d;
   font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 .pwm-controls {
   display: grid;
