@@ -27,7 +27,7 @@ const modes: { value: number; label: string }[] = [
   { value: 0, label: '遥控器' }
 ]
 
-// Disable the group while a write is awaiting the chassis confirmation.
+// Disable the group while a write is awaiting confirmation.
 const lightPending = ref(false)
 const modePending = ref(false)
 
@@ -38,8 +38,8 @@ async function selectLight(value: number) {
     await api.setChassisLight(value)
     chassisLight.value = value // optimistic; telemetry poll will reconcile
     notify('灯光已设置', 'success')
-  } catch (e) {
-    notify((e as Error).message || 'IMU未确认灯光PWM指令', 'error')
+  } catch {
+    notify('IMU未确认灯光PWM指令', 'error')
   } finally {
     lightPending.value = false
   }
