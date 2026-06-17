@@ -16,6 +16,7 @@ def telemetry() -> dict:
     imu = imu_service.snapshot()
     imu_fresh = bool(imu["fresh"])
     light = imu_service.get_light()
+    light_pwm = imu_service.get_light_pwm()
     return {
         "connected": t.connected,
         "leftSpeed": t.left_speed,
@@ -23,6 +24,7 @@ def telemetry() -> dict:
         "leftMileage": t.left_mileage,   # raw encoder pulses
         "rightMileage": t.right_mileage,
         "light": light,                  # IMU D1/D3 PWM: 1 off / 2 low / 3 high
+        "lightPwm": light_pwm,
         "mode": t.mode,                  # 0 remote / 1 speed / 3 position / 4 joystick
         "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
@@ -36,11 +38,28 @@ class LightIn(BaseModel):
     value: int = Field(ge=1, le=3)  # 1 off, 2 low beam, 3 high beam
 
 
+class LightPwmIn(BaseModel):
+    periodUs: int | None = Field(default=None, ge=1, le=65535)
+    d1PulseUs: int = Field(ge=0, le=65535)
+    d3PulseUs: int = Field(ge=0, le=65535)
+
+
 @router.post("/light")
 def set_light(payload: LightIn) -> dict:
     if not imu_service.set_light(payload.value):
         raise HTTPException(status_code=502, detail="IMU未确认灯光PWM指令")
     return {"ok": True, "light": payload.value}
+
+
+@router.post("/light/pwm")
+def set_light_pwm(payload: LightPwmIn) -> dict:
+    if not imu_service.set_light_pwm(
+        payload.d1PulseUs,
+        payload.d3PulseUs,
+        payload.periodUs,
+    ):
+        raise HTTPException(status_code=502, detail="IMU未确认灯光PWM指令")
+    return {"ok": True, "lightPwm": imu_service.get_light_pwm()}
 
 
 class ModeIn(BaseModel):

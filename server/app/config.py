@@ -51,13 +51,14 @@ class Settings(BaseSettings):
     imu_serial_port: str = "/dev/ttyUSB-IMU"
     imu_baudrate: int = 115200
     # Light output through the IMU's D1/D3 PWM pins. Defaults mean:
-    # 1/off: D1=0%, D3=0%; 2/low: D1=100%, D3=0%; 3/high: D1=0%, D3=100%.
+    # 1/off: D1=0%, D3=0%; 2/low: both=50%; 3/high: both=90%.
+    # Keep high below 100% so drivers that require PWM edges still see a pulse.
     # Override with PIPESIGHT_IMU_LIGHT_* if the driver expects another duty.
     imu_light_pwm_period_us: int = 1000
-    imu_light_low_d1_pulse_us: int = 1000
-    imu_light_low_d3_pulse_us: int = 0
-    imu_light_high_d1_pulse_us: int = 0
-    imu_light_high_d3_pulse_us: int = 1000
+    imu_light_low_d1_pulse_us: int = 500
+    imu_light_low_d3_pulse_us: int = 500
+    imu_light_high_d1_pulse_us: int = 900
+    imu_light_high_d3_pulse_us: int = 900
     pointcloud_bridge_ws_url: str = "ws://127.0.0.1:9090"
     depth_bridge_ws_url: str = "ws://127.0.0.1:9091"
 

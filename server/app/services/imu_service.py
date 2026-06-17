@@ -53,6 +53,7 @@ class ImuService:
         self._pitch: float | None = None
         self._yaw: float | None = None
         self._light: int | None = None
+        self._light_pwm: dict[str, int] | None = None
         self._connected = False
         self._last_frame_at: float | None = None
         self._last_logged_error: str | None = None
@@ -86,6 +87,10 @@ class ImuService:
         with self._lock:
             return self._light
 
+    def get_light_pwm(self) -> dict[str, int] | None:
+        with self._lock:
+            return dict(self._light_pwm) if self._light_pwm is not None else None
+
     def set_light(self, value: int) -> bool:
         value = int(value)
         if value not in (1, 2, 3):
@@ -93,6 +98,21 @@ class ImuService:
 
         period = self._bounded_u16(settings.imu_light_pwm_period_us, minimum=1)
         d1_pulse, d3_pulse = self._light_pulses(value, period)
+        return self.set_light_pwm(d1_pulse, d3_pulse, period, light=value)
+
+    def set_light_pwm(
+        self,
+        d1_pulse_us: int,
+        d3_pulse_us: int,
+        period_us: int | None = None,
+        light: int | None = None,
+    ) -> bool:
+        period = self._bounded_u16(
+            settings.imu_light_pwm_period_us if period_us is None else period_us,
+            minimum=1,
+        )
+        d1_pulse = self._bounded_pulse(d1_pulse_us, period)
+        d3_pulse = self._bounded_pulse(d3_pulse_us, period)
         final_commands = [
             (CMD_D1MODE, bytes([PORT_MODE_PWM])),
             (CMD_D3MODE, bytes([PORT_MODE_PWM])),
@@ -113,6 +133,13 @@ class ImuService:
         ]
 
         with self._command_lock:
+            logger.info(
+                "Setting IMU light PWM: light=%s period_us=%s d1_pulse_us=%s d3_pulse_us=%s",
+                light,
+                period,
+                d1_pulse,
+                d3_pulse,
+            )
             for command_id, data in write_commands:
                 if not self._write_command(command_id, data):
                     return False
@@ -122,7 +149,12 @@ class ImuService:
                     return False
 
         with self._lock:
-            self._light = value
+            self._light = light
+            self._light_pwm = {
+                "periodUs": period,
+                "d1PulseUs": d1_pulse,
+                "d3PulseUs": d3_pulse,
+            }
         return True
 
     def snapshot(self) -> dict:
