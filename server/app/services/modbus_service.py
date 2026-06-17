@@ -10,21 +10,20 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# Chassis Modbus RTU map (from the protocol doc, 485 joystick mode).
+# Chassis Modbus RTU map (from the protocol doc).
 REG_JOY_VERTICAL = 0x0A    # signed -800..800 (Y / forward)
 REG_JOY_HORIZONTAL = 0x0B  # signed -800..800 (X)
-REG_L_SPEED = 0x36         # signed, read-only (actual left wheel speed)
-REG_R_SPEED = 0x37         # signed, read-only (actual right wheel speed)
-REG_L_MILEAGE_H = 0x38     # 32-bit unsigned pulses, H/L (left)
-REG_L_MILEAGE_L = 0x39
-REG_R_MILEAGE_H = 0x3A     # 32-bit unsigned pulses, H/L (right)
-REG_R_MILEAGE_L = 0x3B
-REG_LIGHT = 0x3D           # rw: 0x01 off, 0x02 low beam, 0x03 high beam
-REG_ERROR = 0x47           # ro: 0x00 normal
-REG_CONTROL_MODE = 0x50    # rw: 0 remote, 1 speed-loop, 3 position-loop, 4 joystick
-REG_START_STOP = 0x51      # rw: 0 stop, 1 start
+REG_L_TARGET_SPEED = 0x0C  # signed target speed (not used by UI)
+REG_R_TARGET_SPEED = 0x0D  # signed target speed (not used by UI)
+REG_L_MILEAGE_H = 0x19     # signed 32-bit pulse count, H/L (left)
+REG_L_MILEAGE_L = 0x1A
+REG_R_MILEAGE_H = 0x1B     # signed 32-bit pulse count, H/L (right)
+REG_R_MILEAGE_L = 0x1C
+REG_BATTERY = 0x1D         # raw value * 0.01
+REG_FAULT_CODE = 0x1E      # 0x00 normal
+REG_MILEAGE_CLEAR = 0x1F   # write 1 to clear odometer
 
-MODE_JOYSTICK = 4
+BATTERY_SCALE = 0.01
 JOY_LIMIT = 800
 # 0.51 m per encoder revolution; pulses->metres needs the encoder line count,
 # which we don't have here, so mileage is reported in raw pulses for now.
@@ -39,14 +38,16 @@ def _to_u16(value: int) -> int:
     return v & 0xFFFF
 
 
-def _to_signed16(value: int) -> int:
-    return value - 0x10000 if value >= 0x8000 else value
+def _to_signed32(high: int, low: int) -> int:
+    value = (high << 16) | low
+    return value - 0x100000000 if value >= 0x80000000 else value
 
 
 @dataclass
 class _WriteCmd:
     address: int
     value: int
+    confirm: bool = True
     done: threading.Event = field(default_factory=threading.Event)
     ok: bool = False
 
@@ -54,13 +55,10 @@ class _WriteCmd:
 @dataclass
 class Telemetry:
     connected: bool = False
-    left_speed: int | None = None
-    right_speed: int | None = None
     left_mileage: int | None = None   # raw pulses
     right_mileage: int | None = None
-    light: int | None = None
-    mode: int | None = None
-    error: int | None = None
+    battery: float | None = None
+    fault_code: int | None = None
 
 
 class ModbusChassisService:
@@ -68,7 +66,7 @@ class ModbusChassisService:
 
     One worker owns the serial port and serializes everything (no concurrent
     serial access): each loop writes the joystick heartbeat, drains queued
-    confirmed writes (light / mode), and periodically reads telemetry.
+    writes, and periodically reads telemetry.
     """
 
     def __init__(self) -> None:
@@ -77,7 +75,6 @@ class ModbusChassisService:
         self._y = 0
         self._client = None
         self._connected = False
-        self._mode_set = False
         self._telemetry = Telemetry()
         self._cmds: "queue.Queue[_WriteCmd]" = queue.Queue()
         self._stop = threading.Event()
@@ -108,30 +105,26 @@ class ModbusChassisService:
             t = self._telemetry
             return Telemetry(
                 connected=self._connected,
-                left_speed=t.left_speed,
-                right_speed=t.right_speed,
                 left_mileage=t.left_mileage,
                 right_mileage=t.right_mileage,
-                light=t.light,
-                mode=t.mode,
-                error=t.error,
+                battery=t.battery,
+                fault_code=t.fault_code,
             )
 
-    def set_light(self, value: int) -> bool:
-        return self._command_confirmed(REG_LIGHT, int(value))
-
-    def set_mode(self, value: int) -> bool:
-        ok = self._command_confirmed(REG_CONTROL_MODE, int(value))
-        if ok and int(value) == MODE_JOYSTICK:
-            self._mode_set = True
+    def clear_mileage(self) -> bool:
+        ok = self._command(REG_MILEAGE_CLEAR, 1, confirm=False)
+        if ok:
+            with self._lock:
+                self._telemetry.left_mileage = 0
+                self._telemetry.right_mileage = 0
         return ok
 
-    # --- command with read-back confirmation -------------------------------
+    # --- queued writes -----------------------------------------------------
 
-    def _command_confirmed(self, address: int, value: int) -> bool:
+    def _command(self, address: int, value: int, *, confirm: bool = True) -> bool:
         if not self._connected:
             return False
-        cmd = _WriteCmd(address=address, value=value)
+        cmd = _WriteCmd(address=address, value=value, confirm=confirm)
         self._cmds.put(cmd)
         if not cmd.done.wait(timeout=CONFIRM_TIMEOUT_S):
             return False
@@ -157,7 +150,6 @@ class ModbusChassisService:
                 return False
             self._client = client
             self._connected = True
-            self._mode_set = False
             return True
         except Exception:
             return False
@@ -192,14 +184,8 @@ class ModbusChassisService:
             self._connected = False
             return None
 
-    def _ensure_mode(self) -> None:
-        if self._mode_set:
-            return
-        if self._write(REG_CONTROL_MODE, MODE_JOYSTICK) and self._write(REG_START_STOP, 1):
-            self._mode_set = True
-
     def _drain_commands(self) -> None:
-        # Execute queued light/mode writes, each confirmed by reading it back.
+        # Some write-only flags self-clear, so read-back confirmation is optional.
         while True:
             try:
                 cmd = self._cmds.get_nowait()
@@ -207,7 +193,9 @@ class ModbusChassisService:
                 return
             wrote = self._write(cmd.address, cmd.value)
             ok = False
-            if wrote:
+            if wrote and not cmd.confirm:
+                ok = True
+            elif wrote:
                 regs = self._read(cmd.address, 1)
                 ok = bool(regs) and regs[0] == cmd.value
             cmd.ok = ok
@@ -219,30 +207,21 @@ class ModbusChassisService:
             return
         self._last_telemetry = now
 
-        l_speed = self._read(REG_L_SPEED, 1)
-        r_speed = self._read(REG_R_SPEED, 1)
         l_mil = self._read(REG_L_MILEAGE_H, 2)
         r_mil = self._read(REG_R_MILEAGE_H, 2)
-        light = self._read(REG_LIGHT, 1)
-        mode = self._read(REG_CONTROL_MODE, 1)
-        error = self._read(REG_ERROR, 1)
+        battery = self._read(REG_BATTERY, 1)
+        fault_code = self._read(REG_FAULT_CODE, 1)
 
         with self._lock:
             t = self._telemetry
-            if l_speed:
-                t.left_speed = _to_signed16(l_speed[0])
-            if r_speed:
-                t.right_speed = _to_signed16(r_speed[0])
             if l_mil and len(l_mil) == 2:
-                t.left_mileage = (l_mil[0] << 16) | l_mil[1]
+                t.left_mileage = _to_signed32(l_mil[0], l_mil[1])
             if r_mil and len(r_mil) == 2:
-                t.right_mileage = (r_mil[0] << 16) | r_mil[1]
-            if light:
-                t.light = light[0]
-            if mode:
-                t.mode = mode[0]
-            if error:
-                t.error = error[0]
+                t.right_mileage = _to_signed32(r_mil[0], r_mil[1])
+            if battery:
+                t.battery = round(battery[0] * BATTERY_SCALE, 2)
+            if fault_code:
+                t.fault_code = fault_code[0]
 
     def _run(self) -> None:
         while not self._stop.is_set():
@@ -252,8 +231,6 @@ class ModbusChassisService:
                 if not self._connect():
                     time.sleep(RECONNECT_S)
                     continue
-            self._ensure_mode()
-
             with self._lock:
                 x, y = self._x, self._y
             ok_v = self._write(REG_JOY_VERTICAL, _to_u16(y))

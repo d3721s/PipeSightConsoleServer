@@ -65,8 +65,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ periodUs: 100, d1PulseUs, d3PulseUs })
     }),
-  setChassisMode: (value: number) =>
-    request<{ ok: boolean; mode: number }>('/api/chassis/mode', { method: 'POST', body: JSON.stringify({ value }) }),
+  clearChassisOdometer: () =>
+    request<{ ok: boolean }>('/api/chassis/odometer/clear', { method: 'POST' }),
 
   getStorage: () => request<StorageOptions>('/api/settings/storage'),
   setStorage: (path: string | null) =>

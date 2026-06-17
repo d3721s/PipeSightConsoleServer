@@ -1,32 +1,25 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Add24, Subtract24 } from '@carbon/icons-vue'
+import { Add24, Reset24, Subtract24 } from '@carbon/icons-vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
   leftWheelM,
   rightWheelM,
-  leftWheelSpeed,
-  rightWheelSpeed,
-  statusCode,
+  batteryLevel,
+  faultCode,
   lightD1Pulse,
   lightD3Pulse,
-  chassisMode,
   eulerRoll,
   eulerPitch,
   eulerYaw
 } from '../stores/odometer'
 
 // Light: fixed period 100; D1/D3 pulse values map to 0-100%.
-// Mode: APP = 485 joystick mode (4), 遥控器 = wireless remote (0) (reg 0x50).
-const modes: { value: number; label: string }[] = [
-  { value: 4, label: 'APP' },
-  { value: 0, label: '遥控器' }
-]
 
 // Disable the group while a write is awaiting confirmation.
 const lightPending = ref(false)
-const modePending = ref(false)
+const odometerPending = ref(false)
 const lightD1 = ref('0')
 const lightD3 = ref('0')
 let lightTimer: number | null = null
@@ -88,22 +81,23 @@ async function applyLightPwm(seq: number) {
   }
 }
 
-async function selectMode(value: number) {
-  if (modePending.value || chassisMode.value === value) return
-  modePending.value = true
+async function clearOdometer() {
+  if (odometerPending.value) return
+  odometerPending.value = true
   try {
-    await api.setChassisMode(value)
-    chassisMode.value = value
-    notify('控制模式已设置', 'success')
+    await api.clearChassisOdometer()
+    leftWheelM.value = 0
+    rightWheelM.value = 0
+    notify('里程计已清零', 'success')
   } catch (e) {
-    notify((e as Error).message || '底盘未确认控制模式指令', 'error')
+    notify((e as Error).message || '底盘未确认里程计清零指令', 'error')
   } finally {
-    modePending.value = false
+    odometerPending.value = false
   }
 }
 
 const fmtPulses = (v: number | null) => (v === null ? '--' : `${v}`)
-const fmtSpeed = (v: number | null) => (v === null ? '--' : `${v}`)
+const fmtBattery = (v: number | null) => (v === null ? '--' : v.toFixed(2))
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 </script>
@@ -143,26 +137,22 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
     </div>
 
     <div class="chassis-section">
-      <span class="chassis-label">控制模式{{ modePending ? '（设置中…）' : '' }}</span>
-      <div class="segmented" :class="{ pending: modePending }">
-        <button
-          v-for="m in modes"
-          :key="m.value"
-          type="button"
-          class="seg-btn"
-          :class="{ active: chassisMode === m.value }"
-          :disabled="modePending"
-          @click="selectMode(m.value)"
-        >{{ m.label }}</button>
-      </div>
+      <span class="chassis-label">里程计{{ odometerPending ? '（清零中…）' : '' }}</span>
+      <cv-button
+        kind="secondary"
+        size="md"
+        class="clear-btn"
+        :icon="Reset24"
+        :disabled="odometerPending"
+        @click="clearOdometer"
+      >里程计清零</cv-button>
     </div>
 
     <div class="chassis-readout">
       <div class="readout-row"><span>左轮里程</span><strong>{{ fmtPulses(leftWheelM) }}</strong></div>
       <div class="readout-row"><span>右轮里程</span><strong>{{ fmtPulses(rightWheelM) }}</strong></div>
-      <div class="readout-row"><span>左轮速度</span><strong>{{ fmtSpeed(leftWheelSpeed) }}</strong></div>
-      <div class="readout-row"><span>右轮速度</span><strong>{{ fmtSpeed(rightWheelSpeed) }}</strong></div>
-      <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
+      <div class="readout-row"><span>电池电量</span><strong>{{ fmtBattery(batteryLevel) }}</strong></div>
+      <div class="readout-row"><span>故障码</span><strong>{{ fmtText(faultCode) }}</strong></div>
       <div class="readout-row"><span>横滚角 Roll</span><strong>{{ fmtDeg(eulerRoll) }}</strong></div>
       <div class="readout-row"><span>俯仰角 Pitch</span><strong>{{ fmtDeg(eulerPitch) }}</strong></div>
       <div class="readout-row"><span>航向角 Yaw</span><strong>{{ fmtDeg(eulerYaw) }}</strong></div>
@@ -215,9 +205,16 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   height: 2.25rem;
   padding: 0 !important;
   border-radius: 4px;
+  background: #ffffff !important;
+  color: #161616 !important;
+  border-color: #ffffff !important;
+}
+.pwm-btn:hover:not(:disabled) {
+  background: #e0e0e0 !important;
 }
 .pwm-btn :deep(.bx--btn__icon) {
   right: auto;
+  fill: currentColor;
 }
 .pwm-value {
   min-width: 0;
@@ -239,11 +236,14 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   flex: 1;
   height: 1.75rem;
   border: 1px solid #8d8d8d;
-  border-radius: 999px;
+  border-radius: 4px;
   background: #ffffff;
   color: #161616;
   font-size: 0.75rem;
   cursor: pointer;
+}
+.pwm-chip:hover {
+  background: #e0e0e0;
 }
 .chassis-label {
   color: #ffffff;
@@ -251,41 +251,23 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.segmented {
-  display: flex;
-  border: 1px solid #4d4d4d;
-  border-radius: 4px;
-  overflow: hidden;
+.clear-btn {
+  width: 100%;
+  max-width: none;
+  min-height: 3rem;
+  background: #ffffff !important;
+  color: #161616 !important;
+  border-color: #ffffff !important;
 }
-.segmented.pending {
-  opacity: 0.6;
+.clear-btn:hover:not(:disabled) {
+  background: #e0e0e0 !important;
 }
-.seg-btn {
-  flex: 1;
-  padding: 0.625rem 0.5rem;
-  font-size: 0.9375rem;
-  background: #2a2a2a;
-  color: #c6c6c6;
-  border: none;
-  border-left: 1px solid #4d4d4d;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
-  white-space: nowrap;
+.clear-btn:disabled {
+  background: #c6c6c6 !important;
+  color: #6f6f6f !important;
 }
-.seg-btn:first-child {
-  border-left: none;
-}
-.seg-btn:hover:not(.active):not(:disabled) {
-  background: #393939;
-  color: #f4f4f4;
-}
-.seg-btn.active {
-  background: #0f62fe;
-  color: #ffffff;
-  font-weight: 600;
-}
-.seg-btn:disabled {
-  cursor: not-allowed;
+.clear-btn :deep(.bx--btn__icon) {
+  fill: currentColor;
 }
 .chassis-readout {
   display: flex;

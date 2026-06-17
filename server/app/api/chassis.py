@@ -20,14 +20,12 @@ def telemetry() -> dict:
     light_pwm = imu_service.get_light_pwm()
     return {
         "connected": t.connected,
-        "leftSpeed": t.left_speed,
-        "rightSpeed": t.right_speed,
         "leftMileage": t.left_mileage,   # raw encoder pulses
         "rightMileage": t.right_mileage,
+        "battery": t.battery,
+        "faultCode": t.fault_code,
         "light": light,                  # IMU D1/D3 PWM: 1 off / 2 low / 3 high
         "lightPwm": light_pwm,
-        "mode": t.mode,                  # 0 remote / 1 speed / 3 position / 4 joystick
-        "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
         "roll": imu["roll"] if imu_fresh else None,
         "pitch": imu["pitch"] if imu_fresh else None,
@@ -63,12 +61,8 @@ def set_light_pwm(payload: LightPwmIn) -> dict:
     return {"ok": True, "lightPwm": imu_service.get_light_pwm()}
 
 
-class ModeIn(BaseModel):
-    value: int = Field(ge=0, le=4)  # 0 remote, 1 speed, 3 position, 4 joystick
-
-
-@router.post("/mode")
-def set_mode(payload: ModeIn) -> dict:
-    if not modbus_chassis_service.set_mode(payload.value):
-        raise HTTPException(status_code=502, detail="底盘未确认控制模式指令")
-    return {"ok": True, "mode": payload.value}
+@router.post("/odometer/clear")
+def clear_odometer() -> dict:
+    if not modbus_chassis_service.clear_mileage():
+        raise HTTPException(status_code=502, detail="底盘未确认里程计清零指令")
+    return {"ok": True}
