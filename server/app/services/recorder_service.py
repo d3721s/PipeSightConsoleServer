@@ -11,13 +11,12 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.services.odometer_service import odometer_service
-from app.services.osd_service import OSD_FONT, _ff_escape_path, build_ffmpeg_osd_filter, osd_text
+from app.services.osd_service import build_ffmpeg_osd_filter, osd_text
 from app.services.settings_service import get_recording_segment_minutes
 
 
 settings = get_settings()
 
-# OSD font. Install on the cart with: sudo apt install -y fonts-wqy-zenhei
 OSD_TEXT_REFRESH_S = 0.5  # how often the dynamic OSD textfile is rewritten
 TRACK_SAMPLE_S = 1.0      # how often a mileage sample is buffered (one row/sec)
 
