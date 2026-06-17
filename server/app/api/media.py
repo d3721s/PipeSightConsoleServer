@@ -73,6 +73,8 @@ def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)) -> Media
         type="photo",
         file_path=path,
         distance_m=payload.distance_m,
+        left_mileage=payload.left_mileage,
+        right_mileage=payload.right_mileage,
     )
     db.add(asset)
     db.commit()
@@ -97,6 +99,8 @@ def create_image_snapshot(payload: ImageSnapshotIn, db: Session = Depends(get_db
         type="photo",
         file_path=path,
         distance_m=payload.distance_m,
+        left_mileage=payload.left_mileage,
+        right_mileage=payload.right_mileage,
     )
     db.add(asset)
     db.commit()
@@ -175,6 +179,8 @@ def list_photos(db: Session = Depends(get_db)) -> list[dict]:
                 "name": Path(asset.file_path).name,
                 "capturedAt": asset.captured_at.isoformat(timespec="seconds"),
                 "distanceM": asset.distance_m,
+                "leftMileage": asset.left_mileage,
+                "rightMileage": asset.right_mileage,
                 "imageUrl": url,
                 "available": url is not None and Path(asset.file_path).exists(),
             }
@@ -200,6 +206,8 @@ def list_recordings(db: Session = Depends(get_db)) -> list[dict]:
                 "sessionId": asset.session_id,
                 "name": Path(asset.file_path).name,
                 "capturedAt": asset.captured_at.isoformat(timespec="seconds"),
+                "leftMileage": asset.left_mileage,
+                "rightMileage": asset.right_mileage,
                 "videoUrl": video_url,
                 "trackUrl": track_url,
                 "available": video_url is not None and Path(asset.file_path).exists(),

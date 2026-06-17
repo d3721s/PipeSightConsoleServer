@@ -30,6 +30,8 @@ type Shape = RectShape | TextShape | PathShape
 const props = defineProps<{
   baseImage: string // URL or data URL of the background image / captured frame
   initialDistance?: number
+  initialLeftMileage?: number | null
+  initialRightMileage?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -44,6 +46,18 @@ const shapes = ref<Shape[]>([])
 const selectedIndex = ref(-1)
 const baseSize = reactive({ w: 0, h: 0 })
 
+function toFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function initialMileageValue(value: number | null | undefined): number | null {
+  return toFiniteNumber(value) ?? toFiniteNumber(props.initialDistance) ?? null
+}
+
+function primaryDistance(left: unknown, right: unknown): number {
+  return toFiniteNumber(left) ?? toFiniteNumber(right) ?? toFiniteNumber(props.initialDistance) ?? 0
+}
+
 const defect = reactive({
   defectType: '',
   defectCode: '',
@@ -51,6 +65,8 @@ const defect = reactive({
   direction: '',
   position: '',
   note: '',
+  leftMileage: initialMileageValue(props.initialLeftMileage),
+  rightMileage: initialMileageValue(props.initialRightMileage),
   distanceM: props.initialDistance ?? 0
 })
 
@@ -276,17 +292,26 @@ function renderPng(): string {
 }
 
 function save() {
+  const leftMileage = toFiniteNumber(defect.leftMileage)
+  const rightMileage = toFiniteNumber(defect.rightMileage)
   emit('save', {
     shapes: shapes.value,
     baseSize: { w: baseSize.w, h: baseSize.h },
     renderedPng: renderPng(),
-    defect: { ...defect }
+    defect: {
+      ...defect,
+      leftMileage,
+      rightMileage,
+      distanceM: primaryDistance(leftMileage, rightMileage)
+    }
   })
 }
 
 watch(() => props.baseImage, loadBase)
-watch(() => props.initialDistance, (v) => {
-  if (typeof v === 'number') defect.distanceM = v
+watch(() => [props.initialLeftMileage, props.initialRightMileage, props.initialDistance], () => {
+  defect.leftMileage = initialMileageValue(props.initialLeftMileage)
+  defect.rightMileage = initialMileageValue(props.initialRightMileage)
+  defect.distanceM = primaryDistance(defect.leftMileage, defect.rightMileage)
 })
 onMounted(loadBase)
 </script>
@@ -336,7 +361,8 @@ onMounted(loadBase)
       <cv-text-input v-model="defect.severity" label="等级" />
       <cv-text-input v-model="defect.direction" label="方向" placeholder="如 3点钟" />
       <cv-text-input v-model="defect.position" label="位置" />
-      <cv-text-input v-model.number="defect.distanceM" label="里程 (m)" type="number" />
+      <cv-text-input v-model.number="defect.leftMileage" label="左轮里程 (m)" type="number" />
+      <cv-text-input v-model.number="defect.rightMileage" label="右轮里程 (m)" type="number" />
       <cv-text-input v-model="defect.note" label="备注" class="annot-note" />
     </div>
 

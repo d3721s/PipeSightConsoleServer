@@ -64,6 +64,8 @@ async function takeSnapshot() {
       device: active.device,
       channel: active.channel,
       distanceM: distance.value,
+      leftMileage: leftWheelM.value,
+      rightMileage: rightWheelM.value,
       projectName: currentProject.value?.name || '',
       projectLocation: currentProject.value?.location || ''
     })
@@ -87,6 +89,8 @@ async function toggleRecording() {
       device: active.device,
       channel: active.channel,
       distanceM: distance.value,
+      leftMileage: leftWheelM.value,
+      rightMileage: rightWheelM.value,
       projectName: currentProject.value?.name || '',
       projectLocation: currentProject.value?.location || ''
     })

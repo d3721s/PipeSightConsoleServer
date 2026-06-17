@@ -27,12 +27,24 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    _upgrade_schema()
     with SessionLocal() as db:
         _seed_camera(db, "front", "前摄")
         _seed_camera(db, "rear", "后摄")
         if db.scalar(select(SystemSetting).where(SystemSetting.key == "active_camera")) is None:
             db.add(SystemSetting(key="active_camera", value_json={"device": "front", "channel": 1}))
         db.commit()
+
+
+def _upgrade_schema() -> None:
+    if not settings.resolved_database_url.startswith("sqlite"):
+        return
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(media_assets)")}
+        if "left_mileage" not in columns:
+            conn.exec_driver_sql("ALTER TABLE media_assets ADD COLUMN left_mileage FLOAT")
+        if "right_mileage" not in columns:
+            conn.exec_driver_sql("ALTER TABLE media_assets ADD COLUMN right_mileage FLOAT")
 
 
 def _seed_camera(db: Session, code: str, name: str) -> None:

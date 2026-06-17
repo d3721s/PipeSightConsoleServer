@@ -68,6 +68,8 @@ async function capture3d() {
       projectId: currentProject.value?.id,
       sessionId: currentSession.value?.id,
       distanceM: distance.value,
+      leftMileage: leftWheelM.value,
+      rightMileage: rightWheelM.value,
       image,
       source: mode.value === 'depth' ? 'depth' : '3d'
     })

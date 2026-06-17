@@ -113,6 +113,8 @@ export interface Recording {
   sessionId: number | null
   name: string
   capturedAt: string
+  leftMileage?: number | null
+  rightMileage?: number | null
   videoUrl: string | null
   trackUrl: string | null
   available: boolean
@@ -152,6 +154,8 @@ export interface Photo {
   name: string
   capturedAt: string
   distanceM: number
+  leftMileage?: number | null
+  rightMileage?: number | null
   imageUrl: string | null
   available: boolean
 }

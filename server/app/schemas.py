@@ -85,6 +85,8 @@ class SnapshotIn(BaseModel):
     device: Literal["front", "rear"] | None = None
     channel: int | None = Field(default=None, ge=1, le=2)
     distance_m: float = Field(default=0, alias="distanceM")
+    left_mileage: float | None = Field(default=None, alias="leftMileage")
+    right_mileage: float | None = Field(default=None, alias="rightMileage")
     project_name: str = Field(default="", alias="projectName")
     project_location: str = Field(default="", alias="projectLocation")
 
@@ -94,6 +96,8 @@ class ImageSnapshotIn(BaseModel):
     project_id: int | None = Field(default=None, alias="projectId")
     session_id: int | None = Field(default=None, alias="sessionId")
     distance_m: float = Field(default=0, alias="distanceM")
+    left_mileage: float | None = Field(default=None, alias="leftMileage")
+    right_mileage: float | None = Field(default=None, alias="rightMileage")
     image: str  # PNG data URL
     source: str = "3d"  # tag for the snapshot origin
 
@@ -108,6 +112,8 @@ class MediaAssetOut(BaseModel):
     file_path: str = Field(alias="filePath")
     captured_at: datetime = Field(alias="capturedAt")
     distance_m: float = Field(alias="distanceM")
+    left_mileage: float | None = Field(default=None, alias="leftMileage")
+    right_mileage: float | None = Field(default=None, alias="rightMileage")
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
@@ -149,6 +155,8 @@ class GraphicAnnotationIn(BaseModel):
     position: str = ""
     note: str = ""
     distance_m: float = Field(default=0, alias="distanceM")
+    left_mileage: float | None = Field(default=None, alias="leftMileage")
+    right_mileage: float | None = Field(default=None, alias="rightMileage")
 
 
 class MarkerCreate(BaseModel):

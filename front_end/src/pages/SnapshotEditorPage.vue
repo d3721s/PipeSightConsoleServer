@@ -8,6 +8,7 @@ import { notify } from '../stores/session'
 import type { GraphicAnnotation, Photo, Recording, TrackData } from '../types'
 
 type Tab = 'image' | 'video' | '3d'
+type MileagePair = { left: number | null; right: number | null }
 const tab = ref<Tab>('image')
 
 const photos = ref<Photo[]>([])
@@ -24,6 +25,66 @@ const editorOpen = ref(false)
 const editorBaseImage = ref('')
 const editorSourceType = ref<Tab>('image')
 const editorVideoTime = ref<number | null>(null)
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function mileagePair(left: unknown, right: unknown, fallback?: unknown): MileagePair {
+  const fb = toFiniteNumber(fallback)
+  return {
+    left: toFiniteNumber(left) ?? fb,
+    right: toFiniteNumber(right) ?? fb
+  }
+}
+
+function formatMileagePair(pair: MileagePair): string {
+  if (pair.left === null && pair.right === null) return '--'
+  const left = pair.left === null ? '--' : `${pair.left.toFixed(2)}m`
+  const right = pair.right === null ? '--' : `${pair.right.toFixed(2)}m`
+  return `${left}-${right}`
+}
+
+function photoMileagePair(photo: Photo | null): MileagePair {
+  if (!photo) return { left: null, right: null }
+  return mileagePair(photo.leftMileage, photo.rightMileage, photo.distanceM)
+}
+
+function recordingMileagePair(recording: Recording | null): MileagePair {
+  if (!recording) return { left: null, right: null }
+  return mileagePair(recording.leftMileage, recording.rightMileage)
+}
+
+function rawNumber(raw: Record<string, unknown>, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = toFiniteNumber(raw[key])
+    if (value !== null) return value
+  }
+  return null
+}
+
+function sampleMileagePair(raw: Record<string, unknown>): MileagePair {
+  const legacyCm = rawNumber(raw, ['mileage_cm'])
+  const fallback = legacyCm === null ? null : legacyCm / 100
+  return mileagePair(
+    rawNumber(raw, ['leftMileage', 'left_mileage']),
+    rawNumber(raw, ['rightMileage', 'right_mileage']),
+    fallback
+  )
+}
+
+function defectMileagePair(defect: Record<string, unknown>): MileagePair {
+  return mileagePair(defect.leftMileage, defect.rightMileage, defect.distanceM)
+}
+
+function primaryDistance(left: unknown, right: unknown, fallback?: unknown): number {
+  return toFiniteNumber(left) ?? toFiniteNumber(right) ?? toFiniteNumber(fallback) ?? 0
+}
 
 async function reload() {
   try {
@@ -73,10 +134,10 @@ async function selectRecording(rec: Recording) {
   await loadAnnotations(rec.id)
 }
 
-// Mileage (m) nearest the current video position.
-const currentMileageM = computed(() => {
+// Mileage nearest the current video position.
+const currentMileage = computed<MileagePair>(() => {
   const samples = track.value?.samples
-  if (!samples || samples.length === 0) return null
+  if (!samples || samples.length === 0) return recordingMileagePair(activeRecording.value)
   const t = videoCurrentTime.value
   let best = samples[0]
   let bestDelta = Math.abs(best.videoTime - t)
@@ -87,8 +148,7 @@ const currentMileageM = computed(() => {
       bestDelta = d
     }
   }
-  const cm = best.raw?.mileage_cm
-  return typeof cm === 'number' ? cm / 100 : null
+  return sampleMileagePair(best.raw)
 })
 
 function onTimeUpdate() {
@@ -129,8 +189,11 @@ function annotateFrame() {
   editorOpen.value = true
 }
 
+const editorMileage = computed<MileagePair>(() =>
+  editorSourceType.value === 'image' ? photoMileagePair(activePhoto.value) : currentMileage.value
+)
 const editorDistance = computed(() =>
-  editorSourceType.value === 'image' ? activePhoto.value?.distanceM ?? 0 : currentMileageM.value ?? 0
+  primaryDistance(editorMileage.value.left, editorMileage.value.right)
 )
 
 async function saveGraphicAnnotation(payload: {
@@ -141,6 +204,8 @@ async function saveGraphicAnnotation(payload: {
 }) {
   const media = editorSourceType.value === 'image' ? activePhoto.value : activeRecording.value
   if (!media) return
+  const leftMileage = toFiniteNumber(payload.defect.leftMileage)
+  const rightMileage = toFiniteNumber(payload.defect.rightMileage)
   try {
     await api.saveGraphicAnnotation({
       mediaAssetId: media.id,
@@ -157,7 +222,9 @@ async function saveGraphicAnnotation(payload: {
       direction: (payload.defect.direction as string) || '',
       position: (payload.defect.position as string) || '',
       note: (payload.defect.note as string) || '',
-      distanceM: (payload.defect.distanceM as number) ?? 0
+      distanceM: primaryDistance(leftMileage, rightMileage, payload.defect.distanceM),
+      leftMileage,
+      rightMileage
     })
     editorOpen.value = false
     await loadAnnotations(media.id)
@@ -228,7 +295,7 @@ async function confirmDeleteMedia() {
               @click="selectPhoto(p)"
             >
               <span class="media-item-name">{{ p.name }}</span>
-              <span class="media-item-meta">{{ p.capturedAt }} · {{ p.distanceM.toFixed(2) }} m</span>
+              <span class="media-item-meta">{{ p.capturedAt }} · {{ formatMileagePair(photoMileagePair(p)) }}</span>
             </button>
           </div>
         </cv-tab>
@@ -264,6 +331,8 @@ async function confirmDeleteMedia() {
         v-if="editorOpen"
         :base-image="editorBaseImage"
         :initial-distance="editorDistance"
+        :initial-left-mileage="editorMileage.left"
+        :initial-right-mileage="editorMileage.right"
         @save="saveGraphicAnnotation"
         @cancel="editorOpen = false"
       />
@@ -273,7 +342,7 @@ async function confirmDeleteMedia() {
           <img class="preview-img" :src="activePhoto.imageUrl || ''" alt="snapshot" />
         </div>
         <div class="preview-bar">
-          <cv-tag kind="cool-gray" :label="`里程 ${activePhoto.distanceM.toFixed(2)} m`" />
+          <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(photoMileagePair(activePhoto))}`" />
           <span class="preview-bar-spacer" />
           <cv-button size="sm" kind="tertiary" :icon="Download24" @click="downloadPhoto">下载图片</cv-button>
           <cv-button size="sm" :icon="Edit24" @click="annotatePhoto">标注此图</cv-button>
@@ -286,7 +355,7 @@ async function confirmDeleteMedia() {
             <img v-if="a.renderedUrl" :src="a.renderedUrl" class="anno-thumb" />
             <div class="anno-body">
               <strong>{{ (a.defect.type as string) || '—' }}</strong>
-              <small>{{ (a.defect.position as string) }} · {{ (a.defect.distanceM as number)?.toFixed?.(2) }} m</small>
+              <small>{{ (a.defect.position as string) }} · 里程 {{ formatMileagePair(defectMileagePair(a.defect)) }}</small>
             </div>
             <cv-button kind="danger--ghost" size="sm" :icon="TrashCan16" @click="removeAnnotation(a.id)" />
           </cv-tile>
@@ -306,7 +375,7 @@ async function confirmDeleteMedia() {
         </div>
         <div class="preview-bar">
           <cv-tag kind="cool-gray" :label="`时间 ${videoCurrentTime.toFixed(1)} s`" />
-          <cv-tag kind="cool-gray" :label="`里程 ${currentMileageM === null ? '—' : currentMileageM.toFixed(2) + ' m'}`" />
+          <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(currentMileage)}`" />
           <span class="preview-bar-spacer" />
           <cv-button size="sm" :icon="Edit24" @click="annotateFrame">标注当前帧</cv-button>
           <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activeRecording)">删除此视频</cv-button>
@@ -320,7 +389,7 @@ async function confirmDeleteMedia() {
               <strong>{{ (a.defect.type as string) || '—' }}</strong>
               <small>
                 <span v-if="a.videoTime !== null">{{ a.videoTime.toFixed(1) }} s · </span>
-                {{ (a.defect.distanceM as number)?.toFixed?.(2) }} m
+                里程 {{ formatMileagePair(defectMileagePair(a.defect)) }}
               </small>
             </div>
             <cv-button kind="danger--ghost" size="sm" :icon="TrashCan16" @click="removeAnnotation(a.id)" />

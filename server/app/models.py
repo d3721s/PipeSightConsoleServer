@@ -74,6 +74,8 @@ class MediaAsset(Base):
     thumbnail_path: Mapped[str] = mapped_column(String(512), default="")
     captured_at: Mapped[datetime] = mapped_column(DateTime, default=now)
     distance_m: Mapped[float] = mapped_column(Float, default=0.0)
+    left_mileage: Mapped[float | None] = mapped_column(Float, nullable=True)
+    right_mileage: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
 class Annotation(Base):
