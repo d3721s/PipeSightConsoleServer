@@ -1,0 +1,23 @@
+Request:
+
+POST /onvif/ptz_service HTTP/1.1
+Host: 192.168.71.21
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tan="http://www.onvif.org/ver20/analytics/wsdl" xmlns:tad="http://www.onvif.org/ver10/analyticsdevice/wsdl" xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl" xmlns:tev="http://www.onvif.org/ver10/events/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl">
+  <s:Body>
+    <tptz:GetConfigurationOptions>
+      <tptz:ConfigurationToken>PTZ000</tptz:ConfigurationToken>
+    </tptz:GetConfigurationOptions>
+  </s:Body>
+</s:Envelope>
+
+Response:
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 2150
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:sc="http://www.w3.org/2003/05/soap-encoding" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl"><s:Body><tptz:GetConfigurationOptionsResponse><tptz:PTZConfigurationOptions><tt:Spaces><tt:AbsoluteZoomPositionSpace><tt:URI>http://www.onvif.org/ver10/tptz/ZoomSpaces/PositionGenericSpace</tt:URI><tt:XRange><tt:Min>0.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:XRange></tt:AbsoluteZoomPositionSpace><tt:AbsolutePanTiltPositionSpace><tt:URI>http://www.onvif.org/ver10/tptz/PanTiltSpaces/PositionGenericSpace</tt:URI><tt:XRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:XRange><tt:YRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:YRange></tt:AbsolutePanTiltPositionSpace><tt:RelativePanTiltTranslationSpace><tt:URI>http://www.onvif.org/ver10/tptz/PanTiltSpaces/TranslationGenericSpace</tt:URI><tt:XRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:XRange><tt:YRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:YRange></tt:RelativePanTiltTranslationSpace><tt:RelativePanTiltTranslationSpace><tt:URI>http://www.onvif.org/ver10/tptz/PanTiltSpaces/TranslationSpaceFov</tt:URI><tt:XRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:XRange><tt:YRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:YRange></tt:RelativePanTiltTranslationSpace><tt:ContinuousPanTiltVelocitySpace><tt:URI>http://www.onvif.org/ver10/tptz/PanTiltSpaces/VelocityGenericSpace</tt:URI><tt:XRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:XRange><tt:YRange><tt:Min>-1.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:YRange></tt:ContinuousPanTiltVelocitySpace><tt:PanTiltSpeedSpace><tt:URI>http://www.onvif.org/ver10/tptz/PanTiltSpaces/GenericSpeedSpace</tt:URI><tt:XRange><tt:Min>0.000000</tt:Min><tt:Max>1.000000</tt:Max></tt:XRange></tt:PanTiltSpeedSpace></tt:Spaces><tt:PTZTimeout><tt:Min>PT1S</tt:Min><tt:Max>PT10S</tt:Max></tt:PTZTimeout></tptz:PTZConfigurationOptions></tptz:GetConfigurationOptionsResponse></s:Body></s:Envelope>

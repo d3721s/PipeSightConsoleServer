@@ -1,0 +1,21 @@
+Request:
+
+POST /onvif/media_service HTTP/1.1
+Host: 192.168.71.21:80
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tan="http://www.onvif.org/ver20/analytics/wsdl" xmlns:tad="http://www.onvif.org/ver10/analyticsdevice/wsdl" xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl" xmlns:tev="http://www.onvif.org/ver10/events/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl">
+  <s:Body>
+    <trt:GetOSDs/>
+  </s:Body>
+</s:Envelope>
+
+Response:
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 1427
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:sc="http://www.w3.org/2003/05/soap-encoding" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema"><s:Body><trt:GetOSDsResponse><trt:OSDs token="OSDTIME000"><tt:VideoSourceConfigurationToken>VideoSource000</tt:VideoSourceConfigurationToken><tt:Type>Text</tt:Type><tt:Position><tt:Type>Custom</tt:Type><tt:Pos x="0.009766" y="0.590088"></tt:Pos></tt:Position><tt:TextString><tt:Type>DateAndTime</tt:Type><tt:DateFormat>M/d/yyyy</tt:DateFormat><tt:TimeFormat>h:mm:ss tt</tt:TimeFormat></tt:TextString></trt:OSDs><trt:OSDs token="OSDCHN000"><tt:VideoSourceConfigurationToken>VideoSource000</tt:VideoSourceConfigurationToken><tt:Type>Text</tt:Type><tt:Position><tt:Type>Custom</tt:Type><tt:Pos x="0.009766" y="0.635010"></tt:Pos></tt:Position><tt:TextString IsPersistentText="true"><tt:Type>Plain</tt:Type><tt:PlainText>0.00 m</tt:PlainText></tt:TextString></trt:OSDs><trt:OSDs token="OSDCHN100"><tt:VideoSourceConfigurationToken>VideoSource100</tt:VideoSourceConfigurationToken><tt:Type>Text</tt:Type><tt:Position><tt:Type>Custom</tt:Type><tt:Pos x="0.009766" y="0.635010"></tt:Pos></tt:Position><tt:TextString IsPersistentText="true"><tt:Type>Plain</tt:Type><tt:PlainText>0.00 m</tt:PlainText></tt:TextString></trt:OSDs></trt:GetOSDsResponse></s:Body></s:Envelope>

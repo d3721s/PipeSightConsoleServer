@@ -1,0 +1,23 @@
+Request:
+
+POST /onvif/analytics_service HTTP/1.1
+Host: 192.168.71.21
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tan="http://www.onvif.org/ver20/analytics/wsdl" xmlns:tad="http://www.onvif.org/ver10/analyticsdevice/wsdl" xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl" xmlns:tev="http://www.onvif.org/ver10/events/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl">
+  <s:Body>
+    <tan:GetAnalyticsModules>
+      <tan:ConfigurationToken>Analytics000</tan:ConfigurationToken>
+    </tan:GetAnalyticsModules>
+  </s:Body>
+</s:Envelope>
+
+Response:
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 796
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:sc="http://www.w3.org/2003/05/soap-encoding" xmlns:tan="http://www.onvif.org/ver20/analytics/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema"><s:Body><tan:GetAnalyticsModulesResponse><tan:AnalyticsModule Name="MyCellMotionEngine" Type="tt:CellMotionEngine"><tt:Parameters><tt:SimpleItem Name="Sensitivity" Value="60"></tt:SimpleItem><tt:ElementItem Name="Layout"><tt:CellLayout Columns="22" Rows="18"><tt:Transformation><tt:Translate x="-1.000000" y="1.000000"></tt:Translate><tt:Scale x="0.000244" y="0.000244"></tt:Scale></tt:Transformation></tt:CellLayout></tt:ElementItem></tt:Parameters></tan:AnalyticsModule></tan:GetAnalyticsModulesResponse></s:Body></s:Envelope>

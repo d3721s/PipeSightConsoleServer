@@ -1,0 +1,20 @@
+Skipped:
+
+Service: DeviceIO
+Missing token(s): SERIAL_PORT_TOKEN
+
+Known tokens:
+PROFILE_TOKEN: Profile000
+VIDEO_SOURCE_TOKEN: VideoSource000
+VIDEO_SOURCE_CONFIG_TOKEN: VideoSource000
+VIDEO_ENCODER_CONFIG_TOKEN: VideoEncoder000
+PTZ_CONFIG_TOKEN: PTZ000
+ANALYTICS_CONFIG_TOKEN: Analytics000
+SERIAL_PORT_TOKEN: 
+SUBSCRIPTION_URL: http://192.168.71.21/onvif/Subscription?Idx=7
+
+Request template:
+
+<tmd:GetSerialPortConfigurationOptions>
+  <tmd:SerialPortToken>MISSING_SERIAL_PORT_TOKEN</tmd:SerialPortToken>
+</tmd:GetSerialPortConfigurationOptions>

@@ -1,0 +1,24 @@
+Request:
+
+POST /onvif/media2_service HTTP/1.1
+Host: 192.168.71.21:80
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tan="http://www.onvif.org/ver20/analytics/wsdl" xmlns:tad="http://www.onvif.org/ver10/analyticsdevice/wsdl" xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl" xmlns:tev="http://www.onvif.org/ver10/events/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl">
+  <s:Body>
+    <tr2:GetVideoSourceConfigurationOptions>
+      <tr2:ConfigurationToken>VideoSource000</tr2:ConfigurationToken>
+      <tr2:ProfileToken>Profile000</tr2:ProfileToken>
+    </tr2:GetVideoSourceConfigurationOptions>
+  </s:Body>
+</s:Envelope>
+
+Response:
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 941
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:sc="http://www.w3.org/2003/05/soap-encoding" xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema"><s:Body><tr2:GetVideoSourceConfigurationOptionsResponse><tr2:Options MaximumNumberOfProfiles="12"><tt:BoundsRange><tt:XRange><tt:Min>0</tt:Min><tt:Max>0</tt:Max></tt:XRange><tt:YRange><tt:Min>0</tt:Min><tt:Max>0</tt:Max></tt:YRange><tt:WidthRange><tt:Min>2880</tt:Min><tt:Max>2880</tt:Max></tt:WidthRange><tt:HeightRange><tt:Min>1620</tt:Min><tt:Max>1620</tt:Max></tt:HeightRange></tt:BoundsRange><tt:VideoSourceTokensAvailable>VideoSource000</tt:VideoSourceTokensAvailable><tt:Extension><tt:Rotate><tt:Mode>OFF</tt:Mode><tt:Mode>ON</tt:Mode><tt:Mode>AUTO</tt:Mode></tt:Rotate></tt:Extension></tr2:Options></tr2:GetVideoSourceConfigurationOptionsResponse></s:Body></s:Envelope>

@@ -1,0 +1,21 @@
+Request:
+
+POST /onvif/imaging_service HTTP/1.1
+Host: 192.168.71.21
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:tds="http://www.onvif.org/ver10/device/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tr2="http://www.onvif.org/ver20/media/wsdl" xmlns:tan="http://www.onvif.org/ver20/analytics/wsdl" xmlns:tad="http://www.onvif.org/ver10/analyticsdevice/wsdl" xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl" xmlns:tev="http://www.onvif.org/ver10/events/wsdl" xmlns:tmd="http://www.onvif.org/ver10/deviceIO/wsdl">
+  <s:Body>
+    <timg:GetServiceCapabilities/>
+  </s:Body>
+</s:Envelope>
+
+Response:
+
+HTTP/1.1 200 OK
+Connection: close
+Content-Length: 454
+Content-Type: application/soap+xml; charset=utf-8
+
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:sc="http://www.w3.org/2003/05/soap-encoding" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl"><s:Body><timg:GetServiceCapabilitiesResponse><timg:Capabilities ImageStabilization="false" Presets="false"></timg:Capabilities></timg:GetServiceCapabilitiesResponse></s:Body></s:Envelope>
