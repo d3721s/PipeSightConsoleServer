@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api/chassis", tags=["chassis"])
 @router.get("/telemetry")
 def telemetry() -> dict:
     t = modbus_chassis_service.get_telemetry()
-    roll, pitch, yaw = imu_service.get_euler()
+    imu = imu_service.snapshot()
+    imu_fresh = bool(imu["fresh"])
     return {
         "connected": t.connected,
         "leftSpeed": t.left_speed,
@@ -24,10 +25,17 @@ def telemetry() -> dict:
         "mode": t.mode,                  # 0 remote / 1 speed / 3 position / 4 joystick
         "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
-        "imuConnected": imu_service.connected,
-        "roll": roll,
-        "pitch": pitch,
-        "yaw": yaw,
+        "imuConnected": imu_fresh,
+        "imuPortOpen": imu["portOpen"],
+        "imuFresh": imu_fresh,
+        "imuLastFrameAgeS": imu["lastFrameAgeS"],
+        "imuRxBytes": imu["rxBytes"],
+        "imuValidFrames": imu["validFrames"],
+        "imuBadFrames": imu["badFrames"],
+        "imuLastError": imu["lastError"],
+        "roll": imu["roll"] if imu_fresh else None,
+        "pitch": imu["pitch"] if imu_fresh else None,
+        "yaw": imu["yaw"] if imu_fresh else None,
     }
 
 

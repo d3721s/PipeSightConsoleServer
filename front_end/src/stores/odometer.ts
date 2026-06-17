@@ -19,6 +19,13 @@ export const chassisLight = ref<number | null>(null) // 1 off / 2 low / 3 high
 export const chassisMode = ref<number | null>(null)  // 0 remote / 1 speed / 3 pos / 4 joystick
 // IMU Euler angles (deg) from ATK-MS901M.
 export const imuConnected = ref(false)
+export const imuPortOpen = ref(false)
+export const imuFresh = ref(false)
+export const imuLastFrameAgeS = ref<number | null>(null)
+export const imuRxBytes = ref(0)
+export const imuValidFrames = ref(0)
+export const imuBadFrames = ref(0)
+export const imuLastError = ref<string | null>(null)
 export const eulerRoll = ref<number | null>(null)
 export const eulerPitch = ref<number | null>(null)
 export const eulerYaw = ref<number | null>(null)
@@ -51,12 +58,31 @@ export function startOdometerPolling() {
         chassisLight.value = t.light
         chassisMode.value = t.mode
         statusCode.value = t.error === null ? null : `0x${t.error.toString(16).padStart(2, '0')}`
-        imuConnected.value = t.imuConnected
-        eulerRoll.value = t.roll
-        eulerPitch.value = t.pitch
-        eulerYaw.value = t.yaw
+        const imuFrameFresh = t.imuFresh ?? t.imuConnected
+        imuConnected.value = imuFrameFresh
+        imuFresh.value = imuFrameFresh
+        imuPortOpen.value = t.imuPortOpen ?? t.imuConnected
+        imuLastFrameAgeS.value = t.imuLastFrameAgeS ?? null
+        imuRxBytes.value = t.imuRxBytes ?? 0
+        imuValidFrames.value = t.imuValidFrames ?? 0
+        imuBadFrames.value = t.imuBadFrames ?? 0
+        imuLastError.value = t.imuLastError ?? null
+        eulerRoll.value = imuFrameFresh ? t.roll : null
+        eulerPitch.value = imuFrameFresh ? t.pitch : null
+        eulerYaw.value = imuFrameFresh ? t.yaw : null
       } catch {
         chassisConnected.value = false
+        imuConnected.value = false
+        imuPortOpen.value = false
+        imuFresh.value = false
+        imuLastFrameAgeS.value = null
+        imuRxBytes.value = 0
+        imuValidFrames.value = 0
+        imuBadFrames.value = 0
+        imuLastError.value = null
+        eulerRoll.value = null
+        eulerPitch.value = null
+        eulerYaw.value = null
       }
     }, 400)
   }

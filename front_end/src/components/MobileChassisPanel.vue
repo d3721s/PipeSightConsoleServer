@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
@@ -10,6 +10,13 @@ import {
   statusCode,
   chassisLight,
   chassisMode,
+  imuPortOpen,
+  imuFresh,
+  imuLastFrameAgeS,
+  imuRxBytes,
+  imuValidFrames,
+  imuBadFrames,
+  imuLastError,
   eulerRoll,
   eulerPitch,
   eulerYaw
@@ -63,6 +70,15 @@ const fmtPulses = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtSpeed = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
+const fmtAge = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}s`)
+const imuStatusClass = computed(() => (imuFresh.value ? 'ok' : imuPortOpen.value ? 'warn' : 'off'))
+const imuStatusText = computed(() => {
+  if (imuFresh.value) return '刷新中'
+  if (imuPortOpen.value && imuRxBytes.value > 0) return '未解析到有效帧'
+  if (imuPortOpen.value) return '等待数据帧'
+  return '未连接'
+})
+const imuFrameStats = computed(() => `${imuValidFrames.value}/${imuBadFrames.value}/${imuRxBytes.value}`)
 </script>
 
 <template>
@@ -103,6 +119,10 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
       <div class="readout-row"><span>左轮速度</span><strong>{{ fmtSpeed(leftWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>右轮速度</span><strong>{{ fmtSpeed(rightWheelSpeed) }}</strong></div>
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
+      <div class="readout-row"><span>IMU状态</span><strong class="imu-status" :class="imuStatusClass">{{ imuStatusText }}</strong></div>
+      <div class="readout-row"><span>IMU帧龄</span><strong>{{ fmtAge(imuLastFrameAgeS) }}</strong></div>
+      <div class="readout-row"><span>有效/错帧/字节</span><strong>{{ imuFrameStats }}</strong></div>
+      <div v-if="imuLastError" class="readout-row readout-row-error"><span>IMU错误</span><strong>{{ imuLastError }}</strong></div>
       <div class="readout-row"><span>横滚角 Roll</span><strong>{{ fmtDeg(eulerRoll) }}</strong></div>
       <div class="readout-row"><span>俯仰角 Pitch</span><strong>{{ fmtDeg(eulerPitch) }}</strong></div>
       <div class="readout-row"><span>航向角 Yaw</span><strong>{{ fmtDeg(eulerYaw) }}</strong></div>
@@ -183,5 +203,24 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 .readout-row strong {
   color: #f4f4f4;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.imu-status.ok {
+  color: #42be65;
+}
+.imu-status.warn {
+  color: #f1c21b;
+}
+.imu-status.off {
+  color: #fa4d56;
+}
+.readout-row-error {
+  align-items: flex-start;
+  gap: 1rem;
+}
+.readout-row-error strong {
+  max-width: 60%;
 }
 </style>
