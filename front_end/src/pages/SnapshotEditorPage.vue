@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { CvTabs, CvTab, CvButton, CvTag, CvTile, CvModal } from '@carbon/vue'
-import { Image24, VideoFilled24, CubeView24, Edit24, TrashCan16, TrashCan24 } from '@carbon/icons-vue'
+import { Image24, VideoFilled24, CubeView24, Download24, Edit24, TrashCan16, TrashCan24 } from '@carbon/icons-vue'
 import AnnotationEditor from '../components/AnnotationEditor.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
@@ -101,6 +101,17 @@ function annotatePhoto() {
   editorBaseImage.value = activePhoto.value.imageUrl
   editorVideoTime.value = null
   editorOpen.value = true
+}
+
+function downloadPhoto() {
+  const photo = activePhoto.value
+  if (!photo?.imageUrl) return
+  const link = document.createElement('a')
+  link.href = photo.imageUrl
+  link.download = photo.name || 'snapshot.png'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
 }
 
 function annotateFrame() {
@@ -264,6 +275,7 @@ async function confirmDeleteMedia() {
         <div class="preview-bar">
           <cv-tag kind="cool-gray" :label="`里程 ${activePhoto.distanceM.toFixed(2)} m`" />
           <span class="preview-bar-spacer" />
+          <cv-button size="sm" kind="tertiary" :icon="Download24" @click="downloadPhoto">下载图片</cv-button>
           <cv-button size="sm" :icon="Edit24" @click="annotatePhoto">标注此图</cv-button>
           <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此图</cv-button>
         </div>

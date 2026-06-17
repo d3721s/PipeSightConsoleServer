@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     # IMU (ATK-MS901M) — Euler angles over UART.
     imu_serial_port: str = "/dev/ttyUSB-IMU"
-    imu_baudrate: int = 9600
+    imu_baudrate: int = 115200
     pointcloud_bridge_ws_url: str = "ws://127.0.0.1:9090"
     depth_bridge_ws_url: str = "ws://127.0.0.1:9091"
 
