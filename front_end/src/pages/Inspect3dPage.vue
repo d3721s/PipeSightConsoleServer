@@ -61,17 +61,80 @@ async function capture3d() {
     return
   }
   try {
+    const image = await addOsdToSnapshot(dataUrl)
     const asset = await api.imageSnapshot({
       projectId: currentProject.value?.id,
       sessionId: currentSession.value?.id,
       distanceM: distance.value,
-      image: dataUrl,
+      image,
       source: mode.value === 'depth' ? 'depth' : '3d'
     })
     notify(`${modeLabel.value}拍照已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
   } catch (e) {
     notify((e as Error).message, 'error')
   }
+}
+
+function loadSnapshotImage(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('截图图像加载失败'))
+    image.src = dataUrl
+  })
+}
+
+async function addOsdToSnapshot(dataUrl: string): Promise<string> {
+  const image = await loadSnapshotImage(dataUrl)
+  const canvas = document.createElement('canvas')
+  canvas.width = image.naturalWidth
+  canvas.height = image.naturalHeight
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return dataUrl
+
+  ctx.drawImage(image, 0, 0)
+  drawSnapshotOsd(ctx, canvas.width, canvas.height)
+  return canvas.toDataURL('image/png')
+}
+
+function drawSnapshotOsd(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const margin = Math.max(20, Math.round(Math.min(width, height) * 0.025))
+  const borderWidth = Math.max(3, Math.round(margin * 0.12))
+  const paddingX = Math.round(margin * 0.75)
+  const paddingY = Math.round(margin * 0.5)
+  const fontSize = Math.max(22, Math.round(Math.min(width, height) * 0.028))
+  const lineHeight = Math.round(fontSize * 1.45)
+  const lines = [
+    `时间：${new Date().toLocaleString()}`,
+    `距离：${distance.value.toFixed(2)} m`,
+    `项目名称：${currentProject.value?.name || '未创建项目'}`,
+    `地点：${currentProject.value?.location || '-'}`
+  ]
+
+  ctx.save()
+  ctx.font = `${fontSize}px "IBM Plex Sans", "Microsoft YaHei", "Segoe UI", sans-serif`
+  const textWidth = Math.max(...lines.map(line => ctx.measureText(line).width))
+  const boxWidth = Math.ceil(borderWidth + paddingX * 2 + textWidth)
+  const boxHeight = paddingY * 2 + lineHeight * lines.length
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+  ctx.fillRect(margin, margin, boxWidth, boxHeight)
+  ctx.fillStyle = '#0f62fe'
+  ctx.fillRect(margin, margin, borderWidth, boxHeight)
+
+  ctx.fillStyle = '#f4f4f4'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+  ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.08))
+  ctx.shadowOffsetY = Math.max(1, Math.round(fontSize * 0.06))
+  ctx.textBaseline = 'top'
+  const textX = margin + borderWidth + paddingX
+  let textY = margin + paddingY
+  for (const line of lines) {
+    ctx.fillText(line, textX, textY)
+    textY += lineHeight
+  }
+  ctx.restore()
 }
 </script>
 
