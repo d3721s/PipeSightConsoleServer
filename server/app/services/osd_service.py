@@ -57,24 +57,25 @@ def build_ffmpeg_osd_filter(textfile: str | Path, *, fontfile: str = OSD_FONT, r
     text_y = OSD_PANEL_Y + OSD_PADDING_Y
     panel_h = OSD_PADDING_Y * 2 + OSD_LINE_HEIGHT * OSD_LINE_COUNT
 
-    # drawtext creates the black panel around the actual text width. The left
-    # border includes the Carbon blue bar width so the text starts at the same
-    # x-coordinate as the 3D canvas OSD.
-    box_top = OSD_PADDING_Y
-    box_right = OSD_PADDING_X
-    box_bottom = OSD_PADDING_Y + OSD_LINE_SPACING
-    box_left = OSD_BLUE_BAR_W + OSD_PADDING_X
-    boxborderw = f"{box_top}|{box_right}|{box_bottom}|{box_left}"
+    # Keep this compatible with older ffmpeg builds: some drawtext versions only
+    # accept a single integer for boxborderw, not the four-side "a|b|c|d" form.
+    # Draw the panel and accent with drawbox, then render text without drawtext's
+    # own box.
+    panel_w = "iw*0.62"
     reload_opt = ":reload=1" if reload else ""
 
-    text_layer = (
-        f"drawtext=fontfile={font}:textfile={body_file}{reload_opt}:"
-        f"x={text_x}:y={text_y}:fontsize={OSD_FONT_SIZE}:fontcolor={OSD_TEXT_COLOR}:"
-        f"line_spacing={OSD_LINE_SPACING}:box=1:boxcolor={OSD_PANEL_COLOR}:"
-        f"boxborderw={boxborderw}:shadowcolor={OSD_SHADOW_COLOR}:shadowx=1:shadowy=2"
+    panel_layer = (
+        f"drawbox=x={OSD_PANEL_X}:y={OSD_PANEL_Y}:w={panel_w}:h={panel_h}:"
+        f"c={OSD_PANEL_COLOR}:t=fill"
     )
     accent_layer = (
         f"drawbox=x={OSD_PANEL_X}:y={OSD_PANEL_Y}:w={OSD_BLUE_BAR_W}:h={panel_h}:"
         f"c={OSD_ACCENT_COLOR}:t=fill"
     )
-    return f"{text_layer},{accent_layer}"
+    text_layer = (
+        f"drawtext=fontfile={font}:textfile={body_file}{reload_opt}:"
+        f"x={text_x}:y={text_y}:fontsize={OSD_FONT_SIZE}:fontcolor={OSD_TEXT_COLOR}:"
+        f"line_spacing={OSD_LINE_SPACING}:"
+        f"shadowcolor={OSD_SHADOW_COLOR}:shadowx=1:shadowy=2"
+    )
+    return f"{panel_layer},{accent_layer},{text_layer}"
