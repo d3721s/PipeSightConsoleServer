@@ -8,7 +8,11 @@ import { router } from './router'
 import 'carbon-components/css/carbon-components.min.css'
 import './styles.css'
 
-// Disable the browser right-click context menu app-wide (kiosk/tablet use).
-window.addEventListener('contextmenu', (event) => event.preventDefault())
+// Disable browser context menus, text selection handles, and drag affordances
+// app-wide for kiosk/tablet use.
+const suppressBrowserGesture = (event: Event) => event.preventDefault()
+window.addEventListener('contextmenu', suppressBrowserGesture)
+document.addEventListener('selectstart', suppressBrowserGesture)
+document.addEventListener('dragstart', suppressBrowserGesture)
 
 createApp(App).use(CarbonVue3).use(router).mount('#app')
