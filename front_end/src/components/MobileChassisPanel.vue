@@ -10,6 +10,7 @@ import {
   statusCode,
   chassisLight,
   chassisMode,
+  imuDiagnostics,
   imuPortOpen,
   imuFresh,
   imuLastFrameAgeS,
@@ -73,12 +74,17 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 const fmtAge = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}s`)
 const imuStatusClass = computed(() => (imuFresh.value ? 'ok' : imuPortOpen.value ? 'warn' : 'off'))
 const imuStatusText = computed(() => {
-  if (imuFresh.value) return '刷新中'
-  if (imuPortOpen.value && imuRxBytes.value > 0) return '未解析到有效帧'
+  if (!imuDiagnostics.value && imuFresh.value) return '正常'
+  if (!imuDiagnostics.value) return '诊断未启用'
+  if (imuFresh.value) return '正常'
+  if (imuPortOpen.value && (imuRxBytes.value ?? 0) > 0) return '未解析到有效帧'
   if (imuPortOpen.value) return '等待数据帧'
   return '未连接'
 })
-const imuFrameStats = computed(() => `${imuValidFrames.value}/${imuBadFrames.value}/${imuRxBytes.value}`)
+const imuFrameStats = computed(() => {
+  if (!imuDiagnostics.value) return '诊断未启用'
+  return `${imuValidFrames.value ?? 0}/${imuBadFrames.value ?? 0}/${imuRxBytes.value ?? 0}`
+})
 </script>
 
 <template>
@@ -121,8 +127,8 @@ const imuFrameStats = computed(() => `${imuValidFrames.value}/${imuBadFrames.val
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
       <div class="readout-row"><span>IMU状态</span><strong class="imu-status" :class="imuStatusClass">{{ imuStatusText }}</strong></div>
       <div class="readout-row"><span>IMU帧龄</span><strong>{{ fmtAge(imuLastFrameAgeS) }}</strong></div>
-      <div class="readout-row"><span>有效/错帧/字节</span><strong>{{ imuFrameStats }}</strong></div>
-      <div v-if="imuLastError" class="readout-row readout-row-error"><span>IMU错误</span><strong>{{ imuLastError }}</strong></div>
+      <div class="readout-row"><span>有效帧/错帧/字节</span><strong>{{ imuFrameStats }}</strong></div>
+      <div v-if="imuDiagnostics && imuLastError" class="readout-row readout-row-error"><span>IMU错误</span><strong>{{ imuLastError }}</strong></div>
       <div class="readout-row"><span>横滚角 Roll</span><strong>{{ fmtDeg(eulerRoll) }}</strong></div>
       <div class="readout-row"><span>俯仰角 Pitch</span><strong>{{ fmtDeg(eulerPitch) }}</strong></div>
       <div class="readout-row"><span>航向角 Yaw</span><strong>{{ fmtDeg(eulerYaw) }}</strong></div>

@@ -19,12 +19,13 @@ export const chassisLight = ref<number | null>(null) // 1 off / 2 low / 3 high
 export const chassisMode = ref<number | null>(null)  // 0 remote / 1 speed / 3 pos / 4 joystick
 // IMU Euler angles (deg) from ATK-MS901M.
 export const imuConnected = ref(false)
+export const imuDiagnostics = ref(false)
 export const imuPortOpen = ref(false)
 export const imuFresh = ref(false)
 export const imuLastFrameAgeS = ref<number | null>(null)
-export const imuRxBytes = ref(0)
-export const imuValidFrames = ref(0)
-export const imuBadFrames = ref(0)
+export const imuRxBytes = ref<number | null>(null)
+export const imuValidFrames = ref<number | null>(null)
+export const imuBadFrames = ref<number | null>(null)
 export const imuLastError = ref<string | null>(null)
 export const eulerRoll = ref<number | null>(null)
 export const eulerPitch = ref<number | null>(null)
@@ -60,12 +61,13 @@ export function startOdometerPolling() {
         statusCode.value = t.error === null ? null : `0x${t.error.toString(16).padStart(2, '0')}`
         const imuFrameFresh = t.imuFresh ?? t.imuConnected
         imuConnected.value = imuFrameFresh
+        imuDiagnostics.value = t.imuDiagnostics === true
         imuFresh.value = imuFrameFresh
         imuPortOpen.value = t.imuPortOpen ?? t.imuConnected
         imuLastFrameAgeS.value = t.imuLastFrameAgeS ?? null
-        imuRxBytes.value = t.imuRxBytes ?? 0
-        imuValidFrames.value = t.imuValidFrames ?? 0
-        imuBadFrames.value = t.imuBadFrames ?? 0
+        imuRxBytes.value = t.imuRxBytes ?? null
+        imuValidFrames.value = t.imuValidFrames ?? null
+        imuBadFrames.value = t.imuBadFrames ?? null
         imuLastError.value = t.imuLastError ?? null
         eulerRoll.value = imuFrameFresh ? t.roll : null
         eulerPitch.value = imuFrameFresh ? t.pitch : null
@@ -73,12 +75,13 @@ export function startOdometerPolling() {
       } catch {
         chassisConnected.value = false
         imuConnected.value = false
+        imuDiagnostics.value = false
         imuPortOpen.value = false
         imuFresh.value = false
         imuLastFrameAgeS.value = null
-        imuRxBytes.value = 0
-        imuValidFrames.value = 0
-        imuBadFrames.value = 0
+        imuRxBytes.value = null
+        imuValidFrames.value = null
+        imuBadFrames.value = null
         imuLastError.value = null
         eulerRoll.value = null
         eulerPitch.value = null

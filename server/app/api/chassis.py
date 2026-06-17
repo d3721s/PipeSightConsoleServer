@@ -26,6 +26,7 @@ def telemetry() -> dict:
         "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
         "imuConnected": imu_fresh,
+        "imuDiagnostics": True,
         "imuPortOpen": imu["portOpen"],
         "imuFresh": imu_fresh,
         "imuLastFrameAgeS": imu["lastFrameAgeS"],
