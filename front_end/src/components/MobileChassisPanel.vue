@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { Add24, Subtract24 } from '@carbon/icons-vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
@@ -37,6 +38,8 @@ function clampPwm(value: string | number) {
   return Math.max(0, Math.min(100, n))
 }
 
+const pwmDisplay = (value: string) => `${clampPwm(value)}%`
+
 function syncSliderValue(target: typeof lightD1, value: number | null) {
   if (value === null || lightPending.value) return
   target.value = String(clampPwm(value))
@@ -44,6 +47,20 @@ function syncSliderValue(target: typeof lightD1, value: number | null) {
 
 watch(lightD1Pulse, value => syncSliderValue(lightD1, value), { immediate: true })
 watch(lightD3Pulse, value => syncSliderValue(lightD3, value), { immediate: true })
+
+function setLightValue(target: typeof lightD1, value: number) {
+  target.value = String(clampPwm(value))
+  scheduleLightPwm()
+}
+
+function nudgeLightValue(target: typeof lightD1, delta: number) {
+  setLightValue(target, clampPwm(target.value) + delta)
+}
+
+const setD1 = (value: number) => setLightValue(lightD1, value)
+const setD3 = (value: number) => setLightValue(lightD3, value)
+const nudgeD1 = (delta: number) => nudgeLightValue(lightD1, delta)
+const nudgeD3 = (delta: number) => nudgeLightValue(lightD3, delta)
 
 function scheduleLightPwm() {
   const seq = ++lightSeq
@@ -96,26 +113,32 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
     <div class="chassis-section">
       <span class="chassis-label">灯光控制{{ lightPending ? '（设置中…）' : '' }}</span>
       <div class="light-sliders" :class="{ pending: lightPending }">
-        <cv-slider
-          v-model="lightD1"
-          label="D1 灯光"
-          min="0"
-          max="100"
-          min-label="0"
-          max-label="100"
-          step="1"
-          @change="scheduleLightPwm"
-        />
-        <cv-slider
-          v-model="lightD3"
-          label="D3 灯光"
-          min="0"
-          max="100"
-          min-label="0"
-          max-label="100"
-          step="1"
-          @change="scheduleLightPwm"
-        />
+        <div class="pwm-row">
+          <span class="pwm-label">D1 灯光</span>
+          <div class="pwm-controls">
+            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD1(-10)" />
+            <button type="button" class="pwm-value" @click="scheduleLightPwm">{{ pwmDisplay(lightD1) }}</button>
+            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD1(10)" />
+          </div>
+          <div class="pwm-presets">
+            <button type="button" class="pwm-chip" @click="setD1(0)">0</button>
+            <button type="button" class="pwm-chip" @click="setD1(50)">50</button>
+            <button type="button" class="pwm-chip" @click="setD1(100)">100</button>
+          </div>
+        </div>
+        <div class="pwm-row">
+          <span class="pwm-label">D3 灯光</span>
+          <div class="pwm-controls">
+            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD3(-10)" />
+            <button type="button" class="pwm-value" @click="scheduleLightPwm">{{ pwmDisplay(lightD3) }}</button>
+            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD3(10)" />
+          </div>
+          <div class="pwm-presets">
+            <button type="button" class="pwm-chip" @click="setD3(0)">0</button>
+            <button type="button" class="pwm-chip" @click="setD3(50)">50</button>
+            <button type="button" class="pwm-chip" @click="setD3(100)">100</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -164,53 +187,63 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 .light-sliders {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 .light-sliders.pending {
   opacity: 0.88;
 }
-.light-sliders :deep(.cv-slider) {
-  margin: 0;
+.pwm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.5rem 0;
 }
-.light-sliders :deep(.bx--label) {
+.pwm-label {
   color: #ffffff;
   font-size: 0.75rem;
 }
-.light-sliders :deep(.bx--slider-container) {
+.pwm-controls {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+  align-items: center;
+  gap: 0.25rem;
   width: 100%;
 }
-.light-sliders :deep(.bx--slider) {
-  flex: 1;
+.pwm-btn {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 !important;
+  border-radius: 4px;
+}
+.pwm-btn :deep(.bx--btn__icon) {
+  right: auto;
+}
+.pwm-value {
   min-width: 0;
+  height: 2.25rem;
+  border: 1px solid #8d8d8d;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #161616;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0.5rem;
 }
-.light-sliders :deep(.bx--slider__range-label) {
-  color: #ffffff;
+.pwm-presets {
+  display: flex;
+  gap: 0.25rem;
+}
+.pwm-chip {
+  flex: 1;
+  height: 1.75rem;
+  border: 1px solid #8d8d8d;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #161616;
   font-size: 0.75rem;
-  min-width: 1.5rem;
-}
-.light-sliders :deep(.bx--slider__track) {
-  height: 0.125rem;
-  background: #c6c6c6;
-}
-.light-sliders :deep(.bx--slider__track::before) {
-  background: #c6c6c6;
-}
-.light-sliders :deep(.bx--slider__filled-track) {
-  height: 0.125rem;
-  background: #ffffff;
-}
-.light-sliders :deep(.bx--slider__thumb) {
-  background: #ffffff;
-  box-shadow: 0 0 0 1px #ffffff;
-}
-.light-sliders :deep(.bx--slider__thumb:hover),
-.light-sliders :deep(.bx--slider__thumb:focus),
-.light-sliders :deep(.bx--slider__thumb:active) {
-  background: #ffffff;
-  box-shadow: 0 0 0 2px #ffffff;
-}
-.light-sliders :deep(.bx--slider-text-input) {
-  display: none;
+  cursor: pointer;
 }
 .chassis-label {
   color: #ffffff;
