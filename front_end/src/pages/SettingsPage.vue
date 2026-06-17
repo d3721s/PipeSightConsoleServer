@@ -194,7 +194,7 @@ onActivated(loadStorage)
       <cv-row>
         <cv-column :sm="4" :md="8" :lg="16" class="settings-col">
           <cv-tile class="settings-card">
-            <h3>存储路径</h3>
+            <h3>存储</h3>
             <cv-inline-notification
               v-if="storage"
               kind="info"
