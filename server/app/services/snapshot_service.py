@@ -6,21 +6,10 @@ import tempfile
 from datetime import datetime
 
 from app.config import get_settings
-from app.services.osd_service import current_wheel_mileage_text
-from app.services.recorder_service import OSD_FONT, _ff_escape_path
+from app.services.osd_service import build_ffmpeg_osd_filter, osd_text
 
 
 settings = get_settings()
-
-
-def _osd_text(project_name: str, project_location: str) -> str:
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return (
-        f"时间: {now}\n"
-        f"距离: {current_wheel_mileage_text()}\n"
-        f"项目名称: {project_name or '-'}\n"
-        f"项目地点: {project_location or '-'}\n"
-    )
 
 
 def take_snapshot(
@@ -39,18 +28,8 @@ def take_snapshot(
     osd_fd, osd_name = tempfile.mkstemp(suffix=".txt", dir=str(snapshot_dir))
     try:
         with os.fdopen(osd_fd, "w", encoding="utf-8") as fh:
-            fh.write(_osd_text(project_name, project_location))
-        font = _ff_escape_path(OSD_FONT)
-        textfile = _ff_escape_path(osd_name)
-        # Match the live preview overlay (OsdOverlay.vue): white text on a
-        # translucent black block with a soft shadow. Kept consistent with
-        # recorder_service._build_drawtext_filter.
-        vf = (
-            f"drawtext=fontfile={font}:textfile={textfile}:"
-            "x=30:y=20:fontsize=46:fontcolor=white:"
-            "box=1:boxcolor=black@0.45:boxborderw=10:line_spacing=12:"
-            "shadowcolor=black@0.8:shadowx=1:shadowy=2"
-        )
+            fh.write(osd_text(project_name, project_location))
+        vf = build_ffmpeg_osd_filter(osd_name, reload=False)
         command = [
             settings.ffmpeg_exe,
             "-hide_banner",

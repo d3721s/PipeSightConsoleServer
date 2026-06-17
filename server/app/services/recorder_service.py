@@ -11,15 +11,14 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.services.odometer_service import odometer_service
-from app.services.osd_service import current_wheel_mileage_text
+from app.services.osd_service import OSD_FONT, _ff_escape_path, build_ffmpeg_osd_filter, osd_text
 from app.services.settings_service import get_recording_segment_minutes
 
 
 settings = get_settings()
 
 # OSD font. Install on the cart with: sudo apt install -y fonts-wqy-zenhei
-OSD_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
-OSD_TEXT_REFRESH_S = 0.2  # how often the dynamic OSD textfile is rewritten
+OSD_TEXT_REFRESH_S = 0.5  # how often the dynamic OSD textfile is rewritten
 TRACK_SAMPLE_S = 1.0      # how often a mileage sample is buffered (one row/sec)
 
 
@@ -33,11 +32,6 @@ class RecordingState:
     error: str | None = None
     project_name: str = ""
     project_location: str = ""
-
-
-def _ff_escape_path(path: str) -> str:
-    # Inside an ffmpeg filter argument, ':' and '\' must be escaped.
-    return path.replace("\\", "\\\\").replace(":", "\\:")
 
 
 class RecorderService:
@@ -348,25 +342,10 @@ class RecorderService:
     # --- OSD rendering -----------------------------------------------------
 
     def _build_drawtext_filter(self, textfile: Path) -> str:
-        font = _ff_escape_path(OSD_FONT)
-        # Match the live preview overlay (OsdOverlay.vue): white text on a
-        # translucent black block with a soft shadow.
-        common = (
-            f"fontfile={font}:fontsize=46:fontcolor=white:"
-            "box=1:boxcolor=black@0.45:boxborderw=10:line_spacing=12:"
-            "shadowcolor=black@0.8:shadowx=1:shadowy=2"
-        )
-        time_text = "时间\\: %{localtime\\:%Y-%m-%d %H\\\\\\:%M\\\\\\:%S}"
-        time_layer = f"drawtext={common}:x=30:y=20:text='{time_text}'"
-        body_file = _ff_escape_path(str(textfile))
-        body_layer = f"drawtext={common}:x=30:y=90:textfile={body_file}:reload=1"
-        return f"{time_layer},{body_layer}"
+        return build_ffmpeg_osd_filter(textfile, reload=True)
 
     def _osd_body_text(self) -> str:
-        distance = f"距离: {current_wheel_mileage_text()}"
-        name = self._state.project_name or "-"
-        location = self._state.project_location or "-"
-        return f"{distance}\n项目名称: {name}\n项目地点: {location}\n"
+        return osd_text(self._state.project_name, self._state.project_location)
 
     def _write_osd_text(self) -> None:
         textfile = self._osd_textfile
