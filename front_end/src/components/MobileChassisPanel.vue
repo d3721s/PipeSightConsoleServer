@@ -211,7 +211,7 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(4)}°`)
   padding: 0 0.5rem;
 }
 .chassis-label {
-  color: #ffffff;
+  color: #8d8d8d;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
