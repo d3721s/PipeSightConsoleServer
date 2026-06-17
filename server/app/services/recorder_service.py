@@ -11,6 +11,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.services.odometer_service import odometer_service
+from app.services.osd_service import current_wheel_mileage_text
 from app.services.settings_service import get_recording_segment_minutes
 
 
@@ -362,8 +363,7 @@ class RecorderService:
         return f"{time_layer},{body_layer}"
 
     def _osd_body_text(self) -> str:
-        mileage_m = odometer_service.get_current_mileage_m()
-        distance = "距离: --" if mileage_m is None else f"距离: {mileage_m:.2f}m"
+        distance = f"距离: {current_wheel_mileage_text()}"
         name = self._state.project_name or "-"
         location = self._state.project_location or "-"
         return f"{distance}\n项目名称: {name}\n项目地点: {location}\n"

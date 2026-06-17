@@ -7,8 +7,9 @@ import PointCloudViewer from '../components/PointCloudViewer.vue'
 import DepthMapViewer from '../components/DepthMapViewer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import { api } from '../api'
-import { distance } from '../stores/odometer'
+import { distance, leftWheelM, rightWheelM } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
+import { formatWheelMileage } from '../utils/osd'
 
 const router = useRouter()
 
@@ -31,7 +32,7 @@ const bridgeWsUrl = computed(() => {
 })
 
 const viewer = ref<ViewerHandle | null>(null)
-const DEFAULT_POINTCLOUD_ZOOM = 1.5
+const DEFAULT_POINTCLOUD_ZOOM = 1.2
 const MIN_POINTCLOUD_ZOOM = 0.2
 const MAX_POINTCLOUD_ZOOM = 8
 const zoomLabel = ref(`${DEFAULT_POINTCLOUD_ZOOM.toFixed(1)}x`)
@@ -107,7 +108,7 @@ function drawSnapshotOsd(ctx: CanvasRenderingContext2D, width: number, height: n
   const lineHeight = Math.round(fontSize * 1.45)
   const lines = [
     `时间：${new Date().toLocaleString()}`,
-    `距离：${distance.value.toFixed(2)} m`,
+    `距离：${formatWheelMileage(leftWheelM.value, rightWheelM.value)}`,
     `项目名称：${currentProject.value?.name || '未创建项目'}`,
     `地点：${currentProject.value?.location || '-'}`
   ]
@@ -144,7 +145,8 @@ function drawSnapshotOsd(ctx: CanvasRenderingContext2D, width: number, height: n
       <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" @zoom-change="updateZoomLabel" />
 
       <osd-overlay
-        :distance="distance"
+        :left-mileage="leftWheelM"
+        :right-mileage="rightWheelM"
         :project-name="currentProject?.name || ''"
         :location="currentProject?.location || ''"
       />

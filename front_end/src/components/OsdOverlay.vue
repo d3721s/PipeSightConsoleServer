@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { formatWheelMileage } from '../utils/osd'
 
 defineProps<{
-  distance: number
+  leftMileage: number | null
+  rightMileage: number | null
   projectName: string
   location: string
 }>()
@@ -21,7 +23,7 @@ onUnmounted(() => {
 <template>
   <div class="osd-overlay">
     <div class="osd-line">时间：{{ now.toLocaleString() }}</div>
-    <div class="osd-line">距离：{{ distance.toFixed(2) }} m</div>
+    <div class="osd-line">距离：{{ formatWheelMileage(leftMileage, rightMileage) }}</div>
     <div class="osd-line">项目名称：{{ projectName || '未创建项目' }}</div>
     <div class="osd-line">地点：{{ location || '-' }}</div>
   </div>

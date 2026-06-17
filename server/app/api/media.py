@@ -147,8 +147,9 @@ def recording_status() -> dict:
 
 @router.get("/odometer")
 def odometer() -> dict:
-    # Live mileage from the cart's TCP odometer service. The frontend polls this
-    # to render the same distance in its OSD overlay as the burned-in recording.
+    # Live mileage from the cart's TCP odometer service. The frontend still uses
+    # this for media metadata and annotation defaults; OSD text uses the chassis
+    # left/right wheel mileage.
     cm = odometer_service.get_current_mileage_cm()
     return {
         "connected": odometer_service.connected,

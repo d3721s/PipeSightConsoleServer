@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 import { api } from '../api'
 
-// Cart odometer distance (metres), polled globally so the OSD overlay distance
-// matches what the recorder burns in. Started once from App.vue.
+// Cart odometer distance (metres), still used for saved media metadata and
+// annotation defaults. OSD display uses the left/right chassis wheel mileage.
 
 export const distance = ref(0)
 export const odometerConnected = ref(false)

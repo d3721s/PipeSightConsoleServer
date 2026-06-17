@@ -21,7 +21,7 @@ const pointCount = ref(0)
 
 const MIN_FRAME_INTERVAL_MS = 66
 const COLOR_STEPS = 512
-const DEFAULT_VIEW_ZOOM = 1.5
+const DEFAULT_VIEW_ZOOM = 1.2
 const MIN_VIEW_ZOOM = 0.2
 const MAX_VIEW_ZOOM = 8
 

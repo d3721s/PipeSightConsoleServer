@@ -6,19 +6,18 @@ import tempfile
 from datetime import datetime
 
 from app.config import get_settings
-from app.services.odometer_service import odometer_service
+from app.services.osd_service import current_wheel_mileage_text
 from app.services.recorder_service import OSD_FONT, _ff_escape_path
 
 
 settings = get_settings()
 
 
-def _osd_text(distance_m: float | None, project_name: str, project_location: str) -> str:
+def _osd_text(project_name: str, project_location: str) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    distance = "--" if distance_m is None else f"{distance_m:.2f}m"
     return (
         f"时间: {now}\n"
-        f"距离: {distance}\n"
+        f"距离: {current_wheel_mileage_text()}\n"
         f"项目名称: {project_name or '-'}\n"
         f"项目地点: {project_location or '-'}\n"
     )
@@ -40,7 +39,7 @@ def take_snapshot(
     osd_fd, osd_name = tempfile.mkstemp(suffix=".txt", dir=str(snapshot_dir))
     try:
         with os.fdopen(osd_fd, "w", encoding="utf-8") as fh:
-            fh.write(_osd_text(odometer_service.get_current_mileage_m(), project_name, project_location))
+            fh.write(_osd_text(project_name, project_location))
         font = _ff_escape_path(OSD_FONT)
         textfile = _ff_escape_path(osd_name)
         # Match the live preview overlay (OsdOverlay.vue): white text on a

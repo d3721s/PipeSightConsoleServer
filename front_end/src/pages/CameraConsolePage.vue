@@ -27,7 +27,7 @@ import {
   selectChannel,
   stream
 } from '../stores/cameras'
-import { distance } from '../stores/odometer'
+import { distance, leftWheelM, rightWheelM } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 
 const router = useRouter()
@@ -111,7 +111,8 @@ async function toggleRecording() {
       </div>
 
       <osd-overlay
-        :distance="distance"
+        :left-mileage="leftWheelM"
+        :right-mileage="rightWheelM"
         :project-name="currentProject?.name || ''"
         :location="currentProject?.location || ''"
       />

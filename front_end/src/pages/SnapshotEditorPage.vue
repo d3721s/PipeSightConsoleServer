@@ -252,7 +252,7 @@ async function confirmDeleteMedia() {
         </cv-tab>
         <cv-tab label="3D">
           <div class="media-list">
-            <p class="empty">3D 标注开发中</p>
+            <p class="empty">3D 计算功能开发中</p>
           </div>
         </cv-tab>
       </cv-tabs>
@@ -331,7 +331,7 @@ async function confirmDeleteMedia() {
       <template v-else-if="tab === '3d'">
         <div class="empty-main">
           <component :is="CubeView24" class="empty-icon" />
-          <p>3D 标注开发中</p>
+          <p>3D 计算功能开发中</p>
         </div>
       </template>
 
