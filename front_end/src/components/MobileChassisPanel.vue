@@ -15,9 +15,15 @@ import {
   imuFresh,
   imuStalled,
   imuLastFrameAgeS,
+  imuLastRxAgeS,
   imuRxBytes,
   imuValidFrames,
   imuBadFrames,
+  imuSkippedBytes,
+  imuBufferedBytes,
+  imuLastRxHex,
+  imuLastFrameHex,
+  imuLastBadFrameHex,
   imuLastError,
   eulerRoll,
   eulerPitch,
@@ -73,6 +79,7 @@ const fmtSpeed = (v: number | null) => (v === null ? '--' : `${v}`)
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 const fmtAge = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}s`)
+const fmtHex = (v: string | null) => (v === null || v === '' ? '--' : v)
 const imuStatusClass = computed(() => (imuFresh.value ? 'ok' : imuPortOpen.value ? 'warn' : 'off'))
 const imuStatusText = computed(() => {
   if (!imuDiagnostics.value && imuFresh.value) return '正常'
@@ -86,6 +93,10 @@ const imuStatusText = computed(() => {
 const imuFrameStats = computed(() => {
   if (!imuDiagnostics.value) return '诊断未启用'
   return `${imuValidFrames.value ?? 0}/${imuBadFrames.value ?? 0}/${imuRxBytes.value ?? 0}`
+})
+const imuBufferStats = computed(() => {
+  if (!imuDiagnostics.value) return '诊断未启用'
+  return `${imuBufferedBytes.value ?? 0}/${imuSkippedBytes.value ?? 0}`
 })
 </script>
 
@@ -129,7 +140,12 @@ const imuFrameStats = computed(() => {
       <div class="readout-row"><span>状态码</span><strong>{{ fmtText(statusCode) }}</strong></div>
       <div class="readout-row"><span>IMU状态</span><strong class="imu-status" :class="imuStatusClass">{{ imuStatusText }}</strong></div>
       <div class="readout-row"><span>IMU帧龄</span><strong>{{ fmtAge(imuLastFrameAgeS) }}</strong></div>
+      <div class="readout-row"><span>IMU收包龄</span><strong>{{ fmtAge(imuLastRxAgeS) }}</strong></div>
       <div class="readout-row"><span>有效帧/错帧/字节</span><strong>{{ imuFrameStats }}</strong></div>
+      <div class="readout-row"><span>缓冲/丢弃字节</span><strong>{{ imuBufferStats }}</strong></div>
+      <div class="readout-row readout-row-error"><span>最后RX HEX</span><strong>{{ fmtHex(imuLastRxHex) }}</strong></div>
+      <div class="readout-row readout-row-error"><span>最后有效帧</span><strong>{{ fmtHex(imuLastFrameHex) }}</strong></div>
+      <div class="readout-row readout-row-error"><span>最后错帧</span><strong>{{ fmtHex(imuLastBadFrameHex) }}</strong></div>
       <div v-if="imuDiagnostics && imuLastError" class="readout-row readout-row-error"><span>IMU错误</span><strong>{{ imuLastError }}</strong></div>
       <div class="readout-row"><span>横滚角 Roll</span><strong>{{ fmtDeg(eulerRoll) }}</strong></div>
       <div class="readout-row"><span>俯仰角 Pitch</span><strong>{{ fmtDeg(eulerPitch) }}</strong></div>
