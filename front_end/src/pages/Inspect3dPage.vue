@@ -32,21 +32,26 @@ const bridgeWsUrl = computed(() => {
 
 const viewer = ref<ViewerHandle | null>(null)
 const DEFAULT_POINTCLOUD_ZOOM = 1.5
+const MIN_POINTCLOUD_ZOOM = 0.2
+const MAX_POINTCLOUD_ZOOM = 8
 const zoomLabel = ref(`${DEFAULT_POINTCLOUD_ZOOM.toFixed(1)}x`)
-let zoomFactor = DEFAULT_POINTCLOUD_ZOOM
 
 function setMode(next: ViewMode) {
   if (mode.value === next) return
   mode.value = next
   viewer.value = null
+  updateZoomLabel(DEFAULT_POINTCLOUD_ZOOM)
 }
 
 function nudgeZoom(dir: number) {
   if (mode.value !== 'pointcloud') return
   // dir>0 zoom in (camera dolly closer), dir<0 zoom out.
   viewer.value?.zoomBy?.(dir > 0 ? 0.8 : 1.25)
-  zoomFactor = Math.max(0.2, Math.min(8, zoomFactor * (dir > 0 ? 1.25 : 0.8)))
-  zoomLabel.value = `${zoomFactor.toFixed(1)}x`
+}
+
+function updateZoomLabel(value: number) {
+  const zoom = Math.max(MIN_POINTCLOUD_ZOOM, Math.min(MAX_POINTCLOUD_ZOOM, value))
+  zoomLabel.value = `${zoom.toFixed(1)}x`
 }
 
 async function capture3d() {
@@ -73,7 +78,7 @@ async function capture3d() {
 <template>
   <div class="console-page">
     <div class="video-area">
-      <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" />
+      <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" @zoom-change="updateZoomLabel" />
 
       <osd-overlay
         :distance="distance"

@@ -11,6 +11,9 @@ const props = withDefaults(
   }>(),
   { wsUrl: '', pointSize: 0.012 }
 )
+const emit = defineEmits<{
+  (event: 'zoom-change', value: number): void
+}>()
 
 const container = ref<HTMLDivElement | null>(null)
 const connected = ref(false)
@@ -19,6 +22,8 @@ const pointCount = ref(0)
 const MIN_FRAME_INTERVAL_MS = 66
 const COLOR_STEPS = 512
 const DEFAULT_VIEW_ZOOM = 1.5
+const MIN_VIEW_ZOOM = 0.2
+const MAX_VIEW_ZOOM = 8
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
@@ -38,7 +43,12 @@ let colorAttribute: THREE.BufferAttribute | null = null
 let colorArray: Float32Array | null = null
 let disposed = false
 let renderQueued = false
-const onControlsChange = () => requestRender()
+let baseZoomDistance = 0
+let lastEmittedZoom = 0
+const onControlsChange = () => {
+  requestRender()
+  emitZoomChange()
+}
 
 const pointColorPalette = buildPointColorPalette()
 
@@ -66,6 +76,7 @@ function initThree() {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
   renderer.setSize(el.clientWidth, el.clientHeight)
+  renderer.domElement.style.touchAction = 'none'
   el.appendChild(renderer.domElement)
 
   controls = new OrbitControls(camera, renderer.domElement)
@@ -187,12 +198,16 @@ function frameCloud() {
   box.getCenter(center)
   box.getSize(size)
   const radius = Math.max(size.x, size.y, size.z, 0.1)
+  baseZoomDistance = radius * 1.8
   controls.target.copy(center)
-  camera.position.set(center.x, center.y, center.z + (radius * 1.8) / DEFAULT_VIEW_ZOOM)
+  controls.minDistance = baseZoomDistance / MAX_VIEW_ZOOM
+  controls.maxDistance = baseZoomDistance / MIN_VIEW_ZOOM
+  camera.position.set(center.x, center.y, center.z + baseZoomDistance / DEFAULT_VIEW_ZOOM)
   camera.near = Math.max(radius / 1000, 0.001)
   camera.far = Math.max(radius * 20, 10)
   camera.updateProjectionMatrix()
   controls.update()
+  emitZoomChange(true)
 }
 
 function demoCloud() {
@@ -262,7 +277,23 @@ function zoomBy(factor: number) {
   const target = controls.target
   camera.position.sub(target).multiplyScalar(factor).add(target)
   controls.update()
+  emitZoomChange(true)
   requestRender()
+}
+
+function currentZoomFactor(): number | null {
+  if (!camera || !controls || baseZoomDistance <= 0) return null
+  const distance = camera.position.distanceTo(controls.target)
+  if (distance <= 0) return null
+  return Math.max(MIN_VIEW_ZOOM, Math.min(MAX_VIEW_ZOOM, baseZoomDistance / distance))
+}
+
+function emitZoomChange(force = false) {
+  const zoom = currentZoomFactor()
+  if (zoom === null) return
+  if (!force && Math.abs(zoom - lastEmittedZoom) < 0.01) return
+  lastEmittedZoom = zoom
+  emit('zoom-change', zoom)
 }
 
 defineExpose({ snapshot, setPoints, zoomBy })
