@@ -17,7 +17,7 @@ html {
      tablet UI is never small regardless of how the browser reports its width
      (high-DPR tablets report a small logical CSS width, which would otherwise
      keep `vw`-based sizing tiny). Raise/lower this 28px floor to taste. */
-  font-size: clamp(7px, 1.8vw, 36px);
+  font-size: clamp(3.5px, 1.8vw, 36px);
 }
 
 * {
