@@ -22,8 +22,13 @@ FRAME_SIZE = 2 + 1 + 1 + LEN_EULER + 1
 RECONNECT_S = 2.0
 FRESH_FRAME_S = 2.0
 STALL_FRAME_S = 5.0
+RX_TAIL_MAX = 64
 
 logger = logging.getLogger(__name__)
+
+
+def _hex(data: bytes | bytearray) -> str:
+    return " ".join(f"{byte:02X}" for byte in data)
 
 
 class ImuService:
@@ -37,6 +42,12 @@ class ImuService:
         self._rx_bytes = 0
         self._valid_frames = 0
         self._bad_frames = 0
+        self._skipped_bytes = 0
+        self._buffered_bytes = 0
+        self._last_rx_at: float | None = None
+        self._rx_tail = bytearray()
+        self._last_frame_hex: str | None = None
+        self._last_bad_frame_hex: str | None = None
         self._last_error: str | None = None
         self._last_logged_error: str | None = None
         self._stop = threading.Event()
@@ -63,15 +74,22 @@ class ImuService:
     def snapshot(self) -> dict:
         now = time.monotonic()
         with self._lock:
-            age = None if self._last_frame_at is None else now - self._last_frame_at
-            fresh = age is not None and age <= FRESH_FRAME_S
+            frame_age = None if self._last_frame_at is None else now - self._last_frame_at
+            rx_age = None if self._last_rx_at is None else now - self._last_rx_at
+            fresh = frame_age is not None and frame_age <= FRESH_FRAME_S
             return {
                 "portOpen": self._connected,
                 "fresh": fresh,
-                "lastFrameAgeS": age,
+                "lastFrameAgeS": frame_age,
+                "lastRxAgeS": rx_age,
                 "rxBytes": self._rx_bytes,
                 "validFrames": self._valid_frames,
                 "badFrames": self._bad_frames,
+                "skippedBytes": self._skipped_bytes,
+                "bufferedBytes": self._buffered_bytes,
+                "lastRxHex": _hex(self._rx_tail),
+                "lastFrameHex": self._last_frame_hex,
+                "lastBadFrameHex": self._last_bad_frame_hex,
                 "lastError": self._last_error,
                 "roll": self._roll,
                 "pitch": self._pitch,
@@ -102,8 +120,7 @@ class ImuService:
                 while not self._stop.is_set():
                     chunk = ser.read(64)
                     if chunk:
-                        with self._lock:
-                            self._rx_bytes += len(chunk)
+                        self._record_rx(chunk)
                         buf.extend(chunk)
                         self._parse(buf)
                     if self._should_reconnect(opened_at):
@@ -146,21 +163,37 @@ class ImuService:
             )
             return None
 
+    def _record_rx(self, chunk: bytes) -> None:
+        with self._lock:
+            self._rx_bytes += len(chunk)
+            self._last_rx_at = time.monotonic()
+            self._rx_tail.extend(chunk)
+            if len(self._rx_tail) > RX_TAIL_MAX:
+                del self._rx_tail[: len(self._rx_tail) - RX_TAIL_MAX]
+
     def _parse(self, buf: bytearray) -> None:
         # The field unit only emits fixed Euler frames:
         # 55 55 01 06 RollL RollH PitchL PitchH YawL YawH SUM.
-        i = 0
-        n = len(buf)
-        while i + FRAME_SIZE <= n:
-            if not (
-                buf[i] == FRAME_HEAD[0]
-                and buf[i + 1] == FRAME_HEAD[1]
-                and buf[i + 2] == ID_EULER
-                and buf[i + 3] == LEN_EULER
-            ):
-                i += 1
+        skipped = 0
+        while True:
+            start = buf.find(FRAME_HEAD)
+            if start < 0:
+                keep = 1 if buf and buf[-1] == FRAME_HEAD[0] else 0
+                drop = len(buf) - keep
+                if drop > 0:
+                    skipped += drop
+                    del buf[:drop]
+                break
+            if start > 0:
+                skipped += start
+                del buf[:start]
+            if len(buf) < FRAME_SIZE:
+                break
+            if buf[2] != ID_EULER or buf[3] != LEN_EULER:
+                skipped += 1
+                del buf[0]
                 continue
-            frame = buf[i : i + FRAME_SIZE]
+            frame = bytes(buf[:FRAME_SIZE])
             data = frame[4:10]
             checksum = frame[10]
             calc = sum(frame[:10]) & 0xFF
@@ -172,15 +205,18 @@ class ImuService:
                     self._yaw = yaw / 32768.0 * 180.0
                     self._last_frame_at = time.monotonic()
                     self._valid_frames += 1
+                    self._last_frame_hex = _hex(frame)
                     self._last_error = None
-                i += FRAME_SIZE
+                del buf[:FRAME_SIZE]
             else:
                 # Bad checksum: resync past this head and keep scanning.
                 with self._lock:
                     self._bad_frames += 1
-                i += 2
-        # Drop everything we've consumed/skipped.
-        del buf[:i]
+                    self._last_bad_frame_hex = _hex(frame)
+                del buf[0]
+        with self._lock:
+            self._skipped_bytes += skipped
+            self._buffered_bytes = len(buf)
 
     def _should_reconnect(self, opened_at: float) -> bool:
         now = time.monotonic()
