@@ -1,4 +1,4 @@
-import type { ActiveCamera, CameraCode, CameraDevice, ChassisTelemetry, GraphicAnnotation, Marker, Photo, Project, Recording, RecordingStatus, Report, ReportDetail, Session, StorageOptions, StreamInfo, TrackData } from './types'
+import type { ActiveCamera, CameraCode, CameraDevice, ChassisTelemetry, GraphicAnnotation, LightPwm, Marker, Photo, Project, Recording, RecordingStatus, Report, ReportDetail, Session, StorageOptions, StreamInfo, TrackData } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -60,6 +60,11 @@ export const api = {
   chassisTelemetry: () => request<ChassisTelemetry>('/api/chassis/telemetry'),
   setChassisLight: (value: number) =>
     request<{ ok: boolean; light: number }>('/api/chassis/light', { method: 'POST', body: JSON.stringify({ value }) }),
+  setChassisLightPwm: (d1PulseUs: number, d3PulseUs: number) =>
+    request<{ ok: boolean; lightPwm: LightPwm }>('/api/chassis/light/pwm', {
+      method: 'POST',
+      body: JSON.stringify({ periodUs: 100, d1PulseUs, d3PulseUs })
+    }),
   setChassisMode: (value: number) =>
     request<{ ok: boolean; mode: number }>('/api/chassis/mode', { method: 'POST', body: JSON.stringify({ value }) }),
 

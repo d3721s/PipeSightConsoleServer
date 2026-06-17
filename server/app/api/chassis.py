@@ -8,6 +8,7 @@ from app.services.imu_service import imu_service
 
 
 router = APIRouter(prefix="/api/chassis", tags=["chassis"])
+LIGHT_PWM_PERIOD_US = 100
 
 
 @router.get("/telemetry")
@@ -39,9 +40,9 @@ class LightIn(BaseModel):
 
 
 class LightPwmIn(BaseModel):
-    periodUs: int | None = Field(default=None, ge=1, le=65535)
-    d1PulseUs: int = Field(ge=0, le=65535)
-    d3PulseUs: int = Field(ge=0, le=65535)
+    periodUs: int | None = Field(default=LIGHT_PWM_PERIOD_US, ge=LIGHT_PWM_PERIOD_US, le=LIGHT_PWM_PERIOD_US)
+    d1PulseUs: int = Field(ge=0, le=LIGHT_PWM_PERIOD_US)
+    d3PulseUs: int = Field(ge=0, le=LIGHT_PWM_PERIOD_US)
 
 
 @router.post("/light")
@@ -56,7 +57,7 @@ def set_light_pwm(payload: LightPwmIn) -> dict:
     if not imu_service.set_light_pwm(
         payload.d1PulseUs,
         payload.d3PulseUs,
-        payload.periodUs,
+        LIGHT_PWM_PERIOD_US,
     ):
         raise HTTPException(status_code=502, detail="IMU未确认灯光PWM指令")
     return {"ok": True, "lightPwm": imu_service.get_light_pwm()}

@@ -50,15 +50,13 @@ class Settings(BaseSettings):
     # IMU (ATK-MS901M) — Euler angles over UART.
     imu_serial_port: str = "/dev/ttyUSB-IMU"
     imu_baudrate: int = 115200
-    # Light output through the IMU's D1/D3 PWM pins. Defaults mean:
-    # 1/off: D1=0%, D3=0%; 2/low: both=50%; 3/high: both=90%.
-    # Keep high below 100% so drivers that require PWM edges still see a pulse.
-    # Override with PIPESIGHT_IMU_LIGHT_* if the driver expects another duty.
-    imu_light_pwm_period_us: int = 1000
-    imu_light_low_d1_pulse_us: int = 500
-    imu_light_low_d3_pulse_us: int = 500
-    imu_light_high_d1_pulse_us: int = 900
-    imu_light_high_d3_pulse_us: int = 900
+    # Light output through the IMU's D1/D3 PWM pins. The period is fixed at 100,
+    # so D1/D3 pulse values map directly to 0-100% slider values.
+    imu_light_pwm_period_us: int = 100
+    imu_light_low_d1_pulse_us: int = 50
+    imu_light_low_d3_pulse_us: int = 50
+    imu_light_high_d1_pulse_us: int = 100
+    imu_light_high_d3_pulse_us: int = 100
     pointcloud_bridge_ws_url: str = "ws://127.0.0.1:9090"
     depth_bridge_ws_url: str = "ws://127.0.0.1:9091"
 
