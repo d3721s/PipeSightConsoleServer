@@ -29,7 +29,6 @@ type Shape = RectShape | TextShape | PathShape
 
 const props = defineProps<{
   baseImage: string // URL or data URL of the background image / captured frame
-  initialDistance?: number
   initialLeftMileage?: number | null
   initialRightMileage?: number | null
 }>()
@@ -51,11 +50,7 @@ function toFiniteNumber(value: unknown): number | null {
 }
 
 function initialMileageValue(value: number | null | undefined): number | null {
-  return toFiniteNumber(value) ?? toFiniteNumber(props.initialDistance) ?? null
-}
-
-function primaryDistance(left: unknown, right: unknown): number {
-  return toFiniteNumber(left) ?? toFiniteNumber(right) ?? toFiniteNumber(props.initialDistance) ?? 0
+  return toFiniteNumber(value)
 }
 
 const defect = reactive({
@@ -66,8 +61,7 @@ const defect = reactive({
   position: '',
   note: '',
   leftMileage: initialMileageValue(props.initialLeftMileage),
-  rightMileage: initialMileageValue(props.initialRightMileage),
-  distanceM: props.initialDistance ?? 0
+  rightMileage: initialMileageValue(props.initialRightMileage)
 })
 
 const tools: { id: Tool; label: string; icon: unknown }[] = [
@@ -301,17 +295,15 @@ function save() {
     defect: {
       ...defect,
       leftMileage,
-      rightMileage,
-      distanceM: primaryDistance(leftMileage, rightMileage)
+      rightMileage
     }
   })
 }
 
 watch(() => props.baseImage, loadBase)
-watch(() => [props.initialLeftMileage, props.initialRightMileage, props.initialDistance], () => {
+watch(() => [props.initialLeftMileage, props.initialRightMileage], () => {
   defect.leftMileage = initialMileageValue(props.initialLeftMileage)
   defect.rightMileage = initialMileageValue(props.initialRightMileage)
-  defect.distanceM = primaryDistance(defect.leftMileage, defect.rightMileage)
 })
 onMounted(loadBase)
 </script>

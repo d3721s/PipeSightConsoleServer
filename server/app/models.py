@@ -73,7 +73,6 @@ class MediaAsset(Base):
     file_path: Mapped[str] = mapped_column(String(512))
     thumbnail_path: Mapped[str] = mapped_column(String(512), default="")
     captured_at: Mapped[datetime] = mapped_column(DateTime, default=now)
-    distance_m: Mapped[float] = mapped_column(Float, default=0.0)
     left_mileage: Mapped[float | None] = mapped_column(Float, nullable=True)
     right_mileage: Mapped[float | None] = mapped_column(Float, nullable=True)
 
@@ -102,7 +101,8 @@ class Marker(Base):
     direction: Mapped[str] = mapped_column(String(64), default="")
     position: Mapped[str] = mapped_column(String(128), default="")
     note: Mapped[str] = mapped_column(Text, default="")
-    distance_m: Mapped[float] = mapped_column(Float, default=0.0)
+    left_mileage: Mapped[float | None] = mapped_column(Float, nullable=True)
+    right_mileage: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
 
 

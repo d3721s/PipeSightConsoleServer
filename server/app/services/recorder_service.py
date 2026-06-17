@@ -11,7 +11,6 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.services.modbus_service import modbus_chassis_service
-from app.services.odometer_service import odometer_service
 from app.services.osd_service import build_ffmpeg_osd_filter, osd_text
 from app.services.settings_service import get_recording_segment_minutes
 
@@ -228,20 +227,17 @@ class RecorderService:
             time.sleep(OSD_TEXT_REFRESH_S)
 
     def _track_loop(self) -> None:
-        # One mileage sample per second. Keep the old cart odometer JSON for
-        # compatibility, and add the two chassis odometers used by annotation.
+        # One mileage sample per second for the two chassis odometers.
         next_t = time.time()
         while not self._osd_stop.is_set():
-            raw = dict(odometer_service.get_current_raw() or {})
             telemetry = modbus_chassis_service.get_telemetry()
-            if telemetry.left_mileage is not None:
-                raw["leftMileage"] = telemetry.left_mileage
-            if telemetry.right_mileage is not None:
-                raw["rightMileage"] = telemetry.right_mileage
-            raw["chassisConnected"] = telemetry.connected
-            if raw is not None:
-                with self._track_lock:
-                    self._track.append((time.time(), raw))
+            raw = {
+                "leftMileage": telemetry.left_mileage,
+                "rightMileage": telemetry.right_mileage,
+                "chassisConnected": telemetry.connected,
+            }
+            with self._track_lock:
+                self._track.append((time.time(), raw))
             next_t += TRACK_SAMPLE_S
             time.sleep(max(0.0, next_t - time.time()))
 

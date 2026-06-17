@@ -67,7 +67,8 @@ def create_marker(payload: MarkerCreate, db: Session = Depends(get_db)) -> Marke
         direction=payload.direction,
         position=payload.position,
         note=payload.note,
-        distance_m=payload.distance_m,
+        left_mileage=payload.left_mileage,
+        right_mileage=payload.right_mileage,
     )
     db.add(marker)
     db.commit()
@@ -79,7 +80,7 @@ def create_marker(payload: MarkerCreate, db: Session = Depends(get_db)) -> Marke
 def list_markers(media_id: int, db: Session = Depends(get_db)) -> list[Marker]:
     return list(
         db.scalars(
-            select(Marker).where(Marker.media_asset_id == media_id).order_by(Marker.distance_m, Marker.id)
+            select(Marker).where(Marker.media_asset_id == media_id).order_by(Marker.left_mileage, Marker.id)
         ).all()
     )
 
@@ -136,7 +137,6 @@ def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depend
         "direction": payload.direction,
         "position": payload.position,
         "note": payload.note,
-        "distanceM": payload.distance_m,
         "leftMileage": payload.left_mileage,
         "rightMileage": payload.right_mileage,
     }
@@ -176,7 +176,8 @@ def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depend
         direction=payload.direction,
         position=payload.position,
         note=payload.note,
-        distance_m=payload.distance_m,
+        left_mileage=payload.left_mileage,
+        right_mileage=payload.right_mileage,
     )
     db.add(marker)
     db.commit()

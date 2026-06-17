@@ -7,7 +7,7 @@ import PointCloudViewer from '../components/PointCloudViewer.vue'
 import DepthMapViewer from '../components/DepthMapViewer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import { api } from '../api'
-import { distance, leftWheelM, rightWheelM } from '../stores/odometer'
+import { leftWheelM, rightWheelM } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 import { formatWheelMileage } from '../utils/osd'
 
@@ -67,7 +67,6 @@ async function capture3d() {
     const asset = await api.imageSnapshot({
       projectId: currentProject.value?.id,
       sessionId: currentSession.value?.id,
-      distanceM: distance.value,
       leftMileage: leftWheelM.value,
       rightMileage: rightWheelM.value,
       image,

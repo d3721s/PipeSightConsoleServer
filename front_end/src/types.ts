@@ -143,7 +143,8 @@ export interface Marker {
   direction: string
   position: string
   note: string
-  distanceM: number
+  leftMileage: number | null
+  rightMileage: number | null
   createdAt: string
 }
 
@@ -153,7 +154,6 @@ export interface Photo {
   sessionId: number | null
   name: string
   capturedAt: string
-  distanceM: number
   leftMileage?: number | null
   rightMileage?: number | null
   imageUrl: string | null

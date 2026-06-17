@@ -72,7 +72,6 @@ def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)) -> Media
         camera_channel=channel,
         type="photo",
         file_path=path,
-        distance_m=payload.distance_m,
         left_mileage=payload.left_mileage,
         right_mileage=payload.right_mileage,
     )
@@ -98,7 +97,6 @@ def create_image_snapshot(payload: ImageSnapshotIn, db: Session = Depends(get_db
         camera_channel=0,
         type="photo",
         file_path=path,
-        distance_m=payload.distance_m,
         left_mileage=payload.left_mileage,
         right_mileage=payload.right_mileage,
     )
@@ -178,7 +176,6 @@ def list_photos(db: Session = Depends(get_db)) -> list[dict]:
                 "sessionId": asset.session_id,
                 "name": Path(asset.file_path).name,
                 "capturedAt": asset.captured_at.isoformat(timespec="seconds"),
-                "distanceM": asset.distance_m,
                 "leftMileage": asset.left_mileage,
                 "rightMileage": asset.right_mileage,
                 "imageUrl": url,

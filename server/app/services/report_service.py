@@ -102,7 +102,7 @@ def _write_reportlab_pdf(path: Path, report: Report, project: Project | None, an
         info_lines = [
             f"#{idx}  {defect.get('type', '') or '—'}  {defect.get('code', '')}".strip(),
             f"等级: {defect.get('severity', '') or '-'}   方向: {defect.get('direction', '') or '-'}   "
-            f"位置: {defect.get('position', '') or '-'}   里程: {_fmt_distance(defect.get('distanceM'))}",
+            f"位置: {defect.get('position', '') or '-'}   里程: {_fmt_mileage(defect)}",
         ]
         note = defect.get("note", "")
         if note:
@@ -131,11 +131,18 @@ def _write_reportlab_pdf(path: Path, report: Report, project: Project | None, an
     c.save()
 
 
-def _fmt_distance(value) -> str:
-    try:
-        return f"{float(value):.2f}m"
-    except (TypeError, ValueError):
-        return "-"
+def _fmt_mileage(defect: dict) -> str:
+    def fmt(value) -> str:
+        try:
+            return f"{float(value):.2f}m"
+        except (TypeError, ValueError):
+            return "--"
+
+    left = defect.get("leftMileage")
+    right = defect.get("rightMileage")
+    if left is None and right is None:
+        return "--"
+    return f"{fmt(left)}-{fmt(right)}"
 
 
 def _load_image(rendered_path: str, *, max_w: float, max_h: float):

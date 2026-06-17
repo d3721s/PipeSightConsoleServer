@@ -35,11 +35,10 @@ function toFiniteNumber(value: unknown): number | null {
   return null
 }
 
-function mileagePair(left: unknown, right: unknown, fallback?: unknown): MileagePair {
-  const fb = toFiniteNumber(fallback)
+function mileagePair(left: unknown, right: unknown): MileagePair {
   return {
-    left: toFiniteNumber(left) ?? fb,
-    right: toFiniteNumber(right) ?? fb
+    left: toFiniteNumber(left),
+    right: toFiniteNumber(right)
   }
 }
 
@@ -52,7 +51,7 @@ function formatMileagePair(pair: MileagePair): string {
 
 function photoMileagePair(photo: Photo | null): MileagePair {
   if (!photo) return { left: null, right: null }
-  return mileagePair(photo.leftMileage, photo.rightMileage, photo.distanceM)
+  return mileagePair(photo.leftMileage, photo.rightMileage)
 }
 
 function recordingMileagePair(recording: Recording | null): MileagePair {
@@ -69,21 +68,14 @@ function rawNumber(raw: Record<string, unknown>, keys: string[]): number | null 
 }
 
 function sampleMileagePair(raw: Record<string, unknown>): MileagePair {
-  const legacyCm = rawNumber(raw, ['mileage_cm'])
-  const fallback = legacyCm === null ? null : legacyCm / 100
   return mileagePair(
     rawNumber(raw, ['leftMileage', 'left_mileage']),
-    rawNumber(raw, ['rightMileage', 'right_mileage']),
-    fallback
+    rawNumber(raw, ['rightMileage', 'right_mileage'])
   )
 }
 
 function defectMileagePair(defect: Record<string, unknown>): MileagePair {
-  return mileagePair(defect.leftMileage, defect.rightMileage, defect.distanceM)
-}
-
-function primaryDistance(left: unknown, right: unknown, fallback?: unknown): number {
-  return toFiniteNumber(left) ?? toFiniteNumber(right) ?? toFiniteNumber(fallback) ?? 0
+  return mileagePair(defect.leftMileage, defect.rightMileage)
 }
 
 async function reload() {
@@ -192,9 +184,6 @@ function annotateFrame() {
 const editorMileage = computed<MileagePair>(() =>
   editorSourceType.value === 'image' ? photoMileagePair(activePhoto.value) : currentMileage.value
 )
-const editorDistance = computed(() =>
-  primaryDistance(editorMileage.value.left, editorMileage.value.right)
-)
 
 async function saveGraphicAnnotation(payload: {
   shapes: unknown[]
@@ -222,7 +211,6 @@ async function saveGraphicAnnotation(payload: {
       direction: (payload.defect.direction as string) || '',
       position: (payload.defect.position as string) || '',
       note: (payload.defect.note as string) || '',
-      distanceM: primaryDistance(leftMileage, rightMileage, payload.defect.distanceM),
       leftMileage,
       rightMileage
     })
@@ -330,7 +318,6 @@ async function confirmDeleteMedia() {
       <annotation-editor
         v-if="editorOpen"
         :base-image="editorBaseImage"
-        :initial-distance="editorDistance"
         :initial-left-mileage="editorMileage.left"
         :initial-right-mileage="editorMileage.right"
         @save="saveGraphicAnnotation"

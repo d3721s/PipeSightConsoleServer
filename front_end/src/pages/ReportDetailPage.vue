@@ -46,6 +46,22 @@ async function regenerate() {
 function downloadPdf() {
   if (detail.value) window.open(api.reportPdfUrl(detail.value.report.id), '_blank')
 }
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function formatMileage(defect: Record<string, unknown>): string {
+  const left = toNumber(defect.leftMileage)
+  const right = toNumber(defect.rightMileage)
+  if (left === null && right === null) return '--'
+  return `${left === null ? '--' : `${left.toFixed(2)}m`}-${right === null ? '--' : `${right.toFixed(2)}m`}`
+}
 </script>
 
 <template>
@@ -85,7 +101,7 @@ function downloadPdf() {
         <div class="anno-card-info">
           <strong>#{{ i + 1 }} {{ (a.defect.type as string) || '—' }} {{ (a.defect.code as string) }}</strong>
           <small>等级：{{ (a.defect.severity as string) || '-' }} · 方向：{{ (a.defect.direction as string) || '-' }}</small>
-          <small>位置：{{ (a.defect.position as string) || '-' }} · 里程：{{ (a.defect.distanceM as number)?.toFixed?.(2) ?? '-' }} m</small>
+          <small>位置：{{ (a.defect.position as string) || '-' }} · 里程：{{ formatMileage(a.defect) }}</small>
           <small v-if="a.sourceType === 'video' && a.videoTime !== null">来源：视频帧 {{ a.videoTime.toFixed(1) }} s</small>
           <small v-if="a.defect.note" class="anno-note">备注：{{ a.defect.note as string }}</small>
         </div>

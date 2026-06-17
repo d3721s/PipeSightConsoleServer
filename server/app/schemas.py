@@ -84,7 +84,6 @@ class SnapshotIn(BaseModel):
     session_id: int | None = Field(default=None, alias="sessionId")
     device: Literal["front", "rear"] | None = None
     channel: int | None = Field(default=None, ge=1, le=2)
-    distance_m: float = Field(default=0, alias="distanceM")
     left_mileage: float | None = Field(default=None, alias="leftMileage")
     right_mileage: float | None = Field(default=None, alias="rightMileage")
     project_name: str = Field(default="", alias="projectName")
@@ -95,7 +94,6 @@ class ImageSnapshotIn(BaseModel):
     # A client-rendered image (e.g. 3D point-cloud canvas) saved as a snapshot.
     project_id: int | None = Field(default=None, alias="projectId")
     session_id: int | None = Field(default=None, alias="sessionId")
-    distance_m: float = Field(default=0, alias="distanceM")
     left_mileage: float | None = Field(default=None, alias="leftMileage")
     right_mileage: float | None = Field(default=None, alias="rightMileage")
     image: str  # PNG data URL
@@ -111,7 +109,6 @@ class MediaAssetOut(BaseModel):
     type: str
     file_path: str = Field(alias="filePath")
     captured_at: datetime = Field(alias="capturedAt")
-    distance_m: float = Field(alias="distanceM")
     left_mileage: float | None = Field(default=None, alias="leftMileage")
     right_mileage: float | None = Field(default=None, alias="rightMileage")
 
@@ -154,7 +151,6 @@ class GraphicAnnotationIn(BaseModel):
     direction: str = ""
     position: str = ""
     note: str = ""
-    distance_m: float = Field(default=0, alias="distanceM")
     left_mileage: float | None = Field(default=None, alias="leftMileage")
     right_mileage: float | None = Field(default=None, alias="rightMileage")
 
@@ -169,7 +165,8 @@ class MarkerCreate(BaseModel):
     direction: str = ""
     position: str = ""
     note: str = ""
-    distance_m: float = Field(default=0, alias="distanceM")
+    left_mileage: float | None = Field(default=None, alias="leftMileage")
+    right_mileage: float | None = Field(default=None, alias="rightMileage")
 
 
 class MarkerOut(MarkerCreate):

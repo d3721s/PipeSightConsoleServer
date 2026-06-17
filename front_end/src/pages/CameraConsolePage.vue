@@ -27,7 +27,7 @@ import {
   selectChannel,
   stream
 } from '../stores/cameras'
-import { distance, leftWheelM, rightWheelM } from '../stores/odometer'
+import { leftWheelM, rightWheelM } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 
 const router = useRouter()
@@ -63,7 +63,6 @@ async function takeSnapshot() {
       sessionId: currentSession.value?.id,
       device: active.device,
       channel: active.channel,
-      distanceM: distance.value,
       leftMileage: leftWheelM.value,
       rightMileage: rightWheelM.value,
       projectName: currentProject.value?.name || '',
@@ -88,7 +87,6 @@ async function toggleRecording() {
       sessionId: currentSession.value?.id,
       device: active.device,
       channel: active.channel,
-      distanceM: distance.value,
       leftMileage: leftWheelM.value,
       rightMileage: rightWheelM.value,
       projectName: currentProject.value?.name || '',
