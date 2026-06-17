@@ -31,6 +31,7 @@ import { leftWheelM, rightWheelM } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 
 const router = useRouter()
+const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -106,6 +107,7 @@ async function toggleRecording() {
       <web-rtc-player
         v-if="stream"
         :src="stream.whepUrl"
+        :active="props.active"
         v-model:digital-zoom="digitalZoom"
       />
       <div v-else class="video-placeholder">
@@ -191,6 +193,20 @@ async function toggleRecording() {
   grid-template-columns: 1fr 18rem;
   height: 100%; /* fill .app-content (pinned to viewport-minus-header) */
   background: #000;
+}
+.console-page.persistent-console {
+  position: fixed;
+  top: 4rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  height: auto;
+  pointer-events: none;
+}
+.console-page.persistent-console.is-active {
+  z-index: 2;
+  pointer-events: auto;
 }
 .video-area {
   position: relative;

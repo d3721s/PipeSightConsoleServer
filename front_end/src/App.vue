@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CvHeader, CvHeaderName, CvHeaderNav, CvHeaderMenuItem, CvContent } from '@carbon/vue'
 import { ExpandScreen24, ShrinkScreen24 } from '@carbon/icons-vue'
@@ -8,6 +8,7 @@ import { ensureLoaded } from './stores/cameras'
 import { startOdometerPolling } from './stores/odometer'
 import { activeReport } from './stores/session'
 import AppToast from './components/AppToast.vue'
+import CameraConsolePage from './pages/CameraConsolePage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +33,14 @@ const activeName = computed(() => {
   // report-detail highlights the 报告 tab.
   return route.name === 'report-detail' ? 'reports' : route.name
 })
+
+const isConsoleRoute = computed(() => route.name === 'console')
+const isFullBleedRoute = computed(() => route.name === 'console' || route.name === 'inspect3d')
+const consoleMounted = ref(isConsoleRoute.value)
+
+watch(isConsoleRoute, (active) => {
+  if (active) consoleMounted.value = true
+}, { immediate: true })
 
 function go(item: NavItem) {
   if (route.path !== item.to) router.push(item.to)
@@ -93,13 +102,18 @@ onBeforeUnmount(() => {
       </button>
     </cv-header>
 
-    <cv-content class="app-content">
-      <!-- keep-alive so the console preview / WebRTC connection survives nav. -->
-      <router-view v-slot="{ Component }">
-        <keep-alive include="CameraConsolePage">
-          <component :is="Component" />
-        </keep-alive>
-      </router-view>
+    <cv-content class="app-content" :class="{ 'app-content--fullbleed': isFullBleedRoute }">
+      <!-- Keep the console mounted in the real DOM once visited. Android Chrome
+           can stall WebRTC if Vue keep-alive detaches the video element. -->
+      <camera-console-page
+        v-if="consoleMounted"
+        class="persistent-console"
+        :class="{ 'is-active': isConsoleRoute }"
+        :active="isConsoleRoute"
+      />
+      <div v-if="!isConsoleRoute" class="route-content">
+        <router-view />
+      </div>
     </cv-content>
 
     <app-toast />

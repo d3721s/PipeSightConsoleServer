@@ -145,7 +145,7 @@ body {
    area below the fixed 4rem header exactly — no scroll, no white strip at the
    bottom. We pin the content box with position:fixed to that rectangle, which
    sidesteps all 100vh/margin math (the prior source of the bottom strip). */
-.app-content:has(.console-page) {
+.app-content--fullbleed {
   position: fixed;
   top: 4rem;
   left: 0;
@@ -157,6 +157,20 @@ body {
   min-height: 0;
   height: auto;
   overflow: hidden;
+}
+
+.route-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100%;
+  background: #f4f4f4;
+}
+
+.app-content--fullbleed .route-content {
+  height: 100%;
+  min-height: 0;
+  background: #000;
 }
 
 /* --- Page layout utilities ------------------------------------------------ */

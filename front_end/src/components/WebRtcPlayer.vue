@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { onActivated, onBeforeUnmount, ref, watch } from 'vue'
 
-const props = defineProps<{
-  src: string
-  digitalZoom: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    src: string
+    digitalZoom: number
+    active?: boolean
+  }>(),
+  { active: true }
+)
 
 const emit = defineEmits<{
   (e: 'update:digitalZoom', value: number): void
@@ -133,6 +137,12 @@ function onPointerUp(event: PointerEvent) {
 // Re-clamp (and recenter when back to 1x) whenever the zoom changes.
 watch(() => props.digitalZoom, clampOffsets)
 
+function resumePlayback() {
+  if (!currentStream || !video.value) return
+  if (video.value.srcObject !== currentStream) video.value.srcObject = currentStream
+  video.value.play().catch(() => undefined)
+}
+
 function waitIceGatheringComplete(peer: RTCPeerConnection): Promise<void> {
   if (peer.iceGatheringState === 'complete') return Promise.resolve()
   return new Promise((resolve) => {
@@ -217,6 +227,9 @@ function stop(clearError = true) {
 
 // Reconnect only when the stream source actually changes.
 watch(() => props.src, start, { immediate: true })
+watch(() => props.active, (active) => {
+  if (active) window.setTimeout(resumePlayback, 0)
+})
 
 // Under <keep-alive> the component is cached, not destroyed, on navigate-away —
 // onBeforeUnmount does NOT fire, so we deliberately keep the RTCPeerConnection
@@ -227,10 +240,7 @@ watch(() => props.src, start, { immediate: true })
 onActivated(() => {
   if (currentStream) {
     // Stream is live — just re-attach to the (possibly paused) <video>.
-    if (video.value) {
-      if (video.value.srcObject !== currentStream) video.value.srcObject = currentStream
-      video.value.play().catch(() => undefined)
-    }
+    resumePlayback()
   } else if (!pc) {
     // No connection at all (genuinely died). A pc that exists but hasn't
     // delivered a stream yet is still connecting — leave it alone.
