@@ -18,6 +18,7 @@ const pointCount = ref(0)
 
 const MIN_FRAME_INTERVAL_MS = 66
 const COLOR_STEPS = 512
+const DEFAULT_VIEW_ZOOM = 1.5
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene | null = null
@@ -187,7 +188,7 @@ function frameCloud() {
   box.getSize(size)
   const radius = Math.max(size.x, size.y, size.z, 0.1)
   controls.target.copy(center)
-  camera.position.set(center.x, center.y, center.z + radius * 1.8)
+  camera.position.set(center.x, center.y, center.z + (radius * 1.8) / DEFAULT_VIEW_ZOOM)
   camera.near = Math.max(radius / 1000, 0.001)
   camera.far = Math.max(radius * 20, 10)
   camera.updateProjectionMatrix()

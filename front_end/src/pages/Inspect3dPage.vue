@@ -31,8 +31,9 @@ const bridgeWsUrl = computed(() => {
 })
 
 const viewer = ref<ViewerHandle | null>(null)
-const zoomLabel = ref('1.0x')
-let zoomFactor = 1
+const DEFAULT_POINTCLOUD_ZOOM = 1.5
+const zoomLabel = ref(`${DEFAULT_POINTCLOUD_ZOOM.toFixed(1)}x`)
+let zoomFactor = DEFAULT_POINTCLOUD_ZOOM
 
 function setMode(next: ViewMode) {
   if (mode.value === next) return
