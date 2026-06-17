@@ -41,17 +41,11 @@ function syncSliderValue(target: typeof lightD1, value: number | null) {
 watch(lightD1Pulse, value => syncSliderValue(lightD1, value), { immediate: true })
 watch(lightD3Pulse, value => syncSliderValue(lightD3, value), { immediate: true })
 
-function setLightValue(target: typeof lightD1, value: number) {
-  target.value = String(clampPwm(value))
+function nudgeLightValue(target: typeof lightD1, delta: number) {
+  target.value = String(clampPwm(target.value) + delta)
   scheduleLightPwm()
 }
 
-function nudgeLightValue(target: typeof lightD1, delta: number) {
-  setLightValue(target, clampPwm(target.value) + delta)
-}
-
-const setD1 = (value: number) => setLightValue(lightD1, value)
-const setD3 = (value: number) => setLightValue(lightD3, value)
 const nudgeD1 = (delta: number) => nudgeLightValue(lightD1, delta)
 const nudgeD3 = (delta: number) => nudgeLightValue(lightD3, delta)
 
@@ -108,29 +102,19 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
       <span class="chassis-label">灯光控制{{ lightPending ? '（设置中…）' : '' }}</span>
       <div class="light-sliders" :class="{ pending: lightPending }">
         <div class="pwm-row">
-          <span class="pwm-label">D1 灯光</span>
+          <span class="pwm-label">灯光1</span>
           <div class="pwm-controls">
             <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD1(-10)" />
-            <button type="button" class="pwm-value" @click="scheduleLightPwm">{{ pwmDisplay(lightD1) }}</button>
+            <output class="pwm-value">{{ pwmDisplay(lightD1) }}</output>
             <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD1(10)" />
-          </div>
-          <div class="pwm-presets">
-            <button type="button" class="pwm-chip" @click="setD1(0)">0</button>
-            <button type="button" class="pwm-chip" @click="setD1(50)">50</button>
-            <button type="button" class="pwm-chip" @click="setD1(100)">100</button>
           </div>
         </div>
         <div class="pwm-row">
-          <span class="pwm-label">D3 灯光</span>
+          <span class="pwm-label">灯光2</span>
           <div class="pwm-controls">
             <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD3(-10)" />
-            <button type="button" class="pwm-value" @click="scheduleLightPwm">{{ pwmDisplay(lightD3) }}</button>
+            <output class="pwm-value">{{ pwmDisplay(lightD3) }}</output>
             <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD3(10)" />
-          </div>
-          <div class="pwm-presets">
-            <button type="button" class="pwm-chip" @click="setD3(0)">0</button>
-            <button type="button" class="pwm-chip" @click="setD3(50)">50</button>
-            <button type="button" class="pwm-chip" @click="setD3(100)">100</button>
           </div>
         </div>
       </div>
@@ -185,7 +169,7 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
 .pwm-row {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 0.5rem;
   padding: 0.5rem 0;
 }
 .pwm-label {
@@ -204,46 +188,23 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   min-width: 2.25rem;
   height: 2.25rem;
   padding: 0 !important;
-  border-radius: 4px;
-  background: #ffffff !important;
-  color: #161616 !important;
-  border-color: #ffffff !important;
-}
-.pwm-btn:hover:not(:disabled) {
-  background: #e0e0e0 !important;
 }
 .pwm-btn :deep(.bx--btn__icon) {
   right: auto;
-  fill: currentColor;
 }
 .pwm-value {
   min-width: 0;
   height: 2.25rem;
-  border: 1px solid #8d8d8d;
-  border-radius: 4px;
-  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-bottom: 1px solid #8d8d8d;
+  background: #f4f4f4;
   color: #161616;
   font-size: 0.9375rem;
   font-weight: 600;
-  cursor: pointer;
   padding: 0 0.5rem;
-}
-.pwm-presets {
-  display: flex;
-  gap: 0.25rem;
-}
-.pwm-chip {
-  flex: 1;
-  height: 1.75rem;
-  border: 1px solid #8d8d8d;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #161616;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-.pwm-chip:hover {
-  background: #e0e0e0;
 }
 .chassis-label {
   color: #ffffff;
@@ -255,19 +216,6 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   width: 100%;
   max-width: none;
   min-height: 3rem;
-  background: #ffffff !important;
-  color: #161616 !important;
-  border-color: #ffffff !important;
-}
-.clear-btn:hover:not(:disabled) {
-  background: #e0e0e0 !important;
-}
-.clear-btn:disabled {
-  background: #c6c6c6 !important;
-  color: #6f6f6f !important;
-}
-.clear-btn :deep(.bx--btn__icon) {
-  fill: currentColor;
 }
 .chassis-readout {
   display: flex;
