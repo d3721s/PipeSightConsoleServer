@@ -74,23 +74,12 @@ class ImuService:
     def snapshot(self) -> dict:
         now = time.monotonic()
         with self._lock:
-            frame_age = None if self._last_frame_at is None else now - self._last_frame_at
-            rx_age = None if self._last_rx_at is None else now - self._last_rx_at
-            fresh = frame_age is not None and frame_age <= FRESH_FRAME_S
+            fresh = (
+                self._last_frame_at is not None
+                and now - self._last_frame_at <= FRESH_FRAME_S
+            )
             return {
-                "portOpen": self._connected,
                 "fresh": fresh,
-                "lastFrameAgeS": frame_age,
-                "lastRxAgeS": rx_age,
-                "rxBytes": self._rx_bytes,
-                "validFrames": self._valid_frames,
-                "badFrames": self._bad_frames,
-                "skippedBytes": self._skipped_bytes,
-                "bufferedBytes": self._buffered_bytes,
-                "lastRxHex": _hex(self._rx_tail),
-                "lastFrameHex": self._last_frame_hex,
-                "lastBadFrameHex": self._last_bad_frame_hex,
-                "lastError": self._last_error,
                 "roll": self._roll,
                 "pitch": self._pitch,
                 "yaw": self._yaw,

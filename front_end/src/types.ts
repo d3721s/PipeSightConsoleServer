@@ -79,7 +79,6 @@ export interface ChassisTelemetry {
   light: number | null   // 1 off, 2 low, 3 high
   mode: number | null    // 0 remote, 1 speed, 3 position, 4 joystick
   error: number | null
-  imuConnected: boolean
   roll: number | null
   pitch: number | null
   yaw: number | null

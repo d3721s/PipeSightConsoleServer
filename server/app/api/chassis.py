@@ -25,7 +25,6 @@ def telemetry() -> dict:
         "mode": t.mode,                  # 0 remote / 1 speed / 3 position / 4 joystick
         "error": t.error,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
-        "imuConnected": imu_fresh,
         "roll": imu["roll"] if imu_fresh else None,
         "pitch": imu["pitch"] if imu_fresh else None,
         "yaw": imu["yaw"] if imu_fresh else None,
