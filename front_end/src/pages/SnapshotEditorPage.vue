@@ -365,7 +365,7 @@ async function confirmDeleteMedia() {
 <style scoped>
 .annotate-page {
   display: grid;
-  grid-template-columns: 24rem 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
   gap: 1.5rem;
   height: calc(100vh - 4rem - 5rem);
 }
