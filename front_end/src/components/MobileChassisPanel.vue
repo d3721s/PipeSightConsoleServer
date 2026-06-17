@@ -173,7 +173,7 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   margin: 0;
 }
 .light-sliders :deep(.bx--label) {
-  color: #c6c6c6;
+  color: #ffffff;
   font-size: 0.75rem;
 }
 .light-sliders :deep(.bx--slider-container) {
@@ -184,22 +184,36 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(1)}°`)
   min-width: 0;
 }
 .light-sliders :deep(.bx--slider__range-label) {
-  color: #8d8d8d;
+  color: #ffffff;
   font-size: 0.75rem;
   min-width: 1.5rem;
 }
 .light-sliders :deep(.bx--slider__track) {
-  background: #525252;
+  height: 0.125rem;
+  background: #c6c6c6;
+}
+.light-sliders :deep(.bx--slider__track::before) {
+  background: #c6c6c6;
+}
+.light-sliders :deep(.bx--slider__filled-track) {
+  height: 0.125rem;
+  background: #ffffff;
+}
+.light-sliders :deep(.bx--slider__thumb) {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px #ffffff;
+}
+.light-sliders :deep(.bx--slider__thumb:hover),
+.light-sliders :deep(.bx--slider__thumb:focus),
+.light-sliders :deep(.bx--slider__thumb:active) {
+  background: #ffffff;
+  box-shadow: 0 0 0 2px #ffffff;
 }
 .light-sliders :deep(.bx--slider-text-input) {
-  width: 3.75rem;
-  min-width: 3.75rem;
-  background: #262626;
-  color: #f4f4f4;
-  border-bottom-color: #8d8d8d;
+  display: none;
 }
 .chassis-label {
-  color: #8d8d8d;
+  color: #ffffff;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
