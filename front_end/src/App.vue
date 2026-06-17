@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CvHeader, CvHeaderName, CvHeaderNav, CvHeaderMenuItem, CvContent } from '@carbon/vue'
+import { ExpandScreen24, ShrinkScreen24 } from '@carbon/icons-vue'
 import { cameraControlSocket } from './ws'
 import { ensureLoaded } from './stores/cameras'
 import { startOdometerPolling } from './stores/odometer'
@@ -10,6 +11,7 @@ import AppToast from './components/AppToast.vue'
 
 const route = useRoute()
 const router = useRouter()
+const isFullscreen = ref(false)
 
 interface NavItem {
   name: string
@@ -35,10 +37,32 @@ function go(item: NavItem) {
   if (route.path !== item.to) router.push(item.to)
 }
 
+function syncFullscreen() {
+  isFullscreen.value = document.fullscreenElement !== null
+}
+
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+    } else {
+      await document.documentElement.requestFullscreen()
+    }
+  } catch {
+    syncFullscreen()
+  }
+}
+
 onMounted(() => {
+  document.addEventListener('fullscreenchange', syncFullscreen)
+  syncFullscreen()
   cameraControlSocket.connect()
   startOdometerPolling()
   ensureLoaded().catch(() => undefined)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', syncFullscreen)
 })
 </script>
 
@@ -58,6 +82,15 @@ onMounted(() => {
           <span v-if="item.name === 'reports' && activeReport" class="nav-rec-dot" />
         </cv-header-menu-item>
       </cv-header-nav>
+      <button
+        type="button"
+        class="bx--header__action app-fullscreen-toggle"
+        :aria-label="isFullscreen ? '退出全屏' : '进入全屏'"
+        :title="isFullscreen ? '退出全屏' : '进入全屏'"
+        @click="toggleFullscreen"
+      >
+        <component :is="isFullscreen ? ShrinkScreen24 : ExpandScreen24" />
+      </button>
     </cv-header>
 
     <cv-content class="app-content">
