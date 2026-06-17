@@ -17,11 +17,7 @@ settings = get_settings()
 FRAME_HEAD = b"\x55\x55"
 ID_EULER = 0x01
 LEN_EULER = 0x06
-CMD_HEAD = b"\x55\xAF"
-CMD_RETURNSET = 0x08
-CMD_RETURNRATE = 0x0A
-RETURNSET_EULER_ONLY = 0x01
-RETURNRATE_10HZ = 0x06
+FRAME_SIZE = 2 + 1 + 1 + LEN_EULER + 1
 
 RECONNECT_S = 2.0
 FRESH_FRAME_S = 2.0
@@ -101,7 +97,6 @@ class ImuService:
                 settings.imu_serial_port,
                 settings.imu_baudrate,
             )
-            self._configure_stream(ser)
             buf = bytearray()
             try:
                 while not self._stop.is_set():
@@ -151,46 +146,34 @@ class ImuService:
             )
             return None
 
-    def _configure_stream(self, ser) -> None:
-        try:
-            self._write_command(ser, CMD_RETURNSET, bytes([RETURNSET_EULER_ONLY]))
-            self._write_command(ser, CMD_RETURNRATE, bytes([RETURNRATE_10HZ]))
-        except Exception as exc:
-            self._record_error(f"IMU stream configure failed: {exc}")
-
-    @staticmethod
-    def _write_command(ser, frame_id: int, data: bytes) -> None:
-        length = len(data)
-        checksum = (0x55 + 0xAF + frame_id + length + sum(data)) & 0xFF
-        ser.write(CMD_HEAD + bytes([frame_id, length]) + data + bytes([checksum]))
-
     def _parse(self, buf: bytearray) -> None:
-        # Consume as many complete frames as are buffered; keep the remainder.
+        # The field unit only emits fixed Euler frames:
+        # 55 55 01 06 RollL RollH PitchL PitchH YawL YawH SUM.
         i = 0
         n = len(buf)
-        while i + 4 <= n:
-            if not (buf[i] == 0x55 and buf[i + 1] == 0x55):
+        while i + FRAME_SIZE <= n:
+            if not (
+                buf[i] == FRAME_HEAD[0]
+                and buf[i + 1] == FRAME_HEAD[1]
+                and buf[i + 2] == ID_EULER
+                and buf[i + 3] == LEN_EULER
+            ):
                 i += 1
                 continue
-            length = buf[i + 3]
-            frame_end = i + 4 + length + 1  # head(2)+id(1)+len(1)+data+sum(1)
-            if frame_end > n:
-                break  # incomplete; wait for more bytes
-            frame_id = buf[i + 2]
-            data = buf[i + 4 : i + 4 + length]
-            checksum = buf[i + 4 + length]
-            calc = (0x55 + 0x55 + frame_id + length + sum(data)) & 0xFF
+            frame = buf[i : i + FRAME_SIZE]
+            data = frame[4:10]
+            checksum = frame[10]
+            calc = sum(frame[:10]) & 0xFF
             if calc == checksum:
-                if frame_id == ID_EULER and length == LEN_EULER:
-                    roll, pitch, yaw = struct.unpack("<hhh", bytes(data))
-                    with self._lock:
-                        self._roll = roll / 32768.0 * 180.0
-                        self._pitch = pitch / 32768.0 * 180.0
-                        self._yaw = yaw / 32768.0 * 180.0
-                        self._last_frame_at = time.monotonic()
-                        self._valid_frames += 1
-                        self._last_error = None
-                i = frame_end
+                roll, pitch, yaw = struct.unpack("<hhh", bytes(data))
+                with self._lock:
+                    self._roll = roll / 32768.0 * 180.0
+                    self._pitch = pitch / 32768.0 * 180.0
+                    self._yaw = yaw / 32768.0 * 180.0
+                    self._last_frame_at = time.monotonic()
+                    self._valid_frames += 1
+                    self._last_error = None
+                i += FRAME_SIZE
             else:
                 # Bad checksum: resync past this head and keep scanning.
                 with self._lock:

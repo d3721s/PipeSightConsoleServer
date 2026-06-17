@@ -96,5 +96,5 @@ curl http://127.0.0.1:8000/api/chassis/telemetry   # 看 connected / imuConnecte
 - **名字要完全一致**：底盘 `ttyUSB-Chassis`、IMU `ttyUSB-IMU`，和后端
   （`server/app/config.py` 的 `chassis_serial_port` / `imu_serial_port`）必须逐字相同，
   否则后端找不到设备。
-- **波特率不在 udev 管**：udev 只负责命名；底盘 38400 / IMU 9600 在 `server/.env`
+- **波特率不在 udev 管**：udev 只负责命名；底盘 38400 / IMU 115200 在 `server/.env`
   的 `PIPESIGHT_CHASSIS_BAUDRATE` / `PIPESIGHT_IMU_BAUDRATE` 配。
