@@ -32,6 +32,7 @@ const bridgeWsUrl = computed(() => {
 })
 
 const viewer = ref<ViewerHandle | null>(null)
+const videoArea = ref<HTMLDivElement | null>(null)
 const DEFAULT_POINTCLOUD_ZOOM = 1.2
 const MIN_POINTCLOUD_ZOOM = 0.2
 const MAX_POINTCLOUD_ZOOM = 8
@@ -100,12 +101,7 @@ async function addOsdToSnapshot(dataUrl: string): Promise<string> {
 }
 
 function drawSnapshotOsd(ctx: CanvasRenderingContext2D, width: number, height: number) {
-  const margin = Math.max(20, Math.round(Math.min(width, height) * 0.025))
-  const borderWidth = Math.max(3, Math.round(margin * 0.12))
-  const paddingX = Math.round(margin * 0.75)
-  const paddingY = Math.round(margin * 0.5)
-  const fontSize = Math.max(22, Math.round(Math.min(width, height) * 0.028))
-  const lineHeight = Math.round(fontSize * 1.45)
+  const metrics = getSnapshotOsdMetrics(width, height)
   const lines = [
     `时间：${new Date().toLocaleString()}`,
     `距离：${formatWheelMileage(leftWheelM.value, rightWheelM.value)}`,
@@ -114,34 +110,91 @@ function drawSnapshotOsd(ctx: CanvasRenderingContext2D, width: number, height: n
   ]
 
   ctx.save()
+  const { borderWidth, fontSize, lineHeight, paddingX, paddingY, x, y } = metrics
   ctx.font = `${fontSize}px "IBM Plex Sans", "Microsoft YaHei", "Segoe UI", sans-serif`
   const textWidth = Math.max(...lines.map(line => ctx.measureText(line).width))
   const boxWidth = Math.ceil(borderWidth + paddingX * 2 + textWidth)
   const boxHeight = paddingY * 2 + lineHeight * lines.length
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
-  ctx.fillRect(margin, margin, boxWidth, boxHeight)
+  ctx.fillRect(x, y, boxWidth, boxHeight)
   ctx.fillStyle = '#0f62fe'
-  ctx.fillRect(margin, margin, borderWidth, boxHeight)
+  ctx.fillRect(x, y, borderWidth, boxHeight)
 
   ctx.fillStyle = '#f4f4f4'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
   ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.08))
   ctx.shadowOffsetY = Math.max(1, Math.round(fontSize * 0.06))
   ctx.textBaseline = 'top'
-  const textX = margin + borderWidth + paddingX
-  let textY = margin + paddingY
+  const textX = x + borderWidth + paddingX
+  let textY = y + paddingY
   for (const line of lines) {
     ctx.fillText(line, textX, textY)
     textY += lineHeight
   }
   ctx.restore()
 }
+
+function getSnapshotOsdMetrics(width: number, height: number) {
+  const fallbackMargin = Math.max(20, Math.round(Math.min(width, height) * 0.025))
+  const fallbackFontSize = Math.max(22, Math.round(Math.min(width, height) * 0.028))
+  const fallbackLineHeight = Math.round(fallbackFontSize * 1.45)
+  const fallbackPaddingX = Math.round(fallbackMargin * 0.75)
+  const fallbackPaddingY = Math.round(fallbackMargin * 0.5)
+  const fallbackBorderWidth = Math.max(3, Math.round(fallbackMargin * 0.12))
+
+  const area = videoArea.value
+  const osd = area?.querySelector<HTMLElement>('.osd-overlay')
+  if (!area || !osd) {
+    return {
+      x: fallbackMargin,
+      y: fallbackMargin,
+      borderWidth: fallbackBorderWidth,
+      fontSize: fallbackFontSize,
+      lineHeight: fallbackLineHeight,
+      paddingX: fallbackPaddingX,
+      paddingY: fallbackPaddingY
+    }
+  }
+
+  const areaRect = area.getBoundingClientRect()
+  const osdRect = osd.getBoundingClientRect()
+  if (areaRect.width <= 0 || areaRect.height <= 0) {
+    return {
+      x: fallbackMargin,
+      y: fallbackMargin,
+      borderWidth: fallbackBorderWidth,
+      fontSize: fallbackFontSize,
+      lineHeight: fallbackLineHeight,
+      paddingX: fallbackPaddingX,
+      paddingY: fallbackPaddingY
+    }
+  }
+
+  const style = window.getComputedStyle(osd)
+  const scaleX = width / areaRect.width
+  const scaleY = height / areaRect.height
+  const scale = Math.min(scaleX, scaleY)
+  return {
+    x: Math.round((osdRect.left - areaRect.left) * scaleX),
+    y: Math.round((osdRect.top - areaRect.top) * scaleY),
+    borderWidth: Math.max(1, Math.round(parsePx(style.borderLeftWidth, 3) * scaleX)),
+    fontSize: Math.max(1, Math.round(parsePx(style.fontSize, 13) * scale)),
+    lineHeight: Math.max(1, Math.round(parsePx(style.lineHeight, 19) * scale)),
+    paddingX: Math.max(0, Math.round(parsePx(style.paddingLeft, 12) * scaleX)),
+    paddingY: Math.max(0, Math.round(parsePx(style.paddingTop, 8) * scaleY))
+  }
+}
+
+function parsePx(value: string, fallback: number) {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
 </script>
 
 <template>
   <div class="console-page">
-    <div class="video-area">
+    <div ref="videoArea" class="video-area">
       <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" @zoom-change="updateZoomLabel" />
 
       <osd-overlay
