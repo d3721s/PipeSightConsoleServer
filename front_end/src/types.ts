@@ -83,6 +83,7 @@ export interface ChassisTelemetry {
   imuDiagnostics?: boolean
   imuPortOpen?: boolean
   imuFresh?: boolean
+  imuStalled?: boolean
   imuLastFrameAgeS?: number | null
   imuRxBytes?: number
   imuValidFrames?: number

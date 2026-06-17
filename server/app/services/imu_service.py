@@ -25,6 +25,7 @@ RETURNRATE_10HZ = 0x06
 
 RECONNECT_S = 2.0
 FRESH_FRAME_S = 2.0
+STALL_FRAME_S = 5.0
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +90,10 @@ class ImuService:
             if ser is None:
                 time.sleep(RECONNECT_S)
                 continue
+            opened_at = time.monotonic()
             with self._lock:
                 self._connected = True
+                self._last_frame_at = None
                 self._last_error = None
             self._last_logged_error = None
             logger.info(
@@ -108,6 +111,11 @@ class ImuService:
                             self._rx_bytes += len(chunk)
                         buf.extend(chunk)
                         self._parse(buf)
+                    if self._should_reconnect(opened_at):
+                        self._record_error(
+                            f"IMU stream stalled for >{STALL_FRAME_S:.0f}s; reopening"
+                        )
+                        break
                     # read() returns b"" on timeout; keep looping.
             except Exception as exc:
                 self._record_error(f"IMU serial read failed: {exc}")
@@ -190,6 +198,14 @@ class ImuService:
                 i += 2
         # Drop everything we've consumed/skipped.
         del buf[:i]
+
+    def _should_reconnect(self, opened_at: float) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            last = self._last_frame_at
+        if last is None:
+            return now - opened_at > STALL_FRAME_S
+        return now - last > STALL_FRAME_S
 
     def _record_error(self, message: str) -> None:
         with self._lock:

@@ -13,6 +13,7 @@ import {
   imuDiagnostics,
   imuPortOpen,
   imuFresh,
+  imuStalled,
   imuLastFrameAgeS,
   imuRxBytes,
   imuValidFrames,
@@ -77,6 +78,7 @@ const imuStatusText = computed(() => {
   if (!imuDiagnostics.value && imuFresh.value) return '正常'
   if (!imuDiagnostics.value) return '诊断未启用'
   if (imuFresh.value) return '正常'
+  if (imuStalled.value) return '数据停滞'
   if (imuPortOpen.value && (imuRxBytes.value ?? 0) > 0) return '未解析到有效帧'
   if (imuPortOpen.value) return '等待数据帧'
   return '未连接'

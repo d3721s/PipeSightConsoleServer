@@ -15,6 +15,12 @@ def telemetry() -> dict:
     t = modbus_chassis_service.get_telemetry()
     imu = imu_service.snapshot()
     imu_fresh = bool(imu["fresh"])
+    imu_last_frame_age_s = imu["lastFrameAgeS"]
+    imu_stalled = (
+        imu["portOpen"]
+        and imu_last_frame_age_s is not None
+        and imu_last_frame_age_s > 2.0
+    )
     return {
         "connected": t.connected,
         "leftSpeed": t.left_speed,
@@ -29,7 +35,8 @@ def telemetry() -> dict:
         "imuDiagnostics": True,
         "imuPortOpen": imu["portOpen"],
         "imuFresh": imu_fresh,
-        "imuLastFrameAgeS": imu["lastFrameAgeS"],
+        "imuStalled": imu_stalled,
+        "imuLastFrameAgeS": imu_last_frame_age_s,
         "imuRxBytes": imu["rxBytes"],
         "imuValidFrames": imu["validFrames"],
         "imuBadFrames": imu["badFrames"],

@@ -22,6 +22,7 @@ export const imuConnected = ref(false)
 export const imuDiagnostics = ref(false)
 export const imuPortOpen = ref(false)
 export const imuFresh = ref(false)
+export const imuStalled = ref(false)
 export const imuLastFrameAgeS = ref<number | null>(null)
 export const imuRxBytes = ref<number | null>(null)
 export const imuValidFrames = ref<number | null>(null)
@@ -63,6 +64,7 @@ export function startOdometerPolling() {
         imuConnected.value = imuFrameFresh
         imuDiagnostics.value = t.imuDiagnostics === true
         imuFresh.value = imuFrameFresh
+        imuStalled.value = t.imuStalled ?? false
         imuPortOpen.value = t.imuPortOpen ?? t.imuConnected
         imuLastFrameAgeS.value = t.imuLastFrameAgeS ?? null
         imuRxBytes.value = t.imuRxBytes ?? null
@@ -78,6 +80,7 @@ export function startOdometerPolling() {
         imuDiagnostics.value = false
         imuPortOpen.value = false
         imuFresh.value = false
+        imuStalled.value = false
         imuLastFrameAgeS.value = null
         imuRxBytes.value = null
         imuValidFrames.value = null
