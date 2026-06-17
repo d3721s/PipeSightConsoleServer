@@ -85,9 +85,15 @@ export interface ChassisTelemetry {
   imuFresh?: boolean
   imuStalled?: boolean
   imuLastFrameAgeS?: number | null
+  imuLastRxAgeS?: number | null
   imuRxBytes?: number
   imuValidFrames?: number
   imuBadFrames?: number
+  imuSkippedBytes?: number
+  imuBufferedBytes?: number
+  imuLastRxHex?: string | null
+  imuLastFrameHex?: string | null
+  imuLastBadFrameHex?: string | null
   imuLastError?: string | null
   roll: number | null
   pitch: number | null
