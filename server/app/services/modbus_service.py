@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import queue
+import inspect
 import logging
+import queue
 import threading
 import time
 from dataclasses import dataclass, field
@@ -44,6 +45,26 @@ def _to_u16(value: int) -> int:
 def _to_signed32(high: int, low: int) -> int:
     value = (high << 16) | low
     return value - 0x100000000 if value >= 0x80000000 else value
+
+
+def _modbus_slave_kwargs(method) -> dict[str, int]:
+    """Return the slave-id keyword accepted by the installed pymodbus version."""
+    try:
+        params = inspect.signature(method).parameters
+    except (TypeError, ValueError):
+        params = {}
+    for name in ("device_id", "slave", "unit"):
+        if name in params:
+            return {name: settings.chassis_slave_id}
+    return {}
+
+
+def _modbus_accepts_kwarg(method, name: str) -> bool:
+    try:
+        params = inspect.signature(method).parameters
+    except (TypeError, ValueError):
+        return True
+    return name in params or any(param.kind is inspect.Parameter.VAR_KEYWORD for param in params.values())
 
 
 @dataclass
@@ -179,10 +200,7 @@ class ModbusChassisService:
         if client is None:
             return False
         try:
-            try:
-                rr = client.write_register(address, value, slave=settings.chassis_slave_id)
-            except TypeError:
-                rr = client.write_register(address, value, unit=settings.chassis_slave_id)
+            rr = client.write_register(address, value, **_modbus_slave_kwargs(client.write_register))
             ok = not (rr is None or (hasattr(rr, "isError") and rr.isError()))
             if not ok:
                 self._record_error(f"chassis write failed: register=0x{address:02X} value={value}")
@@ -197,10 +215,11 @@ class ModbusChassisService:
         if client is None:
             return None
         try:
-            try:
-                rr = client.read_holding_registers(address, count=count, slave=settings.chassis_slave_id)
-            except TypeError:
-                rr = client.read_holding_registers(address, count, unit=settings.chassis_slave_id)
+            kwargs = _modbus_slave_kwargs(client.read_holding_registers)
+            if _modbus_accepts_kwarg(client.read_holding_registers, "count"):
+                rr = client.read_holding_registers(address, count=count, **kwargs)
+            else:
+                rr = client.read_holding_registers(address, count, **kwargs)
             if rr is None or (hasattr(rr, "isError") and rr.isError()):
                 self._record_error(f"chassis read failed: register=0x{address:02X} count={count}")
                 return None
