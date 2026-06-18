@@ -15,4 +15,30 @@ window.addEventListener('contextmenu', suppressBrowserGesture)
 document.addEventListener('selectstart', suppressBrowserGesture)
 document.addEventListener('dragstart', suppressBrowserGesture)
 
+const PINCH_ZOOM_SURFACE_SELECTOR = '.pinch-zoom-surface'
+
+function isInPinchZoomSurface(target: EventTarget | null) {
+  return target instanceof Element && target.closest(PINCH_ZOOM_SURFACE_SELECTOR) !== null
+}
+
+function touchIsInPinchZoomSurface(touch: Touch) {
+  return isInPinchZoomSurface(document.elementFromPoint(touch.clientX, touch.clientY))
+}
+
+function suppressPagePinch(event: TouchEvent) {
+  if (event.touches.length < 2) return
+  if (Array.from(event.touches).every(touchIsInPinchZoomSurface)) return
+  if (event.cancelable) event.preventDefault()
+}
+
+function suppressPageGesture(event: Event) {
+  if (isInPinchZoomSurface(event.target)) return
+  if (event.cancelable) event.preventDefault()
+}
+
+document.addEventListener('touchstart', suppressPagePinch, { passive: false })
+document.addEventListener('touchmove', suppressPagePinch, { passive: false })
+document.addEventListener('gesturestart', suppressPageGesture, { passive: false })
+document.addEventListener('gesturechange', suppressPageGesture, { passive: false })
+
 createApp(App).use(CarbonVue3).use(router).mount('#app')
