@@ -15,6 +15,7 @@ function nextRef(): string {
 export class CameraControlSocket {
   private ws: WebSocket | null = null
   private queue: Array<Record<string, unknown>> = []
+  private chassisEnabled = false
 
   connect() {
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) return
@@ -24,6 +25,7 @@ export class CameraControlSocket {
       const queued = [...this.queue]
       this.queue = []
       queued.forEach((msg) => this.send(msg))
+      this.send({ type: 'chassis_control', enabled: this.chassisEnabled })
     }
     this.ws.onclose = () => {
       setTimeout(() => this.connect(), 1000)
@@ -48,6 +50,7 @@ export class CameraControlSocket {
   }
 
   chassisControlEnabled(enabled: boolean) {
+    this.chassisEnabled = enabled
     this.send({ type: 'chassis_control', enabled })
   }
 
