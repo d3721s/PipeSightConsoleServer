@@ -59,6 +59,12 @@ function onChassisMove(v: { x: number; y: number }) {
   cameraControlSocket.chassisMove(v.x, v.y)
 }
 
+function onChassisControlToggle(event: Event) {
+  const enabled = event.target instanceof HTMLInputElement ? event.target.checked : false
+  chassisControlEnabled.value = enabled
+  cameraControlSocket.chassisControlEnabled(enabled)
+}
+
 async function takeSnapshot() {
   try {
     const asset = await api.snapshot({
@@ -189,10 +195,11 @@ async function toggleRecording() {
         <div class="chassis-enable-toggle bx--form-item">
           <input
             id="chassis-control-enabled"
-            v-model="chassisControlEnabled"
+            :checked="chassisControlEnabled"
             class="bx--toggle-input"
             type="checkbox"
             value="enabled"
+            @change="onChassisControlToggle"
           />
           <label class="bx--toggle-input__label" for="chassis-control-enabled">
             摇杆控制

@@ -47,6 +47,10 @@ export class CameraControlSocket {
     this.send({ type: 'chassis_move', x: Math.round(x), y: Math.round(y) })
   }
 
+  chassisControlEnabled(enabled: boolean) {
+    this.send({ type: 'chassis_control', enabled })
+  }
+
   private send(message: Record<string, unknown>) {
     const payload = { ...message, ref: nextRef() }
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
