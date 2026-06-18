@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -9,6 +10,7 @@ from app.config import get_settings
 
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # Chassis Modbus RTU map (from the protocol doc).
 REG_JOY_VERTICAL = 0x0A    # signed -800..800 (Y / forward)
@@ -31,6 +33,7 @@ HEARTBEAT_S = 0.05         # joystick write cadence (controller stops if >1s idl
 TELEMETRY_EVERY_S = 0.2    # how often telemetry registers are polled
 RECONNECT_S = 2.0
 CONFIRM_TIMEOUT_S = 1.5
+LOG_REPEAT_S = 10.0
 
 
 def _to_u16(value: int) -> int:
@@ -80,6 +83,8 @@ class ModbusChassisService:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_telemetry = 0.0
+        self._last_logged_error: str | None = None
+        self._last_error_times: dict[str, float] = {}
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -135,7 +140,8 @@ class ModbusChassisService:
     def _connect(self) -> bool:
         try:
             from pymodbus.client import ModbusSerialClient
-        except Exception:
+        except Exception as exc:
+            self._record_error(f"pymodbus import failed: {exc}")
             return False
         try:
             client = ModbusSerialClient(
@@ -147,11 +153,25 @@ class ModbusChassisService:
                 timeout=0.2,
             )
             if not client.connect():
+                self._record_error(
+                    f"chassis serial open failed: {settings.chassis_serial_port} @ {settings.chassis_baudrate}"
+                )
                 return False
             self._client = client
             self._connected = True
+            self._last_logged_error = None
+            self._last_error_times.clear()
+            logger.info(
+                "chassis serial opened: %s @ %s slave=%s",
+                settings.chassis_serial_port,
+                settings.chassis_baudrate,
+                settings.chassis_slave_id,
+            )
             return True
-        except Exception:
+        except Exception as exc:
+            self._record_error(
+                f"chassis serial open failed ({settings.chassis_serial_port} @ {settings.chassis_baudrate}): {exc}"
+            )
             return False
 
     def _write(self, address: int, value: int) -> bool:
@@ -163,8 +183,12 @@ class ModbusChassisService:
                 rr = client.write_register(address, value, slave=settings.chassis_slave_id)
             except TypeError:
                 rr = client.write_register(address, value, unit=settings.chassis_slave_id)
-            return not (rr is None or (hasattr(rr, "isError") and rr.isError()))
-        except Exception:
+            ok = not (rr is None or (hasattr(rr, "isError") and rr.isError()))
+            if not ok:
+                self._record_error(f"chassis write failed: register=0x{address:02X} value={value}")
+            return ok
+        except Exception as exc:
+            self._record_error(f"chassis write exception: register=0x{address:02X} value={value}: {exc}")
             self._connected = False
             return False
 
@@ -178,9 +202,11 @@ class ModbusChassisService:
             except TypeError:
                 rr = client.read_holding_registers(address, count, unit=settings.chassis_slave_id)
             if rr is None or (hasattr(rr, "isError") and rr.isError()):
+                self._record_error(f"chassis read failed: register=0x{address:02X} count={count}")
                 return None
             return rr.registers
-        except Exception:
+        except Exception as exc:
+            self._record_error(f"chassis read exception: register=0x{address:02X} count={count}: {exc}")
             self._connected = False
             return None
 
@@ -265,6 +291,14 @@ class ModbusChassisService:
                 return
             cmd.ok = False
             cmd.done.set()
+
+    def _record_error(self, message: str) -> None:
+        now = time.monotonic()
+        last_at = self._last_error_times.get(message, 0.0)
+        if now - last_at >= LOG_REPEAT_S:
+            logger.warning(message)
+            self._last_error_times[message] = now
+            self._last_logged_error = message
 
 
 modbus_chassis_service = ModbusChassisService()

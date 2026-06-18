@@ -48,8 +48,10 @@ function onDown(event: PointerEvent) {
   const rect = base.value.getBoundingClientRect()
   radius = rect.width / 2
   active.value = true
+  lastEmit = 0
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
   moveTo(event)
+  emitVector(false)
 }
 
 function moveTo(event: PointerEvent) {
