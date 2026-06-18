@@ -5,9 +5,9 @@ export default { name: 'CameraConsolePage' }
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CvButton, CvTag } from '@carbon/vue'
+import { CvButton, CvTag, CvToggle } from '@carbon/vue'
 import { Camera24, VideoAdd24, StopFilledAlt24, ZoomIn24, ZoomOut24, Report24, ChevronLeft24 } from '@carbon/icons-vue'
 import WebRtcPlayer from '../components/WebRtcPlayer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
@@ -32,6 +32,7 @@ import { activeReport, currentProject, currentSession, notify, reportToggling, t
 
 const router = useRouter()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
+const chassisControlEnabled = ref(false)
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -54,7 +55,13 @@ function ptzStop() {
 }
 
 function onChassisMove(v: { x: number; y: number }) {
+  if (!chassisControlEnabled.value) return
   cameraControlSocket.chassisMove(v.x, v.y)
+}
+
+function onChassisControlChange(enabled: boolean) {
+  chassisControlEnabled.value = enabled
+  if (!enabled) cameraControlSocket.chassisMove(0, 0)
 }
 
 async function takeSnapshot() {
@@ -125,7 +132,7 @@ async function toggleRecording() {
 
       <!-- Bottom-left: chassis joystick -->
       <div class="chassis-cluster">
-        <joystick @move="onChassisMove" />
+        <joystick :disabled="!chassisControlEnabled" @move="onChassisMove" />
       </div>
 
       <!-- Bottom-center: zoom cluster -->
@@ -180,6 +187,20 @@ async function toggleRecording() {
             @click="toggleRecording"
           >{{ recording.active ? '停止录像' : '开始录像' }}</cv-button>
         </div>
+      </div>
+
+      <div class="rail-section">
+        <span class="rail-label">底盘</span>
+        <cv-toggle
+          v-model="chassisControlEnabled"
+          class="chassis-enable-toggle"
+          label="摇杆控制"
+          value="enabled"
+          @change="onChassisControlChange"
+        >
+          <template #text-left>关闭</template>
+          <template #text-right>开启</template>
+        </cv-toggle>
       </div>
 
       <mobile-chassis-panel />

@@ -122,7 +122,6 @@ onBeforeUnmount(() => {
 }
 .joystick.disabled {
   opacity: 0.4;
-  pointer-events: none;
 }
 .joystick-title {
   color: #c6c6c6;
@@ -140,6 +139,13 @@ onBeforeUnmount(() => {
   border: 1px solid #525252;
   touch-action: none;
   cursor: grab;
+}
+.joystick.disabled .joystick-base {
+  cursor: not-allowed;
+}
+.joystick.disabled .joystick-handle {
+  background: #525252;
+  border-color: #8d8d8d;
 }
 .joystick-base:active {
   cursor: grabbing;
