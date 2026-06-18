@@ -186,16 +186,25 @@ async function toggleRecording() {
 
       <div class="rail-section">
         <span class="rail-label">底盘</span>
-        <cv-toggle
-          v-model="chassisControlEnabled"
-          class="chassis-enable-toggle"
-          label="摇杆控制"
-          value="enabled"
-          @change="onChassisControlChange"
-        >
-          <template #text-left>关闭</template>
-          <template #text-right>开启</template>
-        </cv-toggle>
+        <div class="chassis-enable-toggle bx--form-item">
+          <input
+            id="chassis-control-enabled"
+            v-model="chassisControlEnabled"
+            class="bx--toggle-input"
+            type="checkbox"
+            value="enabled"
+          />
+          <label class="bx--toggle-input__label" for="chassis-control-enabled">
+            摇杆控制
+            <span class="bx--toggle__switch">
+              <svg class="bx--toggle__check" width="6px" height="5px" viewBox="0 0 6 5">
+                <path d="M2.2 2.7L5 0 6 1 2.2 5 0 2.7 1 1.5z" />
+              </svg>
+              <span class="bx--toggle__text--off" aria-hidden="true">关闭</span>
+              <span class="bx--toggle__text--on" aria-hidden="true">开启</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <mobile-chassis-panel />
@@ -316,6 +325,13 @@ async function toggleRecording() {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+.chassis-enable-toggle :deep(.bx--toggle-input__label) {
+  color: #f4f4f4;
+}
+.chassis-enable-toggle :deep(.bx--toggle__text--off),
+.chassis-enable-toggle :deep(.bx--toggle__text--on) {
+  color: #161616;
 }
 .capture-row {
   display: flex;
