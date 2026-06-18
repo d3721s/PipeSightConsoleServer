@@ -7,7 +7,7 @@ export default { name: 'CameraConsolePage' }
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CvButton, CvTag, CvToggle } from '@carbon/vue'
+import { CvButton, CvTag } from '@carbon/vue'
 import { Camera24, VideoAdd24, StopFilledAlt24, ZoomIn24, ZoomOut24, Report24, ChevronLeft24 } from '@carbon/icons-vue'
 import WebRtcPlayer from '../components/WebRtcPlayer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
@@ -57,11 +57,6 @@ function ptzStop() {
 function onChassisMove(v: { x: number; y: number }) {
   if (!chassisControlEnabled.value) return
   cameraControlSocket.chassisMove(v.x, v.y)
-}
-
-function onChassisControlChange(enabled: boolean) {
-  chassisControlEnabled.value = enabled
-  if (!enabled) cameraControlSocket.chassisMove(0, 0)
 }
 
 async function takeSnapshot() {
