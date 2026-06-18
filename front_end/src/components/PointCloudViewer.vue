@@ -332,7 +332,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="pcv-root">
-    <div ref="container" class="pcv-canvas" />
+    <div ref="container" class="pcv-canvas pinch-zoom-surface" />
     <div class="pcv-status">
       <span :class="['pcv-dot', connected ? 'on' : 'off']" />
       {{ connected ? '深度相机已连接' : (wsUrl ? '等待深度相机…' : '') }}

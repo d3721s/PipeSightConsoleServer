@@ -255,7 +255,7 @@ onBeforeUnmount(() => stop())
 <template>
   <div
     ref="container"
-    class="webrtc-player interactive"
+    class="webrtc-player interactive pinch-zoom-surface"
     :class="{ pannable: digitalZoom > 1, dragging }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"

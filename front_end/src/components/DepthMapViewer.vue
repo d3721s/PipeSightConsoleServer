@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="depth-root">
+  <div class="depth-root pinch-zoom-surface">
     <canvas ref="canvas" class="depth-canvas" />
     <div class="depth-status">
       <span :class="['depth-dot', connected ? 'on' : 'off']" />
