@@ -28,8 +28,8 @@ REG_MILEAGE_CLEAR = 0x1F   # write 1 to clear odometer
 
 BATTERY_SCALE = 0.01
 JOY_LIMIT = 800
-# 0.51 m per encoder revolution; pulses->metres needs the encoder line count,
-# which we don't have here, so mileage is reported in raw pulses for now.
+PULSES_PER_MM = 7.35
+PULSES_PER_M = PULSES_PER_MM * 1000.0
 HEARTBEAT_S = 0.05         # joystick write cadence (controller stops if >1s idle)
 TELEMETRY_EVERY_S = 0.2    # how often telemetry registers are polled
 RECONNECT_S = 2.0
@@ -45,6 +45,10 @@ def _to_u16(value: int) -> int:
 def _to_signed32(high: int, low: int) -> int:
     value = (high << 16) | low
     return value - 0x100000000 if value >= 0x80000000 else value
+
+
+def _pulses_to_meters(pulses: int) -> float:
+    return round(pulses / PULSES_PER_M, 4)
 
 
 def _modbus_slave_kwargs(method) -> dict[str, int]:
@@ -79,8 +83,8 @@ class _WriteCmd:
 @dataclass
 class Telemetry:
     connected: bool = False
-    left_mileage: int | None = None   # raw pulses
-    right_mileage: int | None = None
+    left_mileage: float | None = None   # metres
+    right_mileage: float | None = None
     battery: float | None = None
     fault_code: int | None = None
 
@@ -141,8 +145,8 @@ class ModbusChassisService:
         ok = self._command(REG_MILEAGE_CLEAR, 1, confirm=False)
         if ok:
             with self._lock:
-                self._telemetry.left_mileage = 0
-                self._telemetry.right_mileage = 0
+                self._telemetry.left_mileage = 0.0
+                self._telemetry.right_mileage = 0.0
         return ok
 
     # --- queued writes -----------------------------------------------------
@@ -260,9 +264,9 @@ class ModbusChassisService:
         with self._lock:
             t = self._telemetry
             if l_mil and len(l_mil) == 2:
-                t.left_mileage = _to_signed32(l_mil[0], l_mil[1])
+                t.left_mileage = _pulses_to_meters(_to_signed32(l_mil[0], l_mil[1]))
             if r_mil and len(r_mil) == 2:
-                t.right_mileage = _to_signed32(r_mil[0], r_mil[1])
+                t.right_mileage = _pulses_to_meters(_to_signed32(r_mil[0], r_mil[1]))
             if battery:
                 t.battery = round(battery[0] * BATTERY_SCALE, 2)
             if fault_code:

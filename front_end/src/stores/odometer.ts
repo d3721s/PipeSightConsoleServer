@@ -43,7 +43,7 @@ export function startOdometerPolling() {
       try {
         const t = await api.chassisTelemetry()
         chassisConnected.value = t.connected
-        // Mileage is raw encoder pulses for now (no line-count to convert).
+        // Chassis mileage is reported in metres after backend pulse conversion.
         leftWheelM.value = t.leftMileage
         rightWheelM.value = t.rightMileage
         batteryLevel.value = t.battery

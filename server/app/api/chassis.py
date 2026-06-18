@@ -20,7 +20,7 @@ def telemetry() -> dict:
     light_pwm = imu_service.get_light_pwm()
     return {
         "connected": t.connected,
-        "leftMileage": t.left_mileage,   # raw encoder pulses
+        "leftMileage": t.left_mileage,   # metres converted from encoder pulses
         "rightMileage": t.right_mileage,
         "battery": t.battery,
         "faultCode": t.fault_code,
