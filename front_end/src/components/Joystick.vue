@@ -22,12 +22,24 @@ const active = ref(false)
 let radius = 1
 let lastEmit = 0
 const EMIT_INTERVAL = 50 // ms; matches the controller's recommended 50ms refresh
+const DIRECTION_COUNT = 16
+const DIRECTION_STEP_RAD = (Math.PI * 2) / DIRECTION_COUNT
 
 function clampToCircle(dx: number, dy: number): { x: number; y: number } {
   const dist = Math.hypot(dx, dy)
   if (dist <= radius) return { x: dx, y: dy }
   const k = radius / dist
   return { x: dx * k, y: dy * k }
+}
+
+function snapToDirection(dx: number, dy: number): { x: number; y: number } {
+  const dist = Math.hypot(dx, dy)
+  if (dist === 0) return { x: 0, y: 0 }
+  const snappedAngle = Math.round(Math.atan2(dy, dx) / DIRECTION_STEP_RAD) * DIRECTION_STEP_RAD
+  return {
+    x: Math.cos(snappedAngle) * dist,
+    y: Math.sin(snappedAngle) * dist
+  }
 }
 
 function emitVector(throttled: boolean) {
@@ -59,7 +71,8 @@ function moveTo(event: PointerEvent) {
   const rect = base.value.getBoundingClientRect()
   const cx = rect.left + rect.width / 2
   const cy = rect.top + rect.height / 2
-  const { x, y } = clampToCircle(event.clientX - cx, event.clientY - cy)
+  const clamped = clampToCircle(event.clientX - cx, event.clientY - cy)
+  const { x, y } = snapToDirection(clamped.x, clamped.y)
   handleX.value = x
   handleY.value = y
 }
@@ -103,6 +116,12 @@ onBeforeUnmount(() => {
       <span class="joystick-ring" />
       <span class="joystick-cross-h" />
       <span class="joystick-cross-v" />
+      <span
+        v-for="i in 8"
+        :key="i"
+        class="joystick-sector-line"
+        :style="{ transform: `translate(-50%, -50%) rotate(${(i - 1) * 22.5}deg)` }"
+      />
       <span
         class="joystick-handle"
         :class="{ active }"
@@ -158,7 +177,8 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 .joystick-cross-h,
-.joystick-cross-v {
+.joystick-cross-v,
+.joystick-sector-line {
   position: absolute;
   background: #393939;
   pointer-events: none;
@@ -174,6 +194,18 @@ onBeforeUnmount(() => {
   bottom: 12%;
   left: 50%;
   width: 1px;
+}
+.joystick-sector-line {
+  left: 50%;
+  top: 50%;
+  width: 76%;
+  height: 1px;
+  transform-origin: center;
+  opacity: 0.45;
+}
+.joystick-cross-h,
+.joystick-cross-v {
+  opacity: 0.9;
 }
 .joystick-handle {
   position: absolute;
