@@ -135,7 +135,8 @@ body {
 }
 
 /* Header is fixed; push content below its new height. */
-.app-content {
+.app-content,
+.bx--header ~ .app-content {
   margin-top: 4rem;
   padding: 2.5rem;
   min-height: calc(100vh - 4rem);
@@ -145,7 +146,8 @@ body {
    area below the fixed 4rem header exactly — no scroll, no white strip at the
    bottom. We pin the content box with position:fixed to that rectangle, which
    sidesteps all 100vh/margin math (the prior source of the bottom strip). */
-.app-content--fullbleed {
+.app-content--fullbleed,
+.bx--header ~ .app-content.app-content--fullbleed {
   position: fixed;
   top: 4rem;
   left: 0;
