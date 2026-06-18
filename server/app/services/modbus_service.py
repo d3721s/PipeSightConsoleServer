@@ -101,6 +101,7 @@ class ModbusChassisService:
         self._lock = threading.Lock()
         self._x = 0
         self._y = 0
+        self._chassis_enabled = False
         self._client = None
         self._connected = False
         self._telemetry = Telemetry()
@@ -127,8 +128,17 @@ class ModbusChassisService:
 
     def set_joystick(self, x: float, y: float) -> None:
         with self._lock:
+            if not self._chassis_enabled:
+                return
             self._x = max(-JOY_LIMIT, min(JOY_LIMIT, int(x)))
             self._y = max(-JOY_LIMIT, min(JOY_LIMIT, int(y)))
+
+    def set_chassis_enabled(self, enabled: bool) -> None:
+        with self._lock:
+            self._chassis_enabled = enabled
+            if not enabled:
+                self._x = 0
+                self._y = 0
 
     def get_telemetry(self) -> Telemetry:
         with self._lock:
@@ -281,12 +291,14 @@ class ModbusChassisService:
                     time.sleep(RECONNECT_S)
                     continue
             with self._lock:
+                chassis_enabled = self._chassis_enabled
                 x, y = self._x, self._y
-            ok_v = self._write(REG_JOY_VERTICAL, _to_u16(y))
-            ok_h = self._write(REG_JOY_HORIZONTAL, _to_u16(x))
-            if not (ok_v and ok_h):
-                self._drop_connection()
-                continue
+            if chassis_enabled:
+                ok_v = self._write(REG_JOY_VERTICAL, _to_u16(y))
+                ok_h = self._write(REG_JOY_HORIZONTAL, _to_u16(x))
+                if not (ok_v and ok_h):
+                    self._drop_connection()
+                    continue
 
             self._drain_commands()
             self._poll_telemetry()
