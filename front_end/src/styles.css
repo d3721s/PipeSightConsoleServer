@@ -175,6 +175,30 @@ body {
   background: #000;
 }
 
+/* The camera console stays mounted after first visit so Android Chrome keeps
+   the WebRTC video element in the real DOM. When another route is active it
+   must be visually absent; otherwise its full-screen camera controls can leak
+   behind normal pages such as annotation. */
+.persistent-console {
+  position: fixed;
+  top: 4rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: auto;
+  z-index: -1;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.persistent-console.is-active {
+  z-index: 2;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* --- Page layout utilities ------------------------------------------------ */
 .page {
   width: 100%;

@@ -194,22 +194,6 @@ async function toggleRecording() {
   height: 100%; /* fill .app-content (pinned to viewport-minus-header) */
   background: #000;
 }
-.console-page.persistent-console {
-  position: fixed;
-  top: 4rem;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  height: auto;
-  opacity: 0;
-  pointer-events: none;
-}
-.console-page.persistent-console.is-active {
-  z-index: 2;
-  opacity: 1;
-  pointer-events: auto;
-}
 .video-area {
   position: relative;
   overflow: hidden;
