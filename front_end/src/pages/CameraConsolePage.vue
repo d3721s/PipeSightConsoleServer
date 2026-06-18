@@ -59,8 +59,8 @@ function onChassisMove(v: { x: number; y: number }) {
   cameraControlSocket.chassisMove(v.x, v.y)
 }
 
-function onChassisControlToggle(event: Event) {
-  const enabled = event.target instanceof HTMLInputElement ? event.target.checked : false
+function setChassisControlEnabled(enabled: boolean) {
+  if (chassisControlEnabled.value === enabled) return
   chassisControlEnabled.value = enabled
   cameraControlSocket.chassisControlEnabled(enabled)
 }
@@ -192,25 +192,19 @@ async function toggleRecording() {
 
       <div class="rail-section">
         <span class="rail-label">底盘</span>
-        <div class="chassis-enable-toggle bx--form-item">
-          <input
-            id="chassis-control-enabled"
-            :checked="chassisControlEnabled"
-            class="bx--toggle-input"
-            type="checkbox"
-            value="enabled"
-            @change="onChassisControlToggle"
-          />
-          <label class="bx--toggle-input__label" for="chassis-control-enabled">
-            摇杆控制
-            <span class="bx--toggle__switch">
-              <svg class="bx--toggle__check" width="6px" height="5px" viewBox="0 0 6 5">
-                <path d="M2.2 2.7L5 0 6 1 2.2 5 0 2.7 1 1.5z" />
-              </svg>
-              <span class="bx--toggle__text--off" aria-hidden="true">关闭</span>
-              <span class="bx--toggle__text--on" aria-hidden="true">开启</span>
-            </span>
-          </label>
+        <div class="segmented">
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ active: chassisControlEnabled }"
+            @click="setChassisControlEnabled(true)"
+          >APP</button>
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ active: !chassisControlEnabled }"
+            @click="setChassisControlEnabled(false)"
+          >遥控</button>
         </div>
       </div>
 
@@ -333,12 +327,35 @@ async function toggleRecording() {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.chassis-enable-toggle :deep(.bx--toggle-input__label) {
+.segmented {
+  display: flex;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.seg-btn {
+  flex: 1;
+  padding: 0.625rem 0.5rem;
+  font-size: 0.9375rem;
+  background: #2a2a2a;
+  color: #c6c6c6;
+  border: none;
+  border-left: 1px solid #4d4d4d;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+.seg-btn:first-child {
+  border-left: none;
+}
+.seg-btn:hover:not(.active) {
+  background: #393939;
   color: #f4f4f4;
 }
-.chassis-enable-toggle :deep(.bx--toggle__text--off),
-.chassis-enable-toggle :deep(.bx--toggle__text--on) {
-  color: #161616;
+.seg-btn.active {
+  background: #0f62fe;
+  color: #ffffff;
+  font-weight: 600;
 }
 .capture-row {
   display: flex;
