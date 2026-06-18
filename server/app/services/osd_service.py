@@ -4,22 +4,16 @@ from datetime import datetime
 from pathlib import Path
 
 
-# Keep these values visually aligned with front_end/src/components/OsdOverlay.vue
-# and the 3D snapshot canvas renderer in Inspect3dPage.vue.
+# OSD font. Install on the cart with: sudo apt install -y fonts-wqy-zenhei
 OSD_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
-OSD_PANEL_X = 30
-OSD_PANEL_Y = 20
-OSD_BLUE_BAR_W = 9
-OSD_PADDING_X = 36
-OSD_PADDING_Y = 24
+OSD_TEXT_X = 30
+OSD_TEXT_Y = 20
 OSD_FONT_SIZE = 46
-OSD_LINE_HEIGHT = round(OSD_FONT_SIZE * 1.45)
-OSD_LINE_SPACING = OSD_LINE_HEIGHT - OSD_FONT_SIZE
-OSD_TEXT_COLOR = "0xf4f4f4"
-OSD_ACCENT_COLOR = "0x0f62fe@1"
-OSD_PANEL_COLOR = "black@0.45"
+OSD_TEXT_COLOR = "white"
+OSD_BOX_COLOR = "black@0.45"
+OSD_BOX_BORDER_W = 10
+OSD_LINE_SPACING = 12
 OSD_SHADOW_COLOR = "black@0.8"
-OSD_LINE_COUNT = 4
 
 
 def format_wheel_mileage(left: int | float | None, right: int | float | None) -> str:
@@ -43,37 +37,21 @@ def _ff_escape_path(path: str | Path) -> str:
 def osd_text(project_name: str, project_location: str, *, now: datetime | None = None) -> str:
     ts = (now or datetime.now()).strftime("%Y-%m-%d %H:%M:%S")
     return (
-        f"时间：{ts}\n"
-        f"距离：{current_wheel_mileage_text()}\n"
-        f"项目名称：{project_name or '未创建项目'}\n"
-        f"地点：{project_location or '-'}\n"
+        f"时间: {ts}\n"
+        f"距离: {current_wheel_mileage_text()}\n"
+        f"项目名称: {project_name or '-'}\n"
+        f"项目地点: {project_location or '-'}\n"
     )
 
 
 def build_ffmpeg_osd_filter(textfile: str | Path, *, fontfile: str = OSD_FONT, reload: bool = True) -> str:
     font = _ff_escape_path(fontfile)
     body_file = _ff_escape_path(textfile)
-    text_x = OSD_PANEL_X + OSD_BLUE_BAR_W + OSD_PADDING_X
-    text_y = OSD_PANEL_Y + OSD_PADDING_Y
-    panel_h = OSD_PADDING_Y * 2 + OSD_LINE_HEIGHT * OSD_LINE_COUNT
-
-    # Keep this compatible with older ffmpeg builds by drawing the panel and
-    # accent separately, then rendering text without drawtext's own box.
-    panel_w = "iw*0.62"
     reload_opt = ":reload=1" if reload else ""
-
-    panel_layer = (
-        f"drawbox=x={OSD_PANEL_X}:y={OSD_PANEL_Y}:w={panel_w}:h={panel_h}:"
-        f"c={OSD_PANEL_COLOR}:t=fill"
-    )
-    accent_layer = (
-        f"drawbox=x={OSD_PANEL_X}:y={OSD_PANEL_Y}:w={OSD_BLUE_BAR_W}:h={panel_h}:"
-        f"c={OSD_ACCENT_COLOR}:t=fill"
-    )
-    text_layer = (
+    return (
         f"drawtext=fontfile={font}:textfile={body_file}{reload_opt}:"
-        f"x={text_x}:y={text_y}:fontsize={OSD_FONT_SIZE}:fontcolor={OSD_TEXT_COLOR}:"
+        f"x={OSD_TEXT_X}:y={OSD_TEXT_Y}:fontsize={OSD_FONT_SIZE}:fontcolor={OSD_TEXT_COLOR}:"
+        f"box=1:boxcolor={OSD_BOX_COLOR}:boxborderw={OSD_BOX_BORDER_W}:"
         f"line_spacing={OSD_LINE_SPACING}:"
         f"shadowcolor={OSD_SHADOW_COLOR}:shadowx=1:shadowy=2"
     )
-    return f"{panel_layer},{accent_layer},{text_layer}"
