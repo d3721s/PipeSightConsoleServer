@@ -24,6 +24,7 @@ DIRECTIONS = {
 @router.websocket("/ws/camera-control")
 async def camera_control(websocket: WebSocket) -> None:
     await websocket.accept()
+    modbus_chassis_service.set_chassis_enabled(False)
     try:
         while True:
             payload = await websocket.receive_json()
@@ -35,11 +36,16 @@ async def camera_control(websocket: WebSocket) -> None:
             else:
                 await websocket.send_json({"type": "ack", "ref": ref, "ok": True})
     except WebSocketDisconnect:
+        modbus_chassis_service.set_chassis_enabled(False)
         return
 
 
 async def handle_control(payload: dict) -> None:
     msg_type = payload.get("type")
+
+    if msg_type == "chassis_control":
+        modbus_chassis_service.set_chassis_enabled(bool(payload.get("enabled")))
+        return
 
     # Chassis joystick has no camera context — handle before the camera lookup.
     if msg_type == "chassis_move":
