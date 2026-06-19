@@ -32,7 +32,7 @@ import { activeReport, currentProject, currentSession, notify, reportToggling, t
 
 const router = useRouter()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
-const chassisControlEnabled = ref(false)
+const chassisControlEnabled = ref(true)
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4

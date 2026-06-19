@@ -15,7 +15,7 @@ function nextRef(): string {
 export class CameraControlSocket {
   private ws: WebSocket | null = null
   private queue: Array<Record<string, unknown>> = []
-  private chassisEnabled = false
+  private chassisEnabled = true
 
   connect() {
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) return

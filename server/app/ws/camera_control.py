@@ -24,7 +24,7 @@ DIRECTIONS = {
 @router.websocket("/ws/camera-control")
 async def camera_control(websocket: WebSocket) -> None:
     await websocket.accept()
-    modbus_chassis_service.set_chassis_enabled(False)
+    modbus_chassis_service.set_chassis_enabled(True)
     try:
         while True:
             payload = await websocket.receive_json()
