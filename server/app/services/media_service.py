@@ -34,7 +34,7 @@ def stream_payload(
         "device": camera.code,
         "channel": channel,
         "path": path,
-        "rtspUrl": build_rtsp_url(camera, channel),
+        "rtspUrl": build_rtsp_url(camera, channel, subtype=settings.preview_rtsp_subtype),
         "whepUrl": whep_url(path),
         "recordingRelay": use_recording_relay,
     }
@@ -62,7 +62,8 @@ def write_mediamtx_config(db: Session) -> Path:
             lines.extend(
                 [
                     f"  {media_path(camera.code, channel)}:",
-                    f"    source: {build_rtsp_url(camera, channel)}",
+                    f"    source: {build_rtsp_url(camera, channel, subtype=settings.preview_rtsp_subtype)}",
+                    f"    rtspTransport: {settings.mediamtx_rtsp_transport}",
                     "    sourceOnDemand: yes",
                     # Stop pulling a stream ~1s after the last viewer leaves, so
                     # only the currently-viewed camera+channel is ever decoded

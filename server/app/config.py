@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
     )
     mediamtx_rtsp_port: int = 8554
     mediamtx_webrtc_port: int = 8889
+    mediamtx_rtsp_transport: Literal["automatic", "udp", "multicast", "tcp"] = "udp"
+    preview_rtsp_subtype: int = 0
     # Extra IP/hostnames MediaMTX advertises as WebRTC ICE candidates. Leave
     # empty to let MediaMTX auto-detect the server's interface addresses (works
     # on a single LAN). Set it (e.g. the server LAN IP) for Docker / multi-NIC /

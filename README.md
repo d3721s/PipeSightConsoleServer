@@ -106,7 +106,11 @@ PIPESIGHT_MEDIAMTX_EXE=/usr/local/bin/mediamtx
 PIPESIGHT_MEDIAMTX_CONFIG=./third_party/mediamtx/mediamtx.yml
 PIPESIGHT_MEDIAMTX_RTSP_PORT=8554
 PIPESIGHT_MEDIAMTX_WEBRTC_PORT=8889
+PIPESIGHT_MEDIAMTX_RTSP_TRANSPORT=udp
+PIPESIGHT_PREVIEW_RTSP_SUBTYPE=0
 ```
+
+低延迟预览优先使用 `PIPESIGHT_MEDIAMTX_RTSP_TRANSPORT=udp` 让 MediaMTX 从相机以 UDP 拉 RTSP；如果现场网络丢包、画面花屏或相机不支持 UDP，可改为 `automatic` 或 `tcp` 后重启后端。`PIPESIGHT_PREVIEW_RTSP_SUBTYPE=0` 表示预览使用主码流；需要牺牲清晰度换更低延迟时，可先在相机端配置好子码流，再改为 `1`。
 
 如果 `PIPESIGHT_MEDIAMTX_EXE` 未设置，后端会依次查找：
 

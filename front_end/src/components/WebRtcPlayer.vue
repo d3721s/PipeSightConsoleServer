@@ -16,6 +16,11 @@ const emit = defineEmits<{
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
+const LOW_LATENCY_JITTER_BUFFER_MS = 50
+
+type LowLatencyRtpReceiver = RTCRtpReceiver & {
+  jitterBufferTarget?: number | null
+}
 
 const video = ref<HTMLVideoElement | null>(null)
 const container = ref<HTMLDivElement | null>(null)
@@ -158,6 +163,22 @@ function waitIceGatheringComplete(peer: RTCPeerConnection): Promise<void> {
   })
 }
 
+function setReceiverLowLatency(receiver: RTCRtpReceiver) {
+  const target = receiver as LowLatencyRtpReceiver
+  if (!('jitterBufferTarget' in target)) return
+  try {
+    target.jitterBufferTarget = LOW_LATENCY_JITTER_BUFFER_MS
+  } catch {
+    // Browser rejected the hint; keep the standard WebRTC behavior.
+  }
+}
+
+function applyLowLatencyReceiverSettings(peer: RTCPeerConnection) {
+  peer.getReceivers().forEach((receiver) => {
+    if (!receiver.track || receiver.track.kind === 'video') setReceiverLowLatency(receiver)
+  })
+}
+
 async function start() {
   stop()
   if (!props.src) return
@@ -167,8 +188,10 @@ async function start() {
 
   const peer = new RTCPeerConnection()
   pc = peer
-  peer.addTransceiver('video', { direction: 'recvonly' })
+  const videoTransceiver = peer.addTransceiver('video', { direction: 'recvonly' })
+  setReceiverLowLatency(videoTransceiver.receiver)
   peer.ontrack = (event) => {
+    applyLowLatencyReceiverSettings(peer)
     if (event.streams[0]) {
       currentStream = event.streams[0]
       if (video.value) {
@@ -197,6 +220,7 @@ async function start() {
     }
     const answer = await response.text()
     await peer.setRemoteDescription({ type: 'answer', sdp: answer })
+    applyLowLatencyReceiverSettings(peer)
   } catch (err) {
     if ((err as Error).name !== 'AbortError') {
       error.value = (err as Error).message || '视频连接失败'
