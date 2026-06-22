@@ -5,7 +5,7 @@ export default { name: 'CameraConsolePage' }
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { CvButton, CvTag } from '@carbon/vue'
 import { Camera24, VideoAdd24, StopFilledAlt24, ZoomIn24, ZoomOut24, Report24, ChevronLeft24 } from '@carbon/icons-vue'
@@ -27,12 +27,17 @@ import {
   selectChannel,
   stream
 } from '../stores/cameras'
-import { leftWheelM, rightWheelM } from '../stores/odometer'
+import {
+  chassisControlEnabled,
+  leftWheelM,
+  rightWheelM,
+  sendChassisMove,
+  setChassisControlEnabled
+} from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 
 const router = useRouter()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
-const chassisControlEnabled = ref(true)
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -55,14 +60,7 @@ function ptzStop() {
 }
 
 function onChassisMove(v: { x: number; y: number }) {
-  if (!chassisControlEnabled.value) return
-  cameraControlSocket.chassisMove(v.x, v.y)
-}
-
-function setChassisControlEnabled(enabled: boolean) {
-  if (chassisControlEnabled.value === enabled) return
-  chassisControlEnabled.value = enabled
-  cameraControlSocket.chassisControlEnabled(enabled)
+  sendChassisMove(v.x, v.y)
 }
 
 async function takeSnapshot() {

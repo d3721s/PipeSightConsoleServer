@@ -6,8 +6,16 @@ import { Camera24, ChevronLeft24, CubeView24, Image24, Report24, ZoomIn24, ZoomO
 import PointCloudViewer from '../components/PointCloudViewer.vue'
 import DepthMapViewer from '../components/DepthMapViewer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
+import Joystick from '../components/Joystick.vue'
+import MobileChassisPanel from '../components/MobileChassisPanel.vue'
 import { api } from '../api'
-import { leftWheelM, rightWheelM } from '../stores/odometer'
+import {
+  chassisControlEnabled,
+  leftWheelM,
+  rightWheelM,
+  sendChassisMove,
+  setChassisControlEnabled
+} from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 import { formatWheelMileage } from '../utils/osd'
 
@@ -49,6 +57,10 @@ function nudgeZoom(dir: number) {
   if (mode.value !== 'pointcloud') return
   // dir>0 zoom in (camera dolly closer), dir<0 zoom out.
   viewer.value?.zoomBy?.(dir > 0 ? 0.8 : 1.25)
+}
+
+function onChassisMove(v: { x: number; y: number }) {
+  sendChassisMove(v.x, v.y)
 }
 
 function updateZoomLabel(value: number) {
@@ -210,6 +222,10 @@ function parsePx(value: string, fallback: number) {
         <span class="zoom-readout">{{ zoomLabel }}</span>
         <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomIn24" @click="nudgeZoom(1)" />
       </div>
+
+      <div class="chassis-cluster">
+        <joystick :disabled="!chassisControlEnabled" @move="onChassisMove" />
+      </div>
     </div>
 
     <aside class="control-rail">
@@ -250,6 +266,26 @@ function parsePx(value: string, fallback: number) {
         <span class="rail-label">采集</span>
         <cv-button class="rail-action" :icon="Camera24" @click="capture3d">拍照</cv-button>
       </div>
+
+      <div class="rail-section">
+        <span class="rail-label">底盘</span>
+        <div class="segmented">
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ active: chassisControlEnabled }"
+            @click="setChassisControlEnabled(true)"
+          >APP</button>
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ active: !chassisControlEnabled }"
+            @click="setChassisControlEnabled(false)"
+          >遥控</button>
+        </div>
+      </div>
+
+      <mobile-chassis-panel />
     </aside>
   </div>
 </template>
@@ -277,6 +313,11 @@ function parsePx(value: string, fallback: number) {
   background: rgba(22, 22, 22, 0.7);
   border-radius: 999px;
   padding: 0.25rem 0.5rem;
+}
+.chassis-cluster {
+  position: absolute;
+  left: 1.25rem;
+  bottom: 1.25rem;
 }
 .zoom-readout {
   min-width: 2.5rem;
@@ -328,6 +369,36 @@ function parsePx(value: string, fallback: number) {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+.segmented {
+  display: flex;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.seg-btn {
+  flex: 1;
+  padding: 0.625rem 0.5rem;
+  font-size: 0.9375rem;
+  background: #2a2a2a;
+  color: #c6c6c6;
+  border: none;
+  border-left: 1px solid #4d4d4d;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+.seg-btn:first-child {
+  border-left: none;
+}
+.seg-btn:hover:not(.active) {
+  background: #393939;
+  color: #f4f4f4;
+}
+.seg-btn.active {
+  background: #0f62fe;
+  color: #ffffff;
+  font-weight: 600;
 }
 .rail-action {
   width: 100%;

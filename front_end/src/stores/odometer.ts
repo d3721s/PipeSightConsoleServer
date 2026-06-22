@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { api } from '../api'
+import { cameraControlSocket } from '../ws'
 
 // Cart odometer distance (metres), still used for saved media metadata and
 // annotation defaults. OSD display uses the left/right chassis wheel mileage.
@@ -22,9 +23,21 @@ export const lightD3Pulse = ref<number | null>(null)
 export const eulerRoll = ref<number | null>(null)
 export const eulerPitch = ref<number | null>(null)
 export const eulerYaw = ref<number | null>(null)
+export const chassisControlEnabled = ref(true)
 
 let timer: number | null = null
 let chassisTimer: number | null = null
+
+export function setChassisControlEnabled(enabled: boolean) {
+  if (chassisControlEnabled.value === enabled) return
+  chassisControlEnabled.value = enabled
+  cameraControlSocket.chassisControlEnabled(enabled)
+}
+
+export function sendChassisMove(x: number, y: number) {
+  if (!chassisControlEnabled.value) return
+  cameraControlSocket.chassisMove(x, y)
+}
 
 export function startOdometerPolling() {
   if (timer === null) {
