@@ -24,9 +24,42 @@ export const eulerRoll = ref<number | null>(null)
 export const eulerPitch = ref<number | null>(null)
 export const eulerYaw = ref<number | null>(null)
 export const chassisControlEnabled = ref(true)
+export const CHASSIS_MAX_SPEED_MIN = 100
+export const CHASSIS_MAX_SPEED_MAX = 800
+export const CHASSIS_MAX_SPEED_STEP = 100
+
+const CHASSIS_MAX_SPEED_STORAGE_KEY = 'pipesight.chassisMaxSpeed'
+
+export function clampChassisMaxSpeed(value: string | number) {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return CHASSIS_MAX_SPEED_MAX
+  return Math.max(CHASSIS_MAX_SPEED_MIN, Math.min(CHASSIS_MAX_SPEED_MAX, n))
+}
+
+function readStoredChassisMaxSpeed() {
+  if (typeof window === 'undefined') return CHASSIS_MAX_SPEED_MAX
+  return clampChassisMaxSpeed(window.localStorage.getItem(CHASSIS_MAX_SPEED_STORAGE_KEY) ?? CHASSIS_MAX_SPEED_MAX)
+}
+
+export const chassisMaxSpeed = ref(readStoredChassisMaxSpeed())
 
 let timer: number | null = null
 let chassisTimer: number | null = null
+
+export function setChassisMaxSpeed(value: string | number) {
+  chassisMaxSpeed.value = clampChassisMaxSpeed(value)
+  try {
+    window.localStorage.setItem(CHASSIS_MAX_SPEED_STORAGE_KEY, String(chassisMaxSpeed.value))
+  } catch {
+    // Ignore storage failures; the runtime value still applies.
+  }
+}
+
+function clampChassisCommand(value: number) {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return 0
+  return Math.max(-chassisMaxSpeed.value, Math.min(chassisMaxSpeed.value, n))
+}
 
 export function setChassisControlEnabled(enabled: boolean) {
   if (chassisControlEnabled.value === enabled) return
@@ -36,7 +69,7 @@ export function setChassisControlEnabled(enabled: boolean) {
 
 export function sendChassisMove(x: number, y: number) {
   if (!chassisControlEnabled.value) return
-  cameraControlSocket.chassisMove(x, y)
+  cameraControlSocket.chassisMove(clampChassisCommand(x), clampChassisCommand(y))
 }
 
 export function startOdometerPolling() {

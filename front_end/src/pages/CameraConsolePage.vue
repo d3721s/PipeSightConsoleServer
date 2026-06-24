@@ -28,6 +28,7 @@ import {
   stream
 } from '../stores/cameras'
 import {
+  chassisMaxSpeed,
   chassisControlEnabled,
   leftWheelM,
   rightWheelM,
@@ -131,7 +132,7 @@ async function toggleRecording() {
 
       <!-- Bottom-left: chassis joystick -->
       <div class="chassis-cluster">
-        <joystick :disabled="!chassisControlEnabled" @move="onChassisMove" />
+        <joystick :range="chassisMaxSpeed" :disabled="!chassisControlEnabled" @move="onChassisMove" />
       </div>
 
       <!-- Bottom-center: zoom cluster -->

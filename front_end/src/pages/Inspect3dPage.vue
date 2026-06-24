@@ -10,6 +10,7 @@ import Joystick from '../components/Joystick.vue'
 import MobileChassisPanel from '../components/MobileChassisPanel.vue'
 import { api } from '../api'
 import {
+  chassisMaxSpeed,
   chassisControlEnabled,
   leftWheelM,
   rightWheelM,
@@ -224,7 +225,7 @@ function parsePx(value: string, fallback: number) {
       </div>
 
       <div class="chassis-cluster">
-        <joystick :disabled="!chassisControlEnabled" @move="onChassisMove" />
+        <joystick :range="chassisMaxSpeed" :disabled="!chassisControlEnabled" @move="onChassisMove" />
       </div>
     </div>
 

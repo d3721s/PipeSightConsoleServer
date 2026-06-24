@@ -4,6 +4,10 @@ import { Add24, Reset24, Subtract24 } from '@carbon/icons-vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
+  CHASSIS_MAX_SPEED_MAX,
+  CHASSIS_MAX_SPEED_MIN,
+  CHASSIS_MAX_SPEED_STEP,
+  chassisMaxSpeed,
   leftWheelM,
   rightWheelM,
   batteryLevel,
@@ -12,7 +16,8 @@ import {
   lightD3Pulse,
   eulerRoll,
   eulerPitch,
-  eulerYaw
+  eulerYaw,
+  setChassisMaxSpeed
 } from '../stores/odometer'
 
 // Light: fixed period 100; D1/D3 pulse values map to 0-100%.
@@ -48,6 +53,7 @@ function nudgeLightValue(target: typeof lightD1, delta: number) {
 
 const nudgeD1 = (delta: number) => nudgeLightValue(lightD1, delta)
 const nudgeD3 = (delta: number) => nudgeLightValue(lightD3, delta)
+const nudgeMaxSpeed = (delta: number) => setChassisMaxSpeed(chassisMaxSpeed.value + delta)
 
 function scheduleLightPwm() {
   const seq = ++lightSeq
@@ -115,6 +121,34 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(4)}°`)
             <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD3(-10)" />
             <output class="pwm-value">{{ pwmDisplay(lightD3) }}</output>
             <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD3(10)" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chassis-section">
+      <span class="chassis-label">最大速度</span>
+      <div class="light-sliders">
+        <div class="pwm-row">
+          <span class="pwm-label">速度</span>
+          <div class="pwm-controls">
+            <cv-button
+              kind="ghost"
+              size="sm"
+              class="pwm-btn"
+              :icon="Subtract24"
+              :disabled="chassisMaxSpeed <= CHASSIS_MAX_SPEED_MIN"
+              @click="nudgeMaxSpeed(-CHASSIS_MAX_SPEED_STEP)"
+            />
+            <output class="pwm-value">{{ chassisMaxSpeed }}</output>
+            <cv-button
+              kind="ghost"
+              size="sm"
+              class="pwm-btn"
+              :icon="Add24"
+              :disabled="chassisMaxSpeed >= CHASSIS_MAX_SPEED_MAX"
+              @click="nudgeMaxSpeed(CHASSIS_MAX_SPEED_STEP)"
+            />
           </div>
         </div>
       </div>
