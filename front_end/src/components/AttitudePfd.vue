@@ -183,16 +183,17 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
 <style scoped>
 .pfd {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 0.75rem;
 }
 .pfd.stale {
   opacity: 0.5;
 }
 .pfd-svg {
-  width: 9rem;
-  height: 9rem;
+  width: 10rem;
+  height: 10rem;
   flex: 0 0 auto;
 }
 /* Ease the 400ms telemetry steps so the dial glides instead of jumping. */
@@ -212,15 +213,14 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
 }
 .pfd-readouts {
   display: flex;
-  width: 100%;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 .ro {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.1rem;
-  flex: 1 1 0;
   min-width: 0;
 }
 .ro-label {
