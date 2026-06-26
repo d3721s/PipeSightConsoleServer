@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Add24, Reset24, Subtract24 } from '@carbon/icons-vue'
-import AttitudeGauge from './AttitudeGauge.vue'
+import AttitudePfd from './AttitudePfd.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
@@ -106,11 +106,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   <div class="chassis-group">
     <div class="chassis-attitude">
       <span class="chassis-label">姿态</span>
-      <div class="attitude-row">
-        <attitude-gauge :value="eulerRoll" label="横滚 Roll" />
-        <attitude-gauge :value="eulerPitch" label="俯仰 Pitch" />
-        <attitude-gauge :value="eulerYaw" label="航向 Yaw" />
-      </div>
+      <attitude-pfd :roll="eulerRoll" :pitch="eulerPitch" :yaw="eulerYaw" />
     </div>
 
     <div class="chassis-readout">
@@ -295,13 +291,5 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-.attitude-row {
-  display: flex;
-  gap: 0.5rem;
-}
-.attitude-row :deep(.att-gauge) {
-  flex: 1 1 0;
-  min-width: 0;
 }
 </style>
