@@ -130,11 +130,11 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
       <g :clip-path="`url(#${clipId})`">
         <g class="pfd-move" :transform="`rotate(${rollRotation} 50 50)`">
           <g :transform="`translate(0 ${pitchOffset})`">
-            <rect x="-60" y="-400" width="220" height="450" fill="#3f6fc4" />
-            <rect x="-60" y="50" width="220" height="450" fill="#5b7a3a" />
+            <rect x="-60" y="-400" width="220" height="450" fill="#1ca3e0" />
+            <rect x="-60" y="50" width="220" height="450" fill="#9e7c45" />
             <line x1="-60" y1="50" x2="160" y2="50" stroke="#fff" stroke-width="1" />
             <g v-for="m in pitchLadder" :key="m.d">
-              <line :x1="50 - m.half" :y1="m.y" :x2="50 + m.half" :y2="m.y" stroke="#e8e8e8" stroke-width="0.7" />
+              <line :x1="50 - m.half" :y1="m.y" :x2="50 + m.half" :y2="m.y" stroke="#ffffff" stroke-width="0.7" />
               <text :x="50 - m.half - 1.5" :y="m.y" class="ladder-num" text-anchor="end" dominant-baseline="central">{{ m.label }}</text>
               <text :x="50 + m.half + 1.5" :y="m.y" class="ladder-num" text-anchor="start" dominant-baseline="central">{{ m.label }}</text>
             </g>
@@ -151,21 +151,21 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
         :y1="t.y1"
         :x2="t.x2"
         :y2="t.y2"
-        stroke="#cfd6dd"
+        stroke="#ffffff"
         stroke-width="0.8"
       />
       <!-- Fixed top index. -->
-      <polygon points="50,7 47.5,12 52.5,12" fill="#f1c21b" />
+      <polygon points="50,7 47.5,12 52.5,12" fill="#ffffff" />
       <!-- Bank pointer swings with roll. -->
       <g class="pfd-move" :transform="`rotate(${rollRotation} 50 50)`">
-        <polygon points="50,12 47.8,16.5 52.2,16.5" fill="#f1c21b" />
+        <polygon points="50,12 47.8,16.5 52.2,16.5" fill="#ffffff" />
       </g>
 
       <!-- Fixed aircraft reference in the center. -->
       <g>
-        <line x1="34" y1="50" x2="44" y2="50" stroke="#f1c21b" stroke-width="1.8" />
-        <line x1="56" y1="50" x2="66" y2="50" stroke="#f1c21b" stroke-width="1.8" />
-        <circle cx="50" cy="50" r="1.4" fill="#f1c21b" />
+        <line x1="34" y1="50" x2="44" y2="50" stroke="#ffd500" stroke-width="1.8" />
+        <line x1="56" y1="50" x2="66" y2="50" stroke="#ffd500" stroke-width="1.8" />
+        <circle cx="50" cy="50" r="1.4" fill="#ffd500" />
       </g>
 
       <!-- Bezel. -->
@@ -207,7 +207,7 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
 }
 .ladder-num {
   font-size: 4px;
-  fill: #e8e8e8;
+  fill: #ffffff;
   font-family: inherit;
 }
 .pfd-readouts {
