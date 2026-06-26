@@ -192,8 +192,8 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
   opacity: 0.5;
 }
 .pfd-svg {
-  width: 10rem;
-  height: 10rem;
+  width: 11rem;
+  height: 11rem;
   flex: 0 0 auto;
 }
 /* Ease the 400ms telemetry steps so the dial glides instead of jumping. */
