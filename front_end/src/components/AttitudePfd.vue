@@ -35,19 +35,20 @@ const yawText = computed(() => (fin(props.yaw) ? `${wrap180(props.yaw).toFixed(1
 const rollRotation = computed(() => (fin(props.roll) ? -props.roll : 0))
 // Compass ring rotates so the current heading comes up to the top index.
 const yawRotation = computed(() => (fin(props.yaw) ? -props.yaw : 0))
-// Nose-up drops the horizon; clamp so it never fully leaves the ADI.
-const pitchOffset = computed(() => {
-  if (!fin(props.pitch)) return 0
-  return Math.max(-ADI_R + 4, Math.min(ADI_R - 4, props.pitch * PITCH_K))
-})
+// Pitch scrolls the horizon + ladder freely (no clamp) so the current pitch
+// always sits at the dial center; the ADI clip hides whatever is off-window.
+const pitchOffset = computed(() => (fin(props.pitch) ? props.pitch * PITCH_K : 0))
 
-// Pitch ladder rungs inside the ADI (0° is the horizon line itself).
-const pitchLadder = [-20, -10, 10, 20].map(d => ({
-  d,
-  y: 50 - d * PITCH_K,
-  half: Math.abs(d) === 20 ? 10 : 6,
-  abs: Math.abs(d)
-}))
+// Pitch ladder: a signed rung every 10° across the full ±180 range. Only the
+// few rungs near the current pitch fall inside the ADI clip, so it scrolls.
+const pitchLadder = Array.from({ length: 37 }, (_, i) => (i - 18) * 10)
+  .filter(d => d !== 0)
+  .map(d => ({
+    d,
+    y: 50 - d * PITCH_K,
+    half: d % 30 === 0 ? 9 : 6,
+    label: String(d)
+  }))
 
 // Bank scale on the fixed arc just inside the compass ring (0/±30/±60).
 const bankTicks = [-60, -30, 0, 30, 60].map(a => {
@@ -129,13 +130,13 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
       <g :clip-path="`url(#${clipId})`">
         <g class="pfd-move" :transform="`rotate(${rollRotation} 50 50)`">
           <g :transform="`translate(0 ${pitchOffset})`">
-            <rect x="-60" y="-90" width="220" height="140" fill="#3f6fc4" />
-            <rect x="-60" y="50" width="220" height="140" fill="#5b7a3a" />
+            <rect x="-60" y="-400" width="220" height="450" fill="#3f6fc4" />
+            <rect x="-60" y="50" width="220" height="450" fill="#5b7a3a" />
             <line x1="-60" y1="50" x2="160" y2="50" stroke="#fff" stroke-width="1" />
             <g v-for="m in pitchLadder" :key="m.d">
               <line :x1="50 - m.half" :y1="m.y" :x2="50 + m.half" :y2="m.y" stroke="#e8e8e8" stroke-width="0.7" />
-              <text :x="50 - m.half - 1.5" :y="m.y" class="ladder-num" text-anchor="end" dominant-baseline="central">{{ m.abs }}</text>
-              <text :x="50 + m.half + 1.5" :y="m.y" class="ladder-num" text-anchor="start" dominant-baseline="central">{{ m.abs }}</text>
+              <text :x="50 - m.half - 1.5" :y="m.y" class="ladder-num" text-anchor="end" dominant-baseline="central">{{ m.label }}</text>
+              <text :x="50 + m.half + 1.5" :y="m.y" class="ladder-num" text-anchor="start" dominant-baseline="central">{{ m.label }}</text>
             </g>
           </g>
         </g>
