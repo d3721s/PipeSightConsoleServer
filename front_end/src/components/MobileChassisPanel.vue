@@ -111,6 +111,44 @@ async function calibrateAttitude() {
   }
 }
 
+// Carbon confirm dialog shared by the two reset actions; runs the stored action
+// on confirm and closes once it settles.
+const confirmVisible = ref(false)
+const confirmBusy = ref(false)
+const confirmInfo = ref<{ title: string; message: string; label: string; run: () => Promise<void> } | null>(null)
+
+function askClearOdometer() {
+  confirmInfo.value = {
+    title: '里程计清零',
+    message: '确定将左右轮里程计清零吗？该操作会向底盘发送清零指令，且不可恢复。',
+    label: '清零',
+    run: clearOdometer
+  }
+  confirmVisible.value = true
+}
+
+function askCalibrateAttitude() {
+  confirmInfo.value = {
+    title: '姿态清零',
+    message: '确定执行姿态清零吗？将对 IMU 加速度计进行校准，请先将设备水平静置。',
+    label: '清零',
+    run: calibrateAttitude
+  }
+  confirmVisible.value = true
+}
+
+async function onConfirm() {
+  const info = confirmInfo.value
+  if (!info || confirmBusy.value) return
+  confirmBusy.value = true
+  try {
+    await info.run()
+    confirmVisible.value = false
+  } finally {
+    confirmBusy.value = false
+  }
+}
+
 const fmtMileage = (v: number | null) => (v === null ? '--' : `${v.toFixed(2)} m`)
 const fmtBattery = (v: number | null) => (v === null ? '--' : v.toFixed(2))
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
@@ -127,7 +165,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
         class="clear-btn"
         :icon="Reset24"
         :disabled="attitudePending"
-        @click="calibrateAttitude"
+        @click="askCalibrateAttitude"
       >姿态清零</cv-button>
     </div>
 
@@ -197,10 +235,26 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
           class="clear-btn"
           :icon="Reset24"
           :disabled="odometerPending"
-          @click="clearOdometer"
+          @click="askClearOdometer"
         >里程计清零</cv-button>
       </div>
     </div>
+
+    <cv-modal
+      kind="danger"
+      :visible="confirmVisible"
+      :primary-button-disabled="confirmBusy"
+      @update:visible="confirmVisible = $event"
+      @primary-click="onConfirm"
+      @secondary-click="confirmVisible = false"
+    >
+      <template #title>{{ confirmInfo?.title }}</template>
+      <template #content>
+        <p>{{ confirmInfo?.message }}</p>
+      </template>
+      <template #secondary-button>取消</template>
+      <template #primary-button>{{ confirmInfo?.label }}</template>
+    </cv-modal>
   </div>
 </template>
 
