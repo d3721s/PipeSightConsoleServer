@@ -82,15 +82,16 @@ const rollTicks = [-60, -30, 0, 30, 60].map(a => {
 <style scoped>
 .att-gauge {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.35rem;
 }
 .att-gauge.stale {
   opacity: 0.5;
 }
 .att-svg {
-  width: 5.25rem;
-  height: 5.25rem;
+  width: 3.5rem;
+  height: 3.5rem;
   flex: 0 0 auto;
 }
 /* Ease the 400ms telemetry steps so the dials glide instead of jumping. */
@@ -100,8 +101,10 @@ const rollTicks = [-60, -30, 0, 30, 60].map(a => {
 .att-text {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.1rem;
   min-width: 0;
+  text-align: center;
 }
 .att-label {
   color: #8d8d8d;
@@ -112,7 +115,7 @@ const rollTicks = [-60, -30, 0, 30, 60].map(a => {
 }
 .att-value {
   color: #f4f4f4;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;

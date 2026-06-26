@@ -106,9 +106,11 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   <div class="chassis-group">
     <div class="chassis-attitude">
       <span class="chassis-label">姿态</span>
-      <attitude-gauge :value="eulerRoll" label="横滚 Roll" />
-      <attitude-gauge :value="eulerPitch" label="俯仰 Pitch" />
-      <attitude-gauge :value="eulerYaw" label="航向 Yaw" />
+      <div class="attitude-row">
+        <attitude-gauge :value="eulerRoll" label="横滚 Roll" />
+        <attitude-gauge :value="eulerPitch" label="俯仰 Pitch" />
+        <attitude-gauge :value="eulerYaw" label="航向 Yaw" />
+      </div>
     </div>
 
     <div class="chassis-readout">
@@ -292,6 +294,14 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 .chassis-attitude {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
+}
+.attitude-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.attitude-row :deep(.att-gauge) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 </style>
