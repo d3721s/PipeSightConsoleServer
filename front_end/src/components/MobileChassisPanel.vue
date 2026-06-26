@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Add24, Reset24, Subtract24 } from '@carbon/icons-vue'
+import AttitudeGauge from './AttitudeGauge.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
 import {
@@ -99,7 +100,6 @@ async function clearOdometer() {
 const fmtMileage = (v: number | null) => (v === null ? '--' : `${v.toFixed(2)} m`)
 const fmtBattery = (v: number | null) => (v === null ? '--' : v.toFixed(2))
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
-const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(4)}°`)
 </script>
 
 <template>
@@ -171,9 +171,13 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(4)}°`)
       <div class="readout-row"><span>右轮里程</span><strong>{{ fmtMileage(rightWheelM) }}</strong></div>
       <div class="readout-row"><span>电池电量</span><strong>{{ fmtBattery(batteryLevel) }}</strong></div>
       <div class="readout-row"><span>故障码</span><strong>{{ fmtText(faultCode) }}</strong></div>
-      <div class="readout-row"><span>横滚角 Roll</span><strong>{{ fmtDeg(eulerRoll) }}</strong></div>
-      <div class="readout-row"><span>俯仰角 Pitch</span><strong>{{ fmtDeg(eulerPitch) }}</strong></div>
-      <div class="readout-row"><span>航向角 Yaw</span><strong>{{ fmtDeg(eulerYaw) }}</strong></div>
+    </div>
+
+    <div class="chassis-attitude">
+      <span class="chassis-label">姿态 Attitude</span>
+      <attitude-gauge mode="roll" :value="eulerRoll" label="横滚 Roll" />
+      <attitude-gauge mode="pitch" :value="eulerPitch" label="俯仰 Pitch" />
+      <attitude-gauge mode="yaw" :value="eulerYaw" label="航向 Yaw" />
     </div>
   </div>
 </template>
@@ -275,5 +279,12 @@ const fmtDeg = (v: number | null) => (v === null ? '--' : `${v.toFixed(4)}°`)
   text-align: right;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.chassis-attitude {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #393939;
 }
 </style>
