@@ -104,66 +104,11 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 
 <template>
   <div class="chassis-group">
-    <div class="chassis-section">
-      <span class="chassis-label">灯光控制{{ lightPending ? '（设置中…）' : '' }}</span>
-      <div class="light-sliders" :class="{ pending: lightPending }">
-        <div class="pwm-row">
-          <span class="pwm-label">灯光1</span>
-          <div class="pwm-controls">
-            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD1(-10)" />
-            <output class="pwm-value">{{ pwmDisplay(lightD1) }}</output>
-            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD1(10)" />
-          </div>
-        </div>
-        <div class="pwm-row">
-          <span class="pwm-label">灯光2</span>
-          <div class="pwm-controls">
-            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD3(-10)" />
-            <output class="pwm-value">{{ pwmDisplay(lightD3) }}</output>
-            <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD3(10)" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chassis-section">
-      <span class="chassis-label">最大速度</span>
-      <div class="light-sliders">
-        <div class="pwm-row">
-          <span class="pwm-label">速度</span>
-          <div class="pwm-controls">
-            <cv-button
-              kind="ghost"
-              size="sm"
-              class="pwm-btn"
-              :icon="Subtract24"
-              :disabled="chassisMaxSpeed <= CHASSIS_MAX_SPEED_MIN"
-              @click="nudgeMaxSpeed(-CHASSIS_MAX_SPEED_STEP)"
-            />
-            <output class="pwm-value">{{ chassisMaxSpeed }}</output>
-            <cv-button
-              kind="ghost"
-              size="sm"
-              class="pwm-btn"
-              :icon="Add24"
-              :disabled="chassisMaxSpeed >= CHASSIS_MAX_SPEED_MAX"
-              @click="nudgeMaxSpeed(CHASSIS_MAX_SPEED_STEP)"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chassis-section">
-      <span class="chassis-label">里程计{{ odometerPending ? '（清零中…）' : '' }}</span>
-      <cv-button
-        kind="secondary"
-        size="md"
-        class="clear-btn"
-        :icon="Reset24"
-        :disabled="odometerPending"
-        @click="clearOdometer"
-      >里程计清零</cv-button>
+    <div class="chassis-attitude">
+      <span class="chassis-label">姿态</span>
+      <attitude-gauge :value="eulerRoll" label="横滚 Roll" />
+      <attitude-gauge :value="eulerPitch" label="俯仰 Pitch" />
+      <attitude-gauge :value="eulerYaw" label="航向 Yaw" />
     </div>
 
     <div class="chassis-readout">
@@ -173,11 +118,68 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
       <div class="readout-row"><span>故障码</span><strong>{{ fmtText(faultCode) }}</strong></div>
     </div>
 
-    <div class="chassis-attitude">
-      <span class="chassis-label">姿态 Attitude</span>
-      <attitude-gauge mode="roll" :value="eulerRoll" label="横滚 Roll" />
-      <attitude-gauge mode="pitch" :value="eulerPitch" label="俯仰 Pitch" />
-      <attitude-gauge mode="yaw" :value="eulerYaw" label="航向 Yaw" />
+    <div class="chassis-controls">
+      <div class="chassis-section">
+        <span class="chassis-label">灯光控制{{ lightPending ? '（设置中…）' : '' }}</span>
+        <div class="light-sliders" :class="{ pending: lightPending }">
+          <div class="pwm-row">
+            <span class="pwm-label">灯光1</span>
+            <div class="pwm-controls">
+              <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD1(-10)" />
+              <output class="pwm-value">{{ pwmDisplay(lightD1) }}</output>
+              <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD1(10)" />
+            </div>
+          </div>
+          <div class="pwm-row">
+            <span class="pwm-label">灯光2</span>
+            <div class="pwm-controls">
+              <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Subtract24" @click="nudgeD3(-10)" />
+              <output class="pwm-value">{{ pwmDisplay(lightD3) }}</output>
+              <cv-button kind="ghost" size="sm" class="pwm-btn" :icon="Add24" @click="nudgeD3(10)" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chassis-section">
+        <span class="chassis-label">最大速度</span>
+        <div class="light-sliders">
+          <div class="pwm-row">
+            <span class="pwm-label">速度</span>
+            <div class="pwm-controls">
+              <cv-button
+                kind="ghost"
+                size="sm"
+                class="pwm-btn"
+                :icon="Subtract24"
+                :disabled="chassisMaxSpeed <= CHASSIS_MAX_SPEED_MIN"
+                @click="nudgeMaxSpeed(-CHASSIS_MAX_SPEED_STEP)"
+              />
+              <output class="pwm-value">{{ chassisMaxSpeed }}</output>
+              <cv-button
+                kind="ghost"
+                size="sm"
+                class="pwm-btn"
+                :icon="Add24"
+                :disabled="chassisMaxSpeed >= CHASSIS_MAX_SPEED_MAX"
+                @click="nudgeMaxSpeed(CHASSIS_MAX_SPEED_STEP)"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chassis-section">
+        <span class="chassis-label">里程计{{ odometerPending ? '（清零中…）' : '' }}</span>
+        <cv-button
+          kind="secondary"
+          size="md"
+          class="clear-btn"
+          :icon="Reset24"
+          :disabled="odometerPending"
+          @click="clearOdometer"
+        >里程计清零</cv-button>
+      </div>
     </div>
   </div>
 </template>
@@ -266,6 +268,13 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   padding-top: 1rem;
   border-top: 1px solid #393939;
 }
+.chassis-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #393939;
+}
 .readout-row {
   display: flex;
   justify-content: space-between;
@@ -284,7 +293,5 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #393939;
 }
 </style>
