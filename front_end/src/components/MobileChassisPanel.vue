@@ -26,6 +26,7 @@ import {
 // Disable the group while a write is awaiting confirmation.
 const lightPending = ref(false)
 const odometerPending = ref(false)
+const attitudePending = ref(false)
 const lightD1 = ref('0')
 const lightD3 = ref('0')
 let lightTimer: number | null = null
@@ -97,6 +98,19 @@ async function clearOdometer() {
   }
 }
 
+async function calibrateAttitude() {
+  if (attitudePending.value) return
+  attitudePending.value = true
+  try {
+    await api.calibrateChassisAttitude()
+    notify('姿态清零指令已发送', 'success')
+  } catch (e) {
+    notify((e as Error).message || '姿态校准指令发送失败', 'error')
+  } finally {
+    attitudePending.value = false
+  }
+}
+
 const fmtMileage = (v: number | null) => (v === null ? '--' : `${v.toFixed(2)} m`)
 const fmtBattery = (v: number | null) => (v === null ? '--' : v.toFixed(2))
 const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
@@ -107,6 +121,14 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
     <div class="chassis-attitude">
       <span class="chassis-label">姿态</span>
       <attitude-pfd :roll="eulerRoll" :pitch="eulerPitch" :yaw="eulerYaw" />
+      <cv-button
+        kind="secondary"
+        size="md"
+        class="clear-btn"
+        :icon="Reset24"
+        :disabled="attitudePending"
+        @click="calibrateAttitude"
+      >姿态清零</cv-button>
     </div>
 
     <div class="chassis-readout">

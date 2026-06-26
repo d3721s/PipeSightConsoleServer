@@ -66,3 +66,11 @@ def clear_odometer() -> dict:
     if not modbus_chassis_service.clear_mileage():
         raise HTTPException(status_code=502, detail="底盘未确认里程计清零指令")
     return {"ok": True}
+
+
+@router.post("/attitude/calibrate")
+def calibrate_attitude() -> dict:
+    # SENCAL accelerometer calibration ("姿态清零") over the IMU UART.
+    if not imu_service.calibrate_accelerometer():
+        raise HTTPException(status_code=502, detail="IMU未连接，姿态校准指令发送失败")
+    return {"ok": True}

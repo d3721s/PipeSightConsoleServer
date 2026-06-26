@@ -67,6 +67,8 @@ export const api = {
     }),
   clearChassisOdometer: () =>
     request<{ ok: boolean }>('/api/chassis/odometer/clear', { method: 'POST' }),
+  calibrateChassisAttitude: () =>
+    request<{ ok: boolean }>('/api/chassis/attitude/calibrate', { method: 'POST' }),
 
   getStorage: () => request<StorageOptions>('/api/settings/storage'),
   setStorage: (path: string | null) =>

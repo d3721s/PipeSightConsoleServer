@@ -31,6 +31,12 @@ CMD_D1PERIOD = 0x1F
 CMD_D3PERIOD = 0x23
 PORT_MODE_PWM = 0x04
 
+# SENCAL sensor-calibration command (command-frame ID 0x01 — same value as the
+# active-frame Euler ID but a distinct 0x55 0xAF frame). DATA selects the sensor:
+# 0x00 accelerometer / 0x01 magnetometer / 0x02 barometer-zero. Only accel used.
+CMD_SENCAL = 0x01
+SENCAL_ACCEL = 0x00
+
 RECONNECT_S = 2.0
 FRESH_FRAME_S = 2.0
 STALL_FRAME_S = 5.0
@@ -156,6 +162,17 @@ class ImuService:
                 "d3PulseUs": d3_pulse,
             }
         return True
+
+    def calibrate_accelerometer(self) -> bool:
+        """SENCAL accelerometer calibration ("姿态清零").
+
+        Sends one SENCAL write frame (ID 0x01, DATA 0x00 -> 55 AF 01 01 00 06).
+        The device returns no response frame, so success here means the command
+        bytes reached the open IMU serial port.
+        """
+        with self._command_lock:
+            logger.info("Calibrating IMU accelerometer (SENCAL accel)")
+            return self._write_command(CMD_SENCAL, bytes([SENCAL_ACCEL]))
 
     def snapshot(self) -> dict:
         now = time.monotonic()
