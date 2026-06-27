@@ -30,7 +30,7 @@ def _storage_url(absolute_path: str) -> str | None:
 @router.post("/start", response_model=ReportOut)
 def start_report(payload: ReportCreate, db: Session = Depends(get_db)) -> Report:
     if db.get(Project, payload.project_id) is None:
-        raise HTTPException(status_code=404, detail="project not found")
+        raise HTTPException(status_code=404, detail="未找到该项目")
     report = Report(
         project_id=payload.project_id,
         session_id=payload.session_id,
@@ -48,7 +48,7 @@ def start_report(payload: ReportCreate, db: Session = Depends(get_db)) -> Report
 def stop_report(report_id: int, db: Session = Depends(get_db)) -> Report:
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(status_code=404, detail="report not found")
+        raise HTTPException(status_code=404, detail="未找到该报告")
     report.status = "draft"
     report.ended_at = datetime.now()
     db.commit()
@@ -65,7 +65,7 @@ def list_reports(db: Session = Depends(get_db)) -> list[Report]:
 def get_report(report_id: int, db: Session = Depends(get_db)) -> Report:
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(status_code=404, detail="report not found")
+        raise HTTPException(status_code=404, detail="未找到该报告")
     return report
 
 
@@ -73,7 +73,7 @@ def get_report(report_id: int, db: Session = Depends(get_db)) -> Report:
 def delete_report(report_id: int, db: Session = Depends(get_db)) -> dict:
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(status_code=404, detail="report not found")
+        raise HTTPException(status_code=404, detail="未找到该报告")
     # Remove the generated PDF file if present. The inspection's annotations are
     # tied to the session (shared with the annotate page), not owned by the
     # report, so they are intentionally left intact.
@@ -91,7 +91,7 @@ def delete_report(report_id: int, db: Session = Depends(get_db)) -> dict:
 def export_pdf(report_id: int, db: Session = Depends(get_db)) -> dict:
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(status_code=404, detail="report not found")
+        raise HTTPException(status_code=404, detail="未找到该报告")
     path = export_report_pdf(db, report)
     return {"ok": True, "pdfPath": path, "downloadUrl": f"/api/reports/{report_id}/pdf"}
 
@@ -100,7 +100,7 @@ def export_pdf(report_id: int, db: Session = Depends(get_db)) -> dict:
 def report_detail(report_id: int, db: Session = Depends(get_db)) -> dict:
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(status_code=404, detail="report not found")
+        raise HTTPException(status_code=404, detail="未找到该报告")
     project = db.get(Project, report.project_id)
     annotations = []
     if report.session_id:
@@ -149,13 +149,13 @@ def report_detail(report_id: int, db: Session = Depends(get_db)) -> dict:
 def download_pdf(report_id: int, db: Session = Depends(get_db)) -> FileResponse:
     report = db.get(Report, report_id)
     if not report:
-        raise HTTPException(status_code=404, detail="report not found")
+        raise HTTPException(status_code=404, detail="未找到该报告")
     # Generate on demand if not exported yet (or the file vanished).
     if not report.pdf_path or not Path(report.pdf_path).exists():
         export_report_pdf(db, report)
     pdf_path = Path(report.pdf_path)
     if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="pdf not available")
+        raise HTTPException(status_code=404, detail="PDF 尚未生成，请先导出")
     return FileResponse(
         str(pdf_path),
         media_type="application/pdf",

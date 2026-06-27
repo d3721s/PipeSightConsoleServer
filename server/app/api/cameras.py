@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 def get_camera(db: Session, code: str) -> CameraDevice:
     camera = db.scalar(select(CameraDevice).where(CameraDevice.code == code))
     if not camera:
-        raise HTTPException(status_code=404, detail="camera not found")
+        raise HTTPException(status_code=404, detail="未找到该相机")
     return camera
 
 
@@ -101,7 +101,7 @@ def get_active_stream(request: Request, db: Session = Depends(get_db)) -> dict:
     channel = int(active.get("channel", 1))
     camera = get_camera(db, device)
     if not camera.ip:
-        raise HTTPException(status_code=400, detail="camera IP is empty")
+        raise HTTPException(status_code=400, detail="请先填写相机 IP 地址")
     # Preview always shows the live camera stream (no OSD). The OSD is burned in
     # only in the recorded MP4, so there is no recording relay to switch to.
     return stream_payload(request, camera, channel, use_recording_relay=False)

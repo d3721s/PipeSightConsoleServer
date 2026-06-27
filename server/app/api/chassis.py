@@ -46,7 +46,7 @@ class LightPwmIn(BaseModel):
 @router.post("/light")
 def set_light(payload: LightIn) -> dict:
     if not imu_service.set_light(payload.value):
-        raise HTTPException(status_code=502, detail="IMU未确认灯光PWM指令")
+        raise HTTPException(status_code=502, detail="灯光设置未生效，请稍后重试")
     return {"ok": True, "light": payload.value}
 
 
@@ -57,14 +57,14 @@ def set_light_pwm(payload: LightPwmIn) -> dict:
         payload.d3PulseUs,
         LIGHT_PWM_PERIOD_US,
     ):
-        raise HTTPException(status_code=502, detail="IMU未确认灯光PWM指令")
+        raise HTTPException(status_code=502, detail="灯光设置未生效，请稍后重试")
     return {"ok": True, "lightPwm": imu_service.get_light_pwm()}
 
 
 @router.post("/odometer/clear")
 def clear_odometer() -> dict:
     if not modbus_chassis_service.clear_mileage():
-        raise HTTPException(status_code=502, detail="底盘未确认里程计清零指令")
+        raise HTTPException(status_code=502, detail="里程计清零未成功，请稍后重试")
     return {"ok": True}
 
 
@@ -72,5 +72,5 @@ def clear_odometer() -> dict:
 def calibrate_attitude() -> dict:
     # SENCAL accelerometer calibration ("姿态清零") over the IMU UART.
     if not imu_service.calibrate_accelerometer():
-        raise HTTPException(status_code=502, detail="IMU未连接，姿态校准指令发送失败")
+        raise HTTPException(status_code=502, detail="姿态清零未成功，请检查设备连接后重试")
     return {"ok": True}

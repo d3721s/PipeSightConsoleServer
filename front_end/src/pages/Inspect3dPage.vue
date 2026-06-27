@@ -90,7 +90,7 @@ function updateZoomLabel(value: number) {
 async function capture3d() {
   const dataUrl = viewer.value?.snapshot()
   if (!dataUrl) {
-    notify(`${modeLabel.value}画面未就绪`, 'warning')
+    notify(`${modeLabel.value}画面还没准备好，请稍候再试`, 'warning')
     return
   }
   try {
@@ -113,7 +113,7 @@ function loadSnapshotImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('截图图像加载失败'))
+    image.onerror = () => reject(new Error('截图处理失败，请重试'))
     image.src = dataUrl
   })
 }

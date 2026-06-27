@@ -77,7 +77,7 @@ async function applyLightPwm(seq: number) {
       lightD3.value = String(clampPwm(result.lightPwm.d3PulseUs))
     }
   } catch {
-    if (seq === lightSeq) notify('IMU未确认灯光PWM指令', 'error')
+    if (seq === lightSeq) notify('灯光设置未生效，请稍后重试', 'error')
   } finally {
     if (seq === lightSeq) lightPending.value = false
   }
@@ -91,8 +91,8 @@ async function clearOdometer() {
     leftWheelM.value = 0
     rightWheelM.value = 0
     notify('里程计已清零', 'success')
-  } catch (e) {
-    notify((e as Error).message || '底盘未确认里程计清零指令', 'error')
+  } catch {
+    notify('里程计清零未成功，请稍后重试', 'error')
   } finally {
     odometerPending.value = false
   }
@@ -103,9 +103,9 @@ async function calibrateAttitude() {
   attitudePending.value = true
   try {
     await api.calibrateChassisAttitude()
-    notify('姿态清零指令已发送', 'success')
-  } catch (e) {
-    notify((e as Error).message || '姿态校准指令发送失败', 'error')
+    notify('已发送姿态清零，请稍候', 'success')
+  } catch {
+    notify('姿态清零未成功，请检查设备连接后重试', 'error')
   } finally {
     attitudePending.value = false
   }
@@ -120,7 +120,7 @@ const confirmInfo = ref<{ title: string; message: string; label: string; run: ()
 function askClearOdometer() {
   confirmInfo.value = {
     title: '里程计清零',
-    message: '确定将左右轮里程计清零吗？该操作会向底盘发送清零指令，且不可恢复。',
+    message: '确定要将左右轮里程计清零吗？清零后将无法恢复。',
     label: '清零',
     run: clearOdometer
   }
@@ -130,7 +130,7 @@ function askClearOdometer() {
 function askCalibrateAttitude() {
   confirmInfo.value = {
     title: '姿态清零',
-    message: '确定执行姿态清零吗？将对 IMU 加速度计进行校准，请先将设备水平静置。',
+    message: '确定要进行姿态清零吗？请先把设备放平、保持静止。',
     label: '清零',
     run: calibrateAttitude
   }

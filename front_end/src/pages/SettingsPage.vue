@@ -93,7 +93,7 @@ async function applyStorage(path: string | null) {
   storageBusy.value = true
   try {
     storage.value = await api.setStorage(path)
-    notify('存储路径已保存，请重启后端使其生效', 'warning')
+    notify('存储位置已保存，重启系统后生效', 'warning')
   } catch (e) {
     notify((e as Error).message, 'error')
   } finally {
@@ -110,7 +110,7 @@ function onStorageSelect(value: string) {
   }
   const drive = storage.value.removable.find((d) => d.path === value)
   if (drive && !drive.writable) {
-    notify('该存储为只读，无法写入', 'warning')
+    notify('该位置无法写入，请换一个存储位置', 'warning')
     return
   }
   if (selectedStorage.value !== value) applyStorage(value)

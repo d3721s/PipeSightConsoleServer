@@ -40,14 +40,14 @@ def list_projects(db: Session = Depends(get_db)) -> list[Project]:
 def get_project(project_id: int, db: Session = Depends(get_db)) -> Project:
     project = db.get(Project, project_id)
     if not project:
-        raise HTTPException(status_code=404, detail="project not found")
+        raise HTTPException(status_code=404, detail="未找到该项目")
     return project
 
 
 @router.post("/sessions", response_model=SessionOut)
 def create_session(payload: SessionCreate, db: Session = Depends(get_db)) -> InspectionSession:
     if db.get(Project, payload.project_id) is None:
-        raise HTTPException(status_code=404, detail="project not found")
+        raise HTTPException(status_code=404, detail="未找到该项目")
     session = InspectionSession(
         project_id=payload.project_id,
         report_title=payload.report_title,
@@ -63,7 +63,7 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)) -> Ins
 def finish_session(session_id: int, db: Session = Depends(get_db)) -> InspectionSession:
     session = db.get(InspectionSession, session_id)
     if not session:
-        raise HTTPException(status_code=404, detail="session not found")
+        raise HTTPException(status_code=404, detail="未找到该任务")
     session.status = "finished"
     session.ended_at = datetime.now()
     db.commit()

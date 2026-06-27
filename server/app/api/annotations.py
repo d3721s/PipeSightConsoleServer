@@ -28,7 +28,7 @@ def _storage_url(absolute_path: str) -> str | None:
 @router.post("/annotations")
 def create_annotation(payload: AnnotationCreate, db: Session = Depends(get_db)) -> dict:
     if db.get(MediaAsset, payload.media_asset_id) is None:
-        raise HTTPException(status_code=404, detail="media asset not found")
+        raise HTTPException(status_code=404, detail="未找到该文件")
     annotation = Annotation(
         media_asset_id=payload.media_asset_id,
         annotation_json=payload.annotation_json,
@@ -89,7 +89,7 @@ def list_markers(media_id: int, db: Session = Depends(get_db)) -> list[Marker]:
 def update_marker(marker_id: int, payload: MarkerCreate, db: Session = Depends(get_db)) -> Marker:
     marker = db.get(Marker, marker_id)
     if not marker:
-        raise HTTPException(status_code=404, detail="marker not found")
+        raise HTTPException(status_code=404, detail="未找到该标记")
     for key, value in payload.model_dump(by_alias=False).items():
         setattr(marker, key, value)
     db.commit()
@@ -101,7 +101,7 @@ def update_marker(marker_id: int, payload: MarkerCreate, db: Session = Depends(g
 def delete_marker(marker_id: int, db: Session = Depends(get_db)) -> dict:
     marker = db.get(Marker, marker_id)
     if not marker:
-        raise HTTPException(status_code=404, detail="marker not found")
+        raise HTTPException(status_code=404, detail="未找到该标记")
     db.delete(marker)
     db.commit()
     return {"ok": True}
@@ -128,7 +128,7 @@ def _annotation_out(ann: Annotation) -> dict:
 @router.post("/graphic-annotations")
 def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depends(get_db)) -> dict:
     if payload.media_asset_id is not None and db.get(MediaAsset, payload.media_asset_id) is None:
-        raise HTTPException(status_code=404, detail="media asset not found")
+        raise HTTPException(status_code=404, detail="未找到该文件")
 
     defect = {
         "type": payload.defect_type,
@@ -197,7 +197,7 @@ def list_graphic_annotations(media_id: int, db: Session = Depends(get_db)) -> li
 def delete_graphic_annotation(annotation_id: int, db: Session = Depends(get_db)) -> dict:
     ann = db.get(Annotation, annotation_id)
     if not ann:
-        raise HTTPException(status_code=404, detail="annotation not found")
+        raise HTTPException(status_code=404, detail="未找到该标注")
     # Best-effort cleanup of the rendered file.
     if ann.rendered_path:
         try:

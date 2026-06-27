@@ -39,9 +39,9 @@ def _camera_for_request(db: Session, device: str | None, channel: int | None) ->
         channel = channel or int(active.get("channel", 1))
     camera = db.query(CameraDevice).filter(CameraDevice.code == device).one_or_none()
     if not camera:
-        raise HTTPException(status_code=404, detail="camera not found")
+        raise HTTPException(status_code=404, detail="未找到该相机")
     if not camera.ip:
-        raise HTTPException(status_code=400, detail="camera IP is empty")
+        raise HTTPException(status_code=400, detail="请先填写相机 IP 地址")
     return camera, int(channel)
 
 
@@ -217,7 +217,7 @@ def list_recordings(db: Session = Depends(get_db)) -> list[dict]:
 def recording_track(asset_id: int, db: Session = Depends(get_db)) -> dict:
     asset = db.get(MediaAsset, asset_id)
     if asset is None or asset.type != "video":
-        raise HTTPException(status_code=404, detail="recording not found")
+        raise HTTPException(status_code=404, detail="未找到该录像")
     track_path = Path(asset.file_path).with_suffix(".json")
     if not track_path.exists():
         return {"video": Path(asset.file_path).name, "samples": []}
@@ -240,7 +240,7 @@ def delete_media(asset_id: int, db: Session = Depends(get_db)) -> dict:
     annotations (rows + rendered PNGs) and its marker rows."""
     asset = db.get(MediaAsset, asset_id)
     if asset is None:
-        raise HTTPException(status_code=404, detail="media not found")
+        raise HTTPException(status_code=404, detail="未找到该文件")
 
     # Remove the media file itself, and the per-segment track json for videos.
     if asset.file_path:
