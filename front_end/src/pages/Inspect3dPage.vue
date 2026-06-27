@@ -267,25 +267,25 @@ function parsePx(value: string, fallback: number) {
             class="mode-btn"
             :class="{ active: mode === 'pointcloud' }"
             @click="setMode('pointcloud')"
-          >点云图</button>
+          >点云</button>
           <button
             type="button"
             class="mode-btn"
             :class="{ active: mode === 'depth' }"
             @click="setMode('depth')"
-          >深度图</button>
+          >深度</button>
           <button
             type="button"
             class="mode-btn"
             :class="{ active: mode === 'rgb' }"
             @click="setMode('rgb')"
-          >RGB图</button>
+          >RGB</button>
           <button
             type="button"
             class="mode-btn"
             :class="{ active: mode === 'infrared' }"
             @click="setMode('infrared')"
-          >红外图</button>
+          >红外</button>
         </div>
       </div>
 

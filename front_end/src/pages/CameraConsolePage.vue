@@ -118,7 +118,7 @@ async function toggleRecording() {
         v-model:digital-zoom="digitalZoom"
       />
       <div v-else class="video-placeholder">
-        请在系统设置中配置相机，并确认 MediaMTX / WebRTC 可用
+        请在系统设置中配置相机
       </div>
 
       <osd-overlay
