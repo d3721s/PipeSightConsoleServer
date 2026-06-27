@@ -70,6 +70,7 @@ class ImuService:
         self._pending_read: _PendingRead | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._startup_flashed = False
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -174,6 +175,24 @@ class ImuService:
             logger.info("Calibrating IMU accelerometer (SENCAL accel)")
             return self._write_command(CMD_SENCAL, bytes([SENCAL_ACCEL]))
 
+    def _startup_light_flash(self) -> None:
+        """Blink all lights to 100% for ~1s as a visible "system is up" signal.
+
+        Triggered once when the IMU serial first connects. Runs on its own thread
+        so the read loop can answer the PWM command read-backs.
+        """
+        time.sleep(1.5)  # let the stream settle so the command read-backs succeed
+        try:
+            # 0xFFFF clamps to the PWM period -> 100% duty on both D1 and D3.
+            if not self.set_light_pwm(0xFFFF, 0xFFFF):
+                logger.warning("Startup light flash skipped (IMU did not confirm)")
+                return
+            logger.info("System ready: flashed all lights at 100% for 1s")
+            time.sleep(1.0)
+            self.set_light_pwm(0, 0)
+        except Exception as exc:
+            logger.warning("Startup light flash failed: %s", exc)
+
     def snapshot(self) -> dict:
         now = time.monotonic()
         with self._lock:
@@ -208,6 +227,14 @@ class ImuService:
                 settings.imu_serial_port,
                 settings.imu_baudrate,
             )
+            # On the first successful connection, blink all lights as a visible
+            # "system is up" signal. Runs on its own thread so this read loop stays
+            # free to answer the PWM command read-backs.
+            if not self._startup_flashed:
+                self._startup_flashed = True
+                threading.Thread(
+                    target=self._startup_light_flash, name="imu-startup-flash", daemon=True
+                ).start()
             buf = bytearray()
             try:
                 while not self._stop.is_set():
