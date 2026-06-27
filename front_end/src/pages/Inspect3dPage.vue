@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CvButton } from '@carbon/vue'
-import { Camera24, ChevronLeft24, CubeView24, Image24, Report24, Sun24, View24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
+import { Camera24, ChevronLeft24, Report24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
 import PointCloudViewer from '../components/PointCloudViewer.vue'
 import DepthMapViewer from '../components/DepthMapViewer.vue'
 import CameraImageViewer from '../components/CameraImageViewer.vue'
@@ -262,38 +262,30 @@ function parsePx(value: string, fallback: number) {
       <div class="rail-section">
         <span class="rail-label">显示</span>
         <div class="mode-switch">
-          <cv-button
+          <button
+            type="button"
             class="mode-btn"
-            size="sm"
-            :kind="mode === 'pointcloud' ? 'secondary' : 'ghost'"
-            :icon="CubeView24"
-            :aria-pressed="mode === 'pointcloud'"
+            :class="{ active: mode === 'pointcloud' }"
             @click="setMode('pointcloud')"
-          >点云图</cv-button>
-          <cv-button
+          >点云图</button>
+          <button
+            type="button"
             class="mode-btn"
-            size="sm"
-            :kind="mode === 'depth' ? 'secondary' : 'ghost'"
-            :icon="Image24"
-            :aria-pressed="mode === 'depth'"
+            :class="{ active: mode === 'depth' }"
             @click="setMode('depth')"
-          >深度图</cv-button>
-          <cv-button
+          >深度图</button>
+          <button
+            type="button"
             class="mode-btn"
-            size="sm"
-            :kind="mode === 'rgb' ? 'secondary' : 'ghost'"
-            :icon="View24"
-            :aria-pressed="mode === 'rgb'"
+            :class="{ active: mode === 'rgb' }"
             @click="setMode('rgb')"
-          >RGB图</cv-button>
-          <cv-button
+          >RGB图</button>
+          <button
+            type="button"
             class="mode-btn"
-            size="sm"
-            :kind="mode === 'infrared' ? 'secondary' : 'ghost'"
-            :icon="Sun24"
-            :aria-pressed="mode === 'infrared'"
+            :class="{ active: mode === 'infrared' }"
             @click="setMode('infrared')"
-          >红外图</cv-button>
+          >红外图</button>
         </div>
       </div>
 
@@ -391,13 +383,40 @@ function parsePx(value: string, fallback: number) {
   flex-direction: column;
   gap: 0.5rem;
 }
+/* Segmented 2×2 mode picker — same look as the 前/后摄·云台/固定 toggles. */
 .mode-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  overflow: hidden;
 }
 .mode-btn {
-  width: 100%;
+  padding: 0.625rem 0.5rem;
+  font-size: 0.9375rem;
+  background: #2a2a2a;
+  color: #c6c6c6;
+  border: none;
+  border-left: 1px solid #4d4d4d;
+  border-top: 1px solid #4d4d4d;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+.mode-btn:nth-child(odd) {
+  border-left: none;
+}
+.mode-btn:nth-child(-n + 2) {
+  border-top: none;
+}
+.mode-btn:hover:not(.active) {
+  background: #393939;
+  color: #f4f4f4;
+}
+.mode-btn.active {
+  background: #0f62fe;
+  color: #ffffff;
+  font-weight: 600;
 }
 .rail-label {
   color: #8d8d8d;
