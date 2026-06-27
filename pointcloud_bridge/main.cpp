@@ -17,6 +17,13 @@
 //   uint32   format = 1 for uint16 depth, 2 for float32 depth
 //   uint8    payload[width*height*(format == 1 ? 2 : 4)]
 //
+// RGB / IR image wire format (binary WebSocket frame), little-endian:
+//   char[4]  magic    = "IMG1"
+//   uint32   width
+//   uint32   height
+//   uint32   channels = 3 for RGB (BGR byte order, SDK CV_8UC3), 1 for IR (gray8)
+//   uint8    payload[width*height*channels]
+//
 // Build:  ./build.sh      (see build.sh in this folder)
 // Run:    ./run.sh        (sets LD_LIBRARY_PATH then runs ./pointcloud_bridge)
 //
@@ -43,17 +50,22 @@ namespace {
 
 constexpr uint16_t kWsPort = 9090;
 constexpr uint16_t kDepthWsPort = 9091;
+constexpr uint16_t kRgbWsPort = 9092;
+constexpr uint16_t kIrWsPort = 9093;
 // Cap points sent per frame to keep the browser/WebGL smooth. Hardware
 // decimation is preferred (configured on the camera), this is a safety net.
 constexpr uint32_t kMaxPoints = 30000;
 constexpr auto kPointcloudInterval = std::chrono::milliseconds(66);
 constexpr auto kDepthInterval = std::chrono::milliseconds(66);
+constexpr auto kImageInterval = std::chrono::milliseconds(66);
 // Floats per point in pointCloud.data. Verified from the first-frame log:
 // size / (width*height) should equal this. xyz = 3 is the SDK default.
 constexpr int kStride = 3;
 
 ws::Server g_pointcloudWs;
 ws::Server g_depthWs;
+ws::Server g_rgbWs;
+ws::Server g_irWs;
 std::atomic<bool> g_running{true};
 
 void handleSigint(int) { g_running = false; }
@@ -98,6 +110,12 @@ public:
         if (g_depthWs.clientCount() > 0 && shouldSendDepth()) {
             broadcastDepthFrame(pstData->depthImg);
         }
+        if (g_rgbWs.clientCount() > 0 && shouldSendRgb()) {
+            broadcastImageFrame(g_rgbWs, pstData->rgbImg, 3);
+        }
+        if (g_irWs.clientCount() > 0 && shouldSendIr()) {
+            broadcastImageFrame(g_irWs, pstData->irImg, 1);
+        }
         if (g_pointcloudWs.clientCount() == 0) return; // nobody watching; skip work
         if (!shouldSendPointcloud()) return;
         if (broadcastSdkPointCloud(pstData->pointCloud)) return;
@@ -124,6 +142,10 @@ private:
     bool shouldSendPointcloud() {
         return shouldSend(lastPointcloudSend_, kPointcloudInterval);
     }
+
+    bool shouldSendRgb() { return shouldSend(lastRgbSend_, kImageInterval); }
+
+    bool shouldSendIr() { return shouldSend(lastIrSend_, kImageInterval); }
 
     bool shouldSend(std::chrono::steady_clock::time_point &last, std::chrono::milliseconds interval) {
         const auto now = std::chrono::steady_clock::now();
@@ -244,9 +266,33 @@ private:
         return true;
     }
 
+    // Broadcast an 8-bit image frame. channels=3 -> RGB (BGR byte order from the
+    // SDK's CV_8UC3 buffer); channels=1 -> IR (gray8). Wire: "IMG1" + w + h + ch.
+    bool broadcastImageFrame(ws::Server &server, const AS_Frame_s &img, uint32_t channels) {
+        if (img.size == 0 || img.data == nullptr || img.width == 0 || img.height == 0) {
+            return false;
+        }
+        const size_t payloadBytes = (size_t)img.width * img.height * channels;
+        if (img.size < payloadBytes) return false;
+
+        std::vector<uint8_t> msg;
+        msg.reserve(16 + payloadBytes);
+        msg.insert(msg.end(), {'I', 'M', 'G', '1'});
+        appendU32(msg, img.width);
+        appendU32(msg, img.height);
+        appendU32(msg, channels);
+        const uint8_t *payload = static_cast<const uint8_t *>(img.data);
+        msg.insert(msg.end(), payload, payload + payloadBytes);
+
+        server.broadcastBinary(msg.data(), msg.size());
+        return true;
+    }
+
     int logCount_ = 0;
     std::chrono::steady_clock::time_point lastPointcloudSend_{};
     std::chrono::steady_clock::time_point lastDepthSend_{};
+    std::chrono::steady_clock::time_point lastRgbSend_{};
+    std::chrono::steady_clock::time_point lastIrSend_{};
 };
 
 } // namespace
@@ -264,8 +310,23 @@ int main() {
         g_pointcloudWs.stop();
         return 1;
     }
+    if (!g_rgbWs.start(kRgbWsPort)) {
+        fprintf(stderr, "[bridge] failed to start RGB WebSocket server on port %u\n", kRgbWsPort);
+        g_pointcloudWs.stop();
+        g_depthWs.stop();
+        return 1;
+    }
+    if (!g_irWs.start(kIrWsPort)) {
+        fprintf(stderr, "[bridge] failed to start IR WebSocket server on port %u\n", kIrWsPort);
+        g_pointcloudWs.stop();
+        g_depthWs.stop();
+        g_rgbWs.stop();
+        return 1;
+    }
     printf("[bridge] point-cloud WebSocket listening on ws://0.0.0.0:%u\n", kWsPort);
     printf("[bridge] depth WebSocket listening on ws://0.0.0.0:%u\n", kDepthWsPort);
+    printf("[bridge] RGB WebSocket listening on ws://0.0.0.0:%u\n", kRgbWsPort);
+    printf("[bridge] IR WebSocket listening on ws://0.0.0.0:%u\n", kIrWsPort);
 
     PointCloudBridge bridge;
     CameraSrv srv(&bridge);
@@ -273,6 +334,8 @@ int main() {
         fprintf(stderr, "[bridge] CameraSrv start failed (no camera / permissions?)\n");
         g_pointcloudWs.stop();
         g_depthWs.stop();
+        g_rgbWs.stop();
+        g_irWs.stop();
         return 1;
     }
     printf("[bridge] camera service started; waiting for frames. Ctrl-C to quit.\n");
@@ -285,5 +348,7 @@ int main() {
     srv.stop();
     g_pointcloudWs.stop();
     g_depthWs.stop();
+    g_rgbWs.stop();
+    g_irWs.stop();
     return 0;
 }

@@ -190,7 +190,10 @@ if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: a
   ufw allow 8189/udp  >/dev/null 2>&1 || true   # WebRTC media (required!)
   ufw allow 8554/tcp  >/dev/null 2>&1 || true   # MediaMTX RTSP
   ufw allow 9090/tcp  >/dev/null 2>&1 || true   # point-cloud WebSocket
-  echo "   opened 8000, 8889, 8554/tcp, 8189/udp, 9090/tcp"
+  ufw allow 9091/tcp  >/dev/null 2>&1 || true   # depth-image WebSocket
+  ufw allow 9092/tcp  >/dev/null 2>&1 || true   # RGB-image WebSocket
+  ufw allow 9093/tcp  >/dev/null 2>&1 || true   # IR-image WebSocket
+  echo "   opened 8000, 8889, 8554/tcp, 8189/udp, 9090-9093/tcp"
 fi
 
 echo ""

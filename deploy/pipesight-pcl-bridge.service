@@ -1,5 +1,5 @@
 [Unit]
-Description=PipeSight 3D camera bridge (point cloud :9090, depth :9091)
+Description=PipeSight 3D camera bridge (point cloud :9090, depth :9091, rgb :9092, ir :9093)
 After=network-online.target
 Wants=network-online.target
 

@@ -2,9 +2,10 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CvButton } from '@carbon/vue'
-import { Camera24, ChevronLeft24, CubeView24, Image24, Report24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
+import { Camera24, ChevronLeft24, CubeView24, Image24, Report24, Sun24, View24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
 import PointCloudViewer from '../components/PointCloudViewer.vue'
 import DepthMapViewer from '../components/DepthMapViewer.vue'
+import CameraImageViewer from '../components/CameraImageViewer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import Joystick from '../components/Joystick.vue'
 import MobileChassisPanel from '../components/MobileChassisPanel.vue'
@@ -22,22 +23,39 @@ import { formatWheelMileage } from '../utils/osd'
 
 const router = useRouter()
 
-type ViewMode = 'pointcloud' | 'depth'
+type ViewMode = 'pointcloud' | 'depth' | 'rgb' | 'infrared'
 type ViewerHandle = {
   snapshot: () => string
   zoomBy?: (factor: number) => void
 }
 
+// Each mode maps to a label and the C++ bridge WebSocket port it streams on.
+const MODE_LABELS: Record<ViewMode, string> = {
+  pointcloud: '点云图',
+  depth: '深度图',
+  rgb: 'RGB图',
+  infrared: '红外图'
+}
+const MODE_PORTS: Record<ViewMode, number> = {
+  pointcloud: 9090,
+  depth: 9091,
+  rgb: 9092,
+  infrared: 9093
+}
+
 const mode = ref<ViewMode>('pointcloud')
-const modeLabel = computed(() => (mode.value === 'pointcloud' ? '点云' : '深度图'))
-const viewerComponent = computed(() => (mode.value === 'pointcloud' ? PointCloudViewer : DepthMapViewer))
+const modeLabel = computed(() => MODE_LABELS[mode.value])
+const viewerComponent = computed(() => {
+  if (mode.value === 'pointcloud') return PointCloudViewer
+  if (mode.value === 'depth') return DepthMapViewer
+  return CameraImageViewer
+})
 
 // Connect directly to the C++ bridge for the live stream; backend API still
 // handles snapshots and other app calls.
 const bridgeWsUrl = computed(() => {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
-  const port = mode.value === 'pointcloud' ? 9090 : 9091
-  return `${protocol}://${location.hostname}:${port}`
+  return `${protocol}://${location.hostname}:${MODE_PORTS[mode.value]}`
 })
 
 const viewer = ref<ViewerHandle | null>(null)
@@ -209,7 +227,7 @@ function parsePx(value: string, fallback: number) {
 <template>
   <div class="console-page">
     <div ref="videoArea" class="video-area">
-      <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" @zoom-change="updateZoomLabel" />
+      <component :is="viewerComponent" :key="mode" ref="viewer" :ws-url="bridgeWsUrl" :label="modeLabel" @zoom-change="updateZoomLabel" />
 
       <osd-overlay
         :left-mileage="leftWheelM"
@@ -251,7 +269,7 @@ function parsePx(value: string, fallback: number) {
             :icon="CubeView24"
             :aria-pressed="mode === 'pointcloud'"
             @click="setMode('pointcloud')"
-          >点云</cv-button>
+          >点云图</cv-button>
           <cv-button
             class="mode-btn"
             size="sm"
@@ -260,6 +278,22 @@ function parsePx(value: string, fallback: number) {
             :aria-pressed="mode === 'depth'"
             @click="setMode('depth')"
           >深度图</cv-button>
+          <cv-button
+            class="mode-btn"
+            size="sm"
+            :kind="mode === 'rgb' ? 'secondary' : 'ghost'"
+            :icon="View24"
+            :aria-pressed="mode === 'rgb'"
+            @click="setMode('rgb')"
+          >RGB图</cv-button>
+          <cv-button
+            class="mode-btn"
+            size="sm"
+            :kind="mode === 'infrared' ? 'secondary' : 'ghost'"
+            :icon="Sun24"
+            :aria-pressed="mode === 'infrared'"
+            @click="setMode('infrared')"
+          >红外图</cv-button>
         </div>
       </div>
 
