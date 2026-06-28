@@ -164,7 +164,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
         size="md"
         class="clear-btn"
         :icon="Reset24"
-        :disabled="attitudePending"
+        :disabled="true"
         @click="askCalibrateAttitude"
       >姿态清零</cv-button>
     </div>
