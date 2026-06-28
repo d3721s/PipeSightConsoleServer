@@ -55,9 +55,9 @@ export const api = {
     request<RecordingStatus>('/api/recordings/start', { method: 'POST', body: JSON.stringify(data) }),
   stopRecording: () => request<RecordingStatus>('/api/recordings/stop', { method: 'POST' }),
   recordingStatus: () => request<RecordingStatus>('/api/recordings/status'),
-  odometer: () => request<{ connected: boolean; mileageCm: number | null; mileageM: number | null }>('/api/odometer'),
+  odometer: (signal?: AbortSignal) => request<{ connected: boolean; mileageCm: number | null; mileageM: number | null }>('/api/odometer', { signal }),
 
-  chassisTelemetry: () => request<ChassisTelemetry>('/api/chassis/telemetry'),
+  chassisTelemetry: (signal?: AbortSignal) => request<ChassisTelemetry>('/api/chassis/telemetry', { signal }),
   setChassisLight: (value: number) =>
     request<{ ok: boolean; light: number }>('/api/chassis/light', { method: 'POST', body: JSON.stringify({ value }) }),
   setChassisLightPwm: (d1PulseUs: number, d3PulseUs: number) =>

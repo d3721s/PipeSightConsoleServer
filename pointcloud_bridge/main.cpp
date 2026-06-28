@@ -11,11 +11,14 @@
 //   float32  xyz[count*3]   (x,y,z per point, in the SDK's native units)
 //
 // Depth image wire format (binary WebSocket frame), little-endian:
-//   char[4]  magic  = "DPT1"
+//   char[4]  magic  = "DPT2"
 //   uint32   width
 //   uint32   height
-//   uint32   format = 1 for uint16 depth, 2 for float32 depth
+//   uint32   format = 1 for uint16 depth (mm), 2 for float32 depth (mm)
+//   float32  fx, fy, cx, cy   (depth/IR intrinsics; all 0 if unavailable)
 //   uint8    payload[width*height*(format == 1 ? 2 : 4)]
+// The intrinsics let the browser back-project each depth pixel to a real 3D
+// point (mm) for area measurement: X=(u-cx)*Z/fx, Y=(v-cy)*Z/fy, Z=depth.
 //
 // RGB / IR image wire format (binary WebSocket frame), little-endian:
 //   char[4]  magic    = "IMG1"
@@ -45,6 +48,8 @@
 #include "as_camera_sdk_def.h"
 #include "CameraSrv.h"
 #include "ws_server.h"
+
+#include <utility>
 
 namespace {
 
@@ -104,8 +109,9 @@ public:
     int onCameraStart(AS_CAM_PTR) override { printf("[bridge] streaming started\n"); return 0; }
     int onCameraStop(AS_CAM_PTR) override { printf("[bridge] streaming stopped\n"); return 0; }
 
-    void onCameraNewFrame(AS_CAM_PTR, const AS_SDK_Data_s *pstData) override {
+    void onCameraNewFrame(AS_CAM_PTR pCam, const AS_SDK_Data_s *pstData) override {
         if (pstData == nullptr) return;
+        ensureIntrinsics(pCam);
         logFrame(pstData->depthImg, pstData->pointCloud, "frame");
         if (g_depthWs.clientCount() > 0 && shouldSendDepth()) {
             broadcastDepthFrame(pstData->depthImg);
@@ -122,8 +128,9 @@ public:
         broadcastDepthAsPointCloud(pstData->depthImg);
     }
 
-    void onCameraNewMergeFrame(AS_CAM_PTR, const AS_SDK_MERGE_s *pstData) override {
+    void onCameraNewMergeFrame(AS_CAM_PTR pCam, const AS_SDK_MERGE_s *pstData) override {
         if (pstData == nullptr) return;
+        ensureIntrinsics(pCam);
         logFrame(pstData->depthImg, pstData->pointCloud, "merge");
         if (g_depthWs.clientCount() > 0 && shouldSendDepth()) {
             broadcastDepthFrame(pstData->depthImg);
@@ -254,16 +261,35 @@ private:
         const size_t payloadBytes = isU16 ? (size_t)totalPixels * sizeof(uint16_t)
                                           : (size_t)totalPixels * sizeof(float);
         std::vector<uint8_t> msg;
-        msg.reserve(16 + payloadBytes);
-        msg.insert(msg.end(), {'D', 'P', 'T', '1'});
+        msg.reserve(32 + payloadBytes);
+        msg.insert(msg.end(), {'D', 'P', 'T', '2'});
         appendU32(msg, depth.width);
         appendU32(msg, depth.height);
         appendU32(msg, format);
+        // Depth/IR intrinsics (0 if not yet available) for browser back-projection.
+        appendFloat(msg, intrinsics_.fxir);
+        appendFloat(msg, intrinsics_.fyir);
+        appendFloat(msg, intrinsics_.cxir);
+        appendFloat(msg, intrinsics_.cyir);
         const uint8_t *payload = static_cast<const uint8_t *>(depth.data);
         msg.insert(msg.end(), payload, payload + payloadBytes);
 
         g_depthWs.broadcastBinary(msg.data(), msg.size());
         return true;
+    }
+
+    // Fetch depth/IR intrinsics once (they don't change while streaming). Some
+    // models only return valid values after frames flow, so we retry until ok.
+    void ensureIntrinsics(AS_CAM_PTR pCam) {
+        if (intrinsicsReady_ || pCam == nullptr) return;
+        AS_CAM_Parameter_s param;
+        std::memset(&param, 0, sizeof(param));
+        if (AS_SDK_GetCamParameter(pCam, &param) == 0 && param.fxir != 0.0f && param.fyir != 0.0f) {
+            intrinsics_ = param;
+            intrinsicsReady_ = true;
+            printf("[bridge] depth intrinsics: fx=%.2f fy=%.2f cx=%.2f cy=%.2f\n",
+                   param.fxir, param.fyir, param.cxir, param.cyir);
+        }
     }
 
     // Broadcast an 8-bit image frame. channels=3 -> RGB (BGR byte order from the
@@ -289,6 +315,8 @@ private:
     }
 
     int logCount_ = 0;
+    bool intrinsicsReady_ = false;
+    AS_CAM_Parameter_s intrinsics_{};
     std::chrono::steady_clock::time_point lastPointcloudSend_{};
     std::chrono::steady_clock::time_point lastDepthSend_{};
     std::chrono::steady_clock::time_point lastRgbSend_{};
