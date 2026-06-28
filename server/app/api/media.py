@@ -15,7 +15,7 @@ from app.schemas import ImageSnapshotIn, MediaAssetOut, RecordingStartIn, Record
 from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
 from app.services.settings_service import get_setting
-from app.services.snapshot_service import save_png_snapshot, take_snapshot
+from app.services.snapshot_service import save_depth_raw, save_png_snapshot, take_snapshot
 from app.services.storage_service import enforce_media_quota
 
 
@@ -88,6 +88,9 @@ def create_image_snapshot(payload: ImageSnapshotIn, db: Session = Depends(get_db
     # appears in the image list and reports.
     try:
         path = save_png_snapshot(payload.image, prefix=f"PipeSight_{payload.source}")
+        # Depth snapshots may carry a raw depth blob for later area measurement.
+        if payload.depth_raw:
+            save_depth_raw(path, payload.depth_raw)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     asset = MediaAsset(
@@ -169,6 +172,9 @@ def list_photos(db: Session = Depends(get_db)) -> list[dict]:
     out: list[dict] = []
     for asset in assets:
         url = _storage_url(asset.file_path)
+        # Depth snapshots store a raw-depth sibling (.depthbin) for area measurement.
+        depth_path = Path(asset.file_path).with_suffix(".depthbin")
+        has_depth = asset.camera_device == "depth" and depth_path.exists()
         out.append(
             {
                 "id": asset.id,
@@ -180,6 +186,8 @@ def list_photos(db: Session = Depends(get_db)) -> list[dict]:
                 "rightMileage": asset.right_mileage,
                 "imageUrl": url,
                 "available": url is not None and Path(asset.file_path).exists(),
+                "isDepth": has_depth,
+                "depthDataUrl": _storage_url(str(depth_path)) if has_depth else None,
             }
         )
     return out
@@ -247,6 +255,9 @@ def delete_media(asset_id: int, db: Session = Depends(get_db)) -> dict:
         _unlink(asset.file_path)
         if asset.type == "video":
             _unlink(Path(asset.file_path).with_suffix(".json"))
+        else:
+            # Depth snapshots carry a raw-depth sibling; remove it too.
+            _unlink(Path(asset.file_path).with_suffix(".depthbin"))
 
     # Remove linked annotations (and their rendered images) + marker mirrors.
     annotations = db.scalars(

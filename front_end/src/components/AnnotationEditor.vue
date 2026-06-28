@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { CvButton, CvTextInput } from '@carbon/vue'
-import { Cursor_124, Pen24, Crop24, TextScale24, Undo24, TrashCan24 } from '@carbon/icons-vue'
+import { Cursor_124, Pen24, Crop24, TextScale24, Undo24, TrashCan24, Calculator24 } from '@carbon/icons-vue'
+import { measureRectArea, formatArea, type DepthFrame } from '../utils/depthArea'
 
 type Tool = 'select' | 'pen' | 'rect' | 'text'
 
@@ -31,12 +32,19 @@ const props = defineProps<{
   baseImage: string // URL or data URL of the background image / captured frame
   initialLeftMileage?: number | null
   initialRightMileage?: number | null
+  // When set (depth snapshots), enables area measurement: the selected rectangle
+  // is measured against this depth frame and the area saved with the annotation.
+  depthFrame?: DepthFrame | null
 }>()
 
 const emit = defineEmits<{
   (e: 'save', payload: { shapes: Shape[]; baseSize: { w: number; h: number }; renderedPng: string; defect: Record<string, unknown> }): void
   (e: 'cancel'): void
 }>()
+
+const measureMode = () => !!props.depthFrame
+const areaM2 = ref<number | null>(null)
+const areaText = ref<string | null>(null)
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 const tool = ref<Tool>('rect')
@@ -232,6 +240,8 @@ function onPointerUp() {
         draftRect.h = -draftRect.h
       }
       shapes.value.push(draftRect)
+      // In measure mode, the latest rectangle defines the region to measure.
+      if (measureMode()) measureArea(draftRect)
     }
     draftRect = null
   }
@@ -285,6 +295,28 @@ function renderPng(): string {
   return off.toDataURL('image/png')
 }
 
+// Measure the real surface area of a rectangle against the depth frame. The
+// annotation canvas uses the image's pixel space (baseSize); if the depth frame
+// resolution differs, scale rect coords into depth-frame pixels first.
+function measureArea(rect: RectShape) {
+  const frame = props.depthFrame
+  if (!frame) return
+  const sx = baseSize.w ? frame.width / baseSize.w : 1
+  const sy = baseSize.h ? frame.height / baseSize.h : 1
+  const x0 = Math.round(rect.x * sx)
+  const y0 = Math.round(rect.y * sy)
+  const x1 = Math.round((rect.x + rect.w) * sx)
+  const y1 = Math.round((rect.y + rect.h) * sy)
+  const result = measureRectArea(frame, x0, y0, x1, y1)
+  if (!result || result.triangles === 0) {
+    areaM2.value = null
+    areaText.value = '该区域无有效深度'
+    return
+  }
+  areaM2.value = result.areaM2
+  areaText.value = formatArea(result.areaM2)
+}
+
 function save() {
   const leftMileage = toFiniteNumber(defect.leftMileage)
   const rightMileage = toFiniteNumber(defect.rightMileage)
@@ -295,17 +327,26 @@ function save() {
     defect: {
       ...defect,
       leftMileage,
-      rightMileage
+      rightMileage,
+      ...(measureMode() ? { areaM2: areaM2.value } : {})
     }
   })
 }
 
-watch(() => props.baseImage, loadBase)
+watch(() => props.baseImage, () => {
+  // New base image -> reset the measurement readout.
+  areaM2.value = null
+  areaText.value = null
+  loadBase()
+})
 watch(() => [props.initialLeftMileage, props.initialRightMileage], () => {
   defect.leftMileage = initialMileageValue(props.initialLeftMileage)
   defect.rightMileage = initialMileageValue(props.initialRightMileage)
 })
-onMounted(loadBase)
+onMounted(() => {
+  if (measureMode()) tool.value = 'rect' // area measurement is rectangle-based
+  loadBase()
+})
 </script>
 
 <template>
@@ -334,6 +375,11 @@ onMounted(loadBase)
           @click="deleteSelected"
         >删除选中</cv-button>
         <label class="annot-color"><span>颜色</span><input v-model="color" type="color" /></label>
+        <div v-if="depthFrame" class="annot-area">
+          <component :is="Calculator24" class="annot-area-icon" />
+          <span v-if="areaText" class="annot-area-value">{{ areaText }}</span>
+          <span v-else class="annot-area-hint">框选区域以测量面积</span>
+        </div>
       </div>
     </div>
 
@@ -434,6 +480,27 @@ onMounted(loadBase)
   border: none;
   background: none;
   padding: 0;
+}
+.annot-area {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid #e0e0e0;
+}
+.annot-area-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: #0f62fe;
+}
+.annot-area-value {
+  color: #0f62fe;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.annot-area-hint {
+  color: #6f6f6f;
+  font-size: 0.8125rem;
 }
 .annot-canvas-wrap {
   display: flex;

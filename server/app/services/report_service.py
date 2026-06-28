@@ -104,6 +104,9 @@ def _write_reportlab_pdf(path: Path, report: Report, project: Project | None, an
             f"等级: {defect.get('severity', '') or '-'}   方向: {defect.get('direction', '') or '-'}   "
             f"位置: {defect.get('position', '') or '-'}   里程: {_fmt_mileage(defect)}",
         ]
+        area = defect.get("areaM2")
+        if isinstance(area, (int, float)):
+            info_lines.append(f"面积: {_fmt_area(float(area))}")
         note = defect.get("note", "")
         if note:
             info_lines.append(f"备注: {note}")
@@ -143,6 +146,11 @@ def _fmt_mileage(defect: dict) -> str:
     if left is None and right is None:
         return "--"
     return f"{fmt(left)}-{fmt(right)}"
+
+
+def _fmt_area(m2: float) -> str:
+    # Small areas read better in cm²; match the frontend's formatArea().
+    return f"{m2 * 1e4:.1f} cm²" if m2 < 0.01 else f"{m2:.4f} m²"
 
 
 def _load_image(rendered_path: str, *, max_w: float, max_h: float):

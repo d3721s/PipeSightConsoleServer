@@ -24,11 +24,11 @@ import { formatWheelMileage } from '../utils/osd'
 const router = useRouter()
 
 type ViewMode = 'pointcloud' | 'depth' | 'rgb' | 'infrared'
-type MeasureResult = { areaM2: number; triangles: number; skipped: number }
 type ViewerHandle = {
   snapshot: () => string
   zoomBy?: (factor: number) => void
-  measureRect?: (x0: number, y0: number, x1: number, y1: number) => MeasureResult | null
+  // Depth viewer only: raw depth (u16 mm + intrinsics) for snapshot measurement.
+  exportDepthRaw?: () => ArrayBuffer | null
   hasIntrinsics?: () => boolean
 }
 
@@ -72,7 +72,6 @@ function setMode(next: ViewMode) {
   if (mode.value === next) return
   mode.value = next
   viewer.value = null
-  clearMeasurement()
   updateZoomLabel(DEFAULT_POINTCLOUD_ZOOM)
 }
 
@@ -84,105 +83,6 @@ function nudgeZoom(dir: number) {
 
 function onChassisMove(v: { x: number; y: number }) {
   sendChassisMove(v.x, v.y)
-}
-
-// --- Depth-image area measurement (drag a rectangle on the depth view) -------
-// The drag rectangle is tracked in CSS px relative to the video area; on release
-// it is mapped to depth-frame pixel coords (accounting for object-fit: contain
-// letterboxing) and handed to the viewer, which sums the real 3D surface area.
-const measuring = ref(false) // a drag is in progress
-const measureRectPx = ref<{ x: number; y: number; w: number; h: number } | null>(null)
-const areaText = ref<string | null>(null)
-let dragStart: { x: number; y: number } | null = null
-
-const measureEnabled = computed(() => mode.value === 'depth')
-
-function localPoint(e: PointerEvent) {
-  const rect = videoArea.value!.getBoundingClientRect()
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top }
-}
-
-function onMeasureDown(e: PointerEvent) {
-  if (!measureEnabled.value || !videoArea.value) return
-  ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
-  dragStart = localPoint(e)
-  measuring.value = true
-  areaText.value = null
-  measureRectPx.value = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 }
-}
-
-function onMeasureMove(e: PointerEvent) {
-  if (!measuring.value || !dragStart) return
-  const p = localPoint(e)
-  measureRectPx.value = {
-    x: Math.min(dragStart.x, p.x),
-    y: Math.min(dragStart.y, p.y),
-    w: Math.abs(p.x - dragStart.x),
-    h: Math.abs(p.y - dragStart.y)
-  }
-}
-
-function onMeasureUp() {
-  if (!measuring.value) return
-  measuring.value = false
-  const rectPx = measureRectPx.value
-  dragStart = null
-  if (!rectPx || rectPx.w < 4 || rectPx.h < 4) {
-    measureRectPx.value = null
-    return
-  }
-  computeArea(rectPx)
-}
-
-// Map a CSS-px rectangle over the video area into depth-frame pixel coords and
-// run the measurement. The canvas is letterboxed (object-fit: contain) inside
-// the area, so we first find the displayed image box, then scale into frame px.
-function computeArea(rectPx: { x: number; y: number; w: number; h: number }) {
-  const area = videoArea.value
-  const canvas = area?.querySelector<HTMLCanvasElement>('canvas')
-  const handle = viewer.value
-  if (!area || !canvas || !handle?.measureRect) return
-  if (handle.hasIntrinsics && !handle.hasIntrinsics()) {
-    notify('未获取到相机内参，无法计算面积', 'warning')
-    measureRectPx.value = null
-    return
-  }
-  const fw = canvas.width
-  const fh = canvas.height
-  if (!fw || !fh) return
-
-  // Displayed image box inside the area (object-fit: contain).
-  const aRect = area.getBoundingClientRect()
-  const scale = Math.min(aRect.width / fw, aRect.height / fh)
-  const dispW = fw * scale
-  const dispH = fh * scale
-  const offX = (aRect.width - dispW) / 2
-  const offY = (aRect.height - dispH) / 2
-
-  const toFrame = (px: number, py: number) => ({
-    x: Math.round((px - offX) / scale),
-    y: Math.round((py - offY) / scale)
-  })
-  const a = toFrame(rectPx.x, rectPx.y)
-  const b = toFrame(rectPx.x + rectPx.w, rectPx.y + rectPx.h)
-
-  const result = handle.measureRect(a.x, a.y, b.x, b.y)
-  if (!result || result.triangles === 0) {
-    notify('该区域无有效深度，请重新框选', 'warning')
-    areaText.value = null
-    return
-  }
-  areaText.value = formatArea(result.areaM2)
-}
-
-function formatArea(m2: number): string {
-  if (m2 < 0.01) return `${(m2 * 1e4).toFixed(1)} cm²`
-  return `${m2.toFixed(4)} m²`
-}
-
-function clearMeasurement() {
-  measureRectPx.value = null
-  areaText.value = null
 }
 
 function updateZoomLabel(value: number) {
@@ -198,18 +98,36 @@ async function capture3d() {
   }
   try {
     const image = await addOsdToSnapshot(dataUrl)
+    // For depth snapshots, also persist the raw depth (+ intrinsics) so the area
+    // can be measured later on the annotate page. Null if intrinsics missing.
+    let depthRaw: string | undefined
+    if (mode.value === 'depth') {
+      const raw = viewer.value?.exportDepthRaw?.()
+      if (raw) depthRaw = arrayBufferToBase64(raw)
+    }
     const asset = await api.imageSnapshot({
       projectId: currentProject.value?.id,
       sessionId: currentSession.value?.id,
       leftMileage: leftWheelM.value,
       rightMileage: rightWheelM.value,
       image,
-      source: mode.value === 'depth' ? 'depth' : '3d'
+      source: mode.value === 'depth' ? 'depth' : '3d',
+      ...(depthRaw ? { depthRaw } : {})
     })
     notify(`${modeLabel.value}拍照已保存 #${(asset as { id?: number }).id ?? ''}`, 'success')
   } catch (e) {
     notify((e as Error).message, 'error')
   }
+}
+
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  const chunk = 0x8000 // avoid call-stack limits on large frames
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
 }
 
 function loadSnapshotImage(dataUrl: string): Promise<HTMLImageElement> {
@@ -339,27 +257,6 @@ function parsePx(value: string, fallback: number) {
         :location="currentProject?.location || ''"
       />
 
-      <!-- Depth-image area measurement: drag a rectangle to measure surface area. -->
-      <div
-        v-if="measureEnabled"
-        class="measure-surface"
-        @pointerdown="onMeasureDown"
-        @pointermove="onMeasureMove"
-        @pointerup="onMeasureUp"
-        @pointercancel="onMeasureUp"
-      >
-        <div
-          v-if="measureRectPx"
-          class="measure-rect"
-          :style="{ left: measureRectPx.x + 'px', top: measureRectPx.y + 'px', width: measureRectPx.w + 'px', height: measureRectPx.h + 'px' }"
-        />
-      </div>
-      <div v-if="measureEnabled" class="measure-panel">
-        <span v-if="areaText" class="measure-value">面积 {{ areaText }}</span>
-        <span v-else class="measure-hint">框选区域以测量面积</span>
-        <cv-button v-if="areaText" kind="ghost" size="sm" @click="clearMeasurement">清除</cv-button>
-      </div>
-
       <div v-if="mode === 'pointcloud'" class="zoom-cluster">
         <cv-button class="bx--btn--icon-only zoom-btn" kind="ghost" size="sm" :icon="ZoomOut24" @click="nudgeZoom(-1)" />
         <span class="zoom-readout">{{ zoomLabel }}</span>
@@ -469,40 +366,6 @@ function parsePx(value: string, fallback: number) {
   position: absolute;
   left: 1.25rem;
   bottom: 1.25rem;
-}
-.measure-surface {
-  position: absolute;
-  inset: 0;
-  cursor: crosshair;
-  touch-action: none;
-}
-.measure-rect {
-  position: absolute;
-  border: 2px solid #f1c21b;
-  background: rgba(241, 194, 27, 0.15);
-  pointer-events: none;
-}
-.measure-panel {
-  position: absolute;
-  top: 1.25rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(22, 22, 22, 0.78);
-  border-radius: 4px;
-  padding: 0.35rem 0.75rem;
-  pointer-events: auto;
-}
-.measure-value {
-  color: #f1c21b;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.measure-hint {
-  color: #c6c6c6;
-  font-size: 0.85rem;
 }
 .zoom-readout {
   min-width: 2.5rem;

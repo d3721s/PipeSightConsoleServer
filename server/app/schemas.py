@@ -98,6 +98,9 @@ class ImageSnapshotIn(BaseModel):
     right_mileage: float | None = Field(default=None, alias="rightMileage")
     image: str  # PNG data URL
     source: str = "3d"  # tag for the snapshot origin
+    # Optional raw depth blob (base64) saved alongside depth snapshots so the area
+    # can be measured later. Layout: see front_end/src/utils/depthArea.ts.
+    depth_raw: str | None = Field(default=None, alias="depthRaw")
 
 
 class MediaAssetOut(BaseModel):
@@ -153,6 +156,8 @@ class GraphicAnnotationIn(BaseModel):
     note: str = ""
     left_mileage: float | None = Field(default=None, alias="leftMileage")
     right_mileage: float | None = Field(default=None, alias="rightMileage")
+    # Measured surface area (m²) for depth-snapshot region annotations.
+    area_m2: float | None = Field(default=None, alias="areaM2")
 
 
 class MarkerCreate(BaseModel):

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { CvTabs, CvTab, CvButton, CvTag, CvTile, CvModal } from '@carbon/vue'
-import { Image24, VideoFilled24, CubeView24, Download24, Edit24, TrashCan16, TrashCan24 } from '@carbon/icons-vue'
+import { Image24, VideoFilled24, CubeView24, Download24, Edit24, TrashCan16, TrashCan24, Calculator24 } from '@carbon/icons-vue'
 import AnnotationEditor from '../components/AnnotationEditor.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
+import { decodeDepthRaw, type DepthFrame } from '../utils/depthArea'
 import type { GraphicAnnotation, Photo, Recording, TrackData } from '../types'
 
 type Tab = 'image' | 'video' | '3d'
@@ -17,6 +18,13 @@ const activePhoto = ref<Photo | null>(null)
 const activeRecording = ref<Recording | null>(null)
 const track = ref<TrackData | null>(null)
 const graphicAnnotations = ref<GraphicAnnotation[]>([])
+
+// Depth snapshots (3D tab) carry a raw-depth blob for area measurement; plain
+// photos (image tab) do not. Split the one /photos list by that flag.
+const imagePhotos = computed(() => photos.value.filter((p) => !p.isDepth))
+const depthPhotos = computed(() => photos.value.filter((p) => p.isDepth))
+const activeDepthFrame = ref<DepthFrame | null>(null)
+const depthLoading = ref(false)
 
 const annotateVideo = ref<HTMLVideoElement | null>(null)
 const videoCurrentTime = ref(0)
@@ -76,6 +84,12 @@ function sampleMileagePair(raw: Record<string, unknown>): MileagePair {
 
 function defectMileagePair(defect: Record<string, unknown>): MileagePair {
   return mileagePair(defect.leftMileage, defect.rightMileage)
+}
+
+function defectAreaText(defect: Record<string, unknown>): string | null {
+  const m2 = toFiniteNumber(defect.areaM2)
+  if (m2 === null) return null
+  return m2 < 0.01 ? `${(m2 * 1e4).toFixed(1)} cm²` : `${m2.toFixed(4)} m²`
 }
 
 async function reload() {
@@ -155,6 +169,41 @@ function annotatePhoto() {
   editorOpen.value = true
 }
 
+// 3D tab: select a depth snapshot and load its raw depth (for area measurement).
+async function selectDepth(photo: Photo) {
+  if (!photo.available) return
+  activePhoto.value = photo
+  activeRecording.value = null
+  editorOpen.value = false
+  activeDepthFrame.value = null
+  await loadAnnotations(photo.id)
+  if (!photo.depthDataUrl) return
+  depthLoading.value = true
+  try {
+    const resp = await fetch(photo.depthDataUrl)
+    if (!resp.ok) throw new Error('深度数据加载失败')
+    activeDepthFrame.value = decodeDepthRaw(await resp.arrayBuffer())
+    if (!activeDepthFrame.value) notify('深度数据无法解析，无法测量面积', 'warning')
+  } catch (e) {
+    notify((e as Error).message || '深度数据加载失败', 'error')
+  } finally {
+    depthLoading.value = false
+  }
+}
+
+// Open the editor in measure mode for the selected depth snapshot.
+function measureDepth() {
+  if (!activePhoto.value?.imageUrl) return
+  if (!activeDepthFrame.value) {
+    notify('该快照没有可用的深度数据', 'warning')
+    return
+  }
+  editorSourceType.value = 'image'
+  editorBaseImage.value = activePhoto.value.imageUrl
+  editorVideoTime.value = null
+  editorOpen.value = true
+}
+
 function downloadPhoto() {
   const photo = activePhoto.value
   if (!photo?.imageUrl) return
@@ -212,7 +261,8 @@ async function saveGraphicAnnotation(payload: {
       position: (payload.defect.position as string) || '',
       note: (payload.defect.note as string) || '',
       leftMileage,
-      rightMileage
+      rightMileage,
+      areaM2: toFiniteNumber(payload.defect.areaM2)
     })
     editorOpen.value = false
     await loadAnnotations(media.id)
@@ -273,9 +323,9 @@ async function confirmDeleteMedia() {
       <cv-tabs aria-label="标注来源" @tab-selected="onTabSelected">
         <cv-tab label="图像">
           <div class="media-list">
-            <p v-if="photos.length === 0" class="empty">暂无图像</p>
+            <p v-if="imagePhotos.length === 0" class="empty">暂无图像</p>
             <button
-              v-for="p in photos"
+              v-for="p in imagePhotos"
               :key="p.id"
               class="media-item"
               :class="{ active: activePhoto?.id === p.id, disabled: !p.available }"
@@ -307,7 +357,18 @@ async function confirmDeleteMedia() {
         </cv-tab>
         <cv-tab label="3D">
           <div class="media-list">
-            <p class="empty">3D 计算功能开发中</p>
+            <p v-if="depthPhotos.length === 0" class="empty">暂无深度快照</p>
+            <button
+              v-for="p in depthPhotos"
+              :key="p.id"
+              class="media-item"
+              :class="{ active: activePhoto?.id === p.id, disabled: !p.available }"
+              :disabled="!p.available"
+              @click="selectDepth(p)"
+            >
+              <span class="media-item-name">{{ p.name }}</span>
+              <span class="media-item-meta">{{ p.capturedAt }} · {{ formatMileagePair(photoMileagePair(p)) }}</span>
+            </button>
           </div>
         </cv-tab>
       </cv-tabs>
@@ -320,6 +381,7 @@ async function confirmDeleteMedia() {
         :base-image="editorBaseImage"
         :initial-left-mileage="editorMileage.left"
         :initial-right-mileage="editorMileage.right"
+        :depth-frame="tab === '3d' ? activeDepthFrame : null"
         @save="saveGraphicAnnotation"
         @cancel="editorOpen = false"
       />
@@ -384,10 +446,44 @@ async function confirmDeleteMedia() {
         </div>
       </template>
 
+      <template v-else-if="tab === '3d' && activePhoto">
+        <div class="preview-wrap">
+          <img class="preview-img" :src="activePhoto.imageUrl || ''" alt="depth snapshot" />
+        </div>
+        <div class="preview-bar">
+          <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(photoMileagePair(activePhoto))}`" />
+          <cv-tag v-if="depthLoading" kind="blue" label="深度加载中…" />
+          <cv-tag v-else-if="!activeDepthFrame" kind="red" label="无深度数据" />
+          <span class="preview-bar-spacer" />
+          <cv-button
+            size="sm"
+            :icon="Calculator24"
+            :disabled="!activeDepthFrame"
+            @click="measureDepth"
+          >框选计算面积</cv-button>
+          <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此快照</cv-button>
+        </div>
+        <div class="anno-saved">
+          <h3>已保存测量（{{ graphicAnnotations.length }}）</h3>
+          <p v-if="graphicAnnotations.length === 0" class="empty">暂无测量</p>
+          <cv-tile v-for="a in graphicAnnotations" :key="a.id" class="anno-row">
+            <img v-if="a.renderedUrl" :src="a.renderedUrl" class="anno-thumb" />
+            <div class="anno-body">
+              <strong>{{ defectAreaText(a.defect) || (a.defect.type as string) || '面积测量' }}</strong>
+              <small>
+                <span v-if="defectAreaText(a.defect) && (a.defect.type as string)">{{ a.defect.type }} · </span>
+                里程 {{ formatMileagePair(defectMileagePair(a.defect)) }}
+              </small>
+            </div>
+            <cv-button kind="danger--ghost" size="sm" :icon="TrashCan16" @click="removeAnnotation(a.id)" />
+          </cv-tile>
+        </div>
+      </template>
+
       <template v-else-if="tab === '3d'">
         <div class="empty-main">
           <component :is="CubeView24" class="empty-icon" />
-          <p>3D 计算功能开发中</p>
+          <p>请选择左侧深度快照开始测量</p>
         </div>
       </template>
 

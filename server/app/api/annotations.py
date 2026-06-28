@@ -139,6 +139,7 @@ def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depend
         "note": payload.note,
         "leftMileage": payload.left_mileage,
         "rightMileage": payload.right_mileage,
+        "areaM2": payload.area_m2,
     }
     annotation_json = {
         "sourceType": payload.source_type,

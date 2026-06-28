@@ -158,6 +158,9 @@ export interface Photo {
   rightMileage?: number | null
   imageUrl: string | null
   available: boolean
+  // Depth snapshots carry a raw-depth blob for area measurement on the 3D tab.
+  isDepth?: boolean
+  depthDataUrl?: string | null
 }
 
 export interface GraphicAnnotation {
