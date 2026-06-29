@@ -359,16 +359,24 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   margin-top: -0.5rem;
   padding-top: 0.75rem;
 }
-/* Left/right wheel mileage read-out: gray caption, white value. */
+/* Left/right wheel mileage read-out: two evenly-split centered columns,
+   mirroring the attitude PFD readouts (.pfd-readouts/.ro). Gray caption,
+   white value, both centered. */
 .mileage-row {
   display: flex;
-  gap: 0.75rem;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
 }
 .mi {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.125rem;
+  flex: 1 1 0;
   min-width: 0;
+  text-align: center;
 }
 .mi-label {
   color: #8d8d8d;
