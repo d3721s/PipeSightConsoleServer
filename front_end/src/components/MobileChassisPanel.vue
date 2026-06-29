@@ -172,8 +172,14 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
     <div class="chassis-readout">
       <div class="readout-row"><span>左轮里程</span><strong>{{ fmtMileage(leftWheelM) }}</strong></div>
       <div class="readout-row"><span>右轮里程</span><strong>{{ fmtMileage(rightWheelM) }}</strong></div>
-      <div class="readout-row"><span>电池电量</span><strong>{{ fmtBattery(batteryLevel) }}</strong></div>
-      <div class="readout-row"><span>故障码</span><strong>{{ fmtText(faultCode) }}</strong></div>
+      <cv-button
+        kind="secondary"
+        size="md"
+        class="clear-btn"
+        :icon="Reset24"
+        :disabled="odometerPending"
+        @click="askClearOdometer"
+      >里程计清零{{ odometerPending ? '（清零中…）' : '' }}</cv-button>
     </div>
 
     <div class="chassis-controls">
@@ -226,18 +232,11 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="chassis-section">
-        <span class="chassis-label">里程计{{ odometerPending ? '（清零中…）' : '' }}</span>
-        <cv-button
-          kind="secondary"
-          size="md"
-          class="clear-btn"
-          :icon="Reset24"
-          :disabled="odometerPending"
-          @click="askClearOdometer"
-        >里程计清零</cv-button>
-      </div>
+    <div class="chassis-readout chassis-status">
+      <div class="readout-row"><span>电池电量</span><strong>{{ fmtBattery(batteryLevel) }}</strong></div>
+      <div class="readout-row"><span>故障码</span><strong>{{ fmtText(faultCode) }}</strong></div>
     </div>
 
     <cv-modal
@@ -270,22 +269,22 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 .chassis-section {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 .light-sliders {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.25rem;
 }
 .light-sliders.pending {
   opacity: 0.88;
 }
 .pwm-row {
   display: grid;
-  grid-template-columns: 4rem minmax(0, 1fr);
+  grid-template-columns: 3.5rem minmax(0, 1fr);
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0;
+  padding: 0.15rem 0;
 }
 .pwm-label {
   color: #8d8d8d;
@@ -312,7 +311,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 }
 .pwm-value {
   min-width: 0;
-  height: 2.25rem;
+  height: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -320,7 +319,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   border-bottom: 1px solid #8d8d8d;
   background: #f4f4f4;
   color: #161616;
-  font-size: 0.9375rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   padding: 0 0.5rem;
 }
@@ -342,10 +341,13 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   padding-top: 1rem;
   border-top: 1px solid #393939;
 }
+.chassis-readout .clear-btn {
+  margin-top: 0.5rem;
+}
 .chassis-controls {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
   padding-top: 1rem;
   border-top: 1px solid #393939;
 }
