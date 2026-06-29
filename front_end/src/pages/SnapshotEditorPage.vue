@@ -573,28 +573,39 @@ async function confirmDeleteMedia() {
 /* Big image: use most of the viewport height. It's not forced to fit the whole
    page alongside the form — the page scrolls instead. object-fit: contain keeps
    the full image visible (letterboxed), never cropped. */
-.annotate-page.maximized .preview-wrap,
-.annotate-page.maximized :deep(.annot-canvas-wrap) {
+.annotate-page.maximized .preview-wrap {
   height: 82vh;
   min-height: 82vh;
   max-height: 82vh;
 }
 .annotate-page.maximized .preview-img,
-.annotate-page.maximized .preview-video,
-.annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
+.annotate-page.maximized .preview-video {
   max-height: 82vh;
+}
+/* Editor canvas: leave headroom at the top of the viewport for the toolbar so it
+   is visible immediately (not just reachable via the sticky pin). */
+.annotate-page.maximized :deep(.annot-canvas-wrap) {
+  height: calc(100vh - 13rem);
+  min-height: calc(100vh - 13rem);
+  max-height: calc(100vh - 13rem);
+}
+.annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
+  max-height: calc(100vh - 13rem);
 }
 .annotate-page.maximized :deep(.annot-editor) {
   height: auto;
+  min-height: 0;
 }
 /* Pin the annotation toolbar to the top of the scrolling overlay so it's never
-   clipped and stays reachable while you scroll the big image / form below. */
+   clipped and stays reachable while you scroll the big image / form below. The
+   image/form are normal-flow siblings after it, so sticky keeps it on top. */
 .annotate-page.maximized :deep(.annot-toolbar) {
   position: sticky;
   top: 0;
-  z-index: 2;
-  padding-top: 0.25rem;
+  z-index: 3;
+  padding: 0.25rem 0 0.5rem;
   background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
 }
 .media-rail {
   background: #ffffff;
