@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { CvButton } from '@carbon/vue'
-import { Camera24, ChevronLeft24, Report24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
+import { Camera24, Report24, ZoomIn24, ZoomOut24 } from '@carbon/icons-vue'
 import PointCloudViewer from '../components/PointCloudViewer.vue'
 import DepthMapViewer from '../components/DepthMapViewer.vue'
 import CameraImageViewer from '../components/CameraImageViewer.vue'
@@ -20,8 +19,6 @@ import {
 } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 import { formatWheelMileage } from '../utils/osd'
-
-const router = useRouter()
 
 type ViewMode = 'pointcloud' | 'depth' | 'rgb' | 'infrared'
 type ViewerHandle = {
@@ -270,10 +267,9 @@ function parsePx(value: string, fallback: number) {
 
     <aside class="control-rail">
       <div class="rail-top">
-        <cv-button kind="ghost" size="sm" :icon="ChevronLeft24" @click="router.push('/')">返回</cv-button>
         <cv-button
-          size="sm"
-          :kind="activeReport ? 'danger' : 'secondary'"
+          class="rail-action"
+          :kind="activeReport ? 'danger' : 'primary'"
           :icon="Report24"
           :disabled="reportToggling"
           @click="toggleReport"
@@ -398,6 +394,10 @@ function parsePx(value: string, fallback: number) {
 }
 .rail-top :deep(.cv-button) {
   width: 100%;
+  /* Reserve icon space so a long CJK label (处理中/停止报告) never slides under
+     Carbon's absolutely-positioned right icon. */
+  padding-left: 0.75rem !important;
+  padding-right: 2rem !important;
 }
 .rail-section {
   display: flex;

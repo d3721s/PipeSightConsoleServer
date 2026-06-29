@@ -6,9 +6,8 @@ export default { name: 'CameraConsolePage' }
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { CvButton, CvTag } from '@carbon/vue'
-import { Camera24, VideoAdd24, StopFilledAlt24, ZoomIn24, ZoomOut24, Report24, ChevronLeft24 } from '@carbon/icons-vue'
+import { Camera24, VideoAdd24, StopFilledAlt24, ZoomIn24, ZoomOut24, Report24 } from '@carbon/icons-vue'
 import WebRtcPlayer from '../components/WebRtcPlayer.vue'
 import OsdOverlay from '../components/OsdOverlay.vue'
 import PtzPad from '../components/PtzPad.vue'
@@ -37,7 +36,6 @@ import {
 } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
 
-const router = useRouter()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 
 const MIN_ZOOM = 1
@@ -156,10 +154,9 @@ async function toggleRecording() {
 
     <aside class="control-rail">
       <div class="rail-top">
-        <cv-button kind="ghost" size="sm" :icon="ChevronLeft24" @click="router.push('/')">返回</cv-button>
         <cv-button
-          size="sm"
-          :kind="activeReport ? 'danger' : 'secondary'"
+          class="rail-action"
+          :kind="activeReport ? 'danger' : 'primary'"
           :icon="Report24"
           :disabled="reportToggling"
           @click="toggleReport"
@@ -314,6 +311,10 @@ async function toggleRecording() {
 }
 .rail-top :deep(.cv-button) {
   width: 100%;
+  /* Match the capture button's icon-reserve so a long CJK label (处理中/停止报告)
+     never slides under Carbon's absolutely-positioned right icon. */
+  padding-left: 0.75rem !important;
+  padding-right: 2rem !important;
 }
 .rail-section {
   display: flex;
