@@ -185,7 +185,7 @@ async function toggleRecording() {
             :kind="recording.active ? 'danger' : 'primary'"
             :icon="recording.active ? StopFilledAlt24 : VideoAdd24"
             @click="toggleRecording"
-          >{{ recording.active ? '停止录像' : '开始录像' }}</cv-button>
+          >{{ recording.active ? '停止' : '录制' }}</cv-button>
         </div>
       </div>
 
@@ -362,7 +362,7 @@ async function toggleRecording() {
 }
 /* .capture-btn IS the Carbon <button> (cv-button + bx--btn on one element).
    Two buttons share the 15rem rail, so trim Carbon's wide icon reserve and let
-   each flex to half width, keeping "拍照"/"开始录像" on one line. */
+   each flex to half width, keeping "拍照"/"录制" on one line. */
 .capture-btn {
   flex: 1 1 0;
   min-width: 0;
