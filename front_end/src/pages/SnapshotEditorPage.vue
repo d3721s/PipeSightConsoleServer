@@ -588,15 +588,16 @@ async function confirmDeleteMedia() {
 .annotate-page.maximized .preview-video {
   max-height: 82vh;
 }
-/* Editor canvas: leave room at the top for the toolbar so it sits visibly above
-   the image; the form/buttons flow below and scroll into view. */
+/* Editor canvas: big image that fills the viewport below the toolbar. Only the
+   toolbar (~5rem) + overlay padding sit above it, so it stays large; the form /
+   buttons flow below and scroll into view. */
 .annotate-page.maximized :deep(.annot-canvas-wrap) {
-  height: calc(100vh - 16rem);
-  min-height: calc(100vh - 16rem);
-  max-height: calc(100vh - 16rem);
+  height: calc(100vh - 11rem);
+  min-height: calc(100vh - 11rem);
+  max-height: calc(100vh - 11rem);
 }
 .annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
-  max-height: calc(100vh - 16rem);
+  max-height: calc(100vh - 11rem);
 }
 .annotate-page.maximized :deep(.annot-editor) {
   height: auto;
