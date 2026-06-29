@@ -541,20 +541,32 @@ async function confirmDeleteMedia() {
   gap: 1.5rem;
   height: calc(100vh - 4rem - 5rem);
 }
-/* Maximize mode: collapse the media rail and give the whole width to the
-   image/editor so large inspection images can be viewed/annotated as big as
-   the page allows. The page itself stretches to the full content height. */
+/* Maximize mode: break out of the page chrome into a full-viewport overlay.
+   The inspection images are height-bound (tall/square content letterboxed in a
+   wide column), so extra WIDTH doesn't help — only extra HEIGHT does. Covering
+   the whole viewport (escaping the 4rem header + 5rem content padding) gives the
+   image the maximum possible vertical space. */
 .annotate-page.maximized {
-  grid-template-columns: minmax(0, 1fr);
-  height: calc(100vh - 4rem - 5rem);
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  grid-template-columns: none;
+  gap: 0;
+  height: 100vh;
+  padding: 0.75rem;
+  background: #ffffff;
 }
 .annotate-page.maximized .media-rail {
   display: none;
 }
-/* In maximize mode the image area should dominate — let it grow to nearly the
-   full page height (the toolbar/bar and saved list take the remainder / scroll).
-   The canvas wrap/canvas live inside the <annotation-editor> child, so pierce
-   scoped styles with :deep(). */
+.annotate-page.maximized .annotate-main {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Let the image area use the full overlay height; the toolbar/bar and saved
+   list take the remainder and scroll. The canvas wrap/canvas live inside the
+   <annotation-editor> child, so pierce scoped styles with :deep(). */
 .annotate-page.maximized .preview-wrap,
 .annotate-page.maximized :deep(.annot-canvas-wrap) {
   max-height: none;
