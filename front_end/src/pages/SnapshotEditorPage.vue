@@ -426,8 +426,8 @@ async function confirmDeleteMedia() {
           <cv-tag kind="cool-gray" :label="`时间 ${videoCurrentTime.toFixed(1)} s`" />
           <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(currentMileage)}`" />
           <span class="preview-bar-spacer" />
-          <cv-button size="sm" :icon="Edit24" @click="annotateFrame">标注当前帧</cv-button>
-          <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activeRecording)">删除此视频</cv-button>
+          <cv-button :icon="Edit24" @click="annotateFrame">标注当前帧</cv-button>
+          <cv-button kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activeRecording)">删除此视频</cv-button>
         </div>
         <div class="anno-saved">
           <h3>已保存标注（{{ graphicAnnotations.length }}）</h3>
