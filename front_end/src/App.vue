@@ -65,6 +65,9 @@ async function toggleFullscreen() {
 onMounted(() => {
   document.addEventListener('fullscreenchange', syncFullscreen)
   syncFullscreen()
+  // Seed the WS with the restored control mode so reconnect doesn't silently
+  // re-enable APP control after a refresh; then connect.
+  cameraControlSocket.chassisControlEnabled(chassisControlEnabled.value)
   cameraControlSocket.connect()
   startOdometerPolling()
   ensureLoaded().catch(() => undefined)
