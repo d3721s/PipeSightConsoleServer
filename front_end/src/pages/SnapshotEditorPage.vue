@@ -547,12 +547,18 @@ async function confirmDeleteMedia() {
    nothing is squeezed onto one screen or clipped. */
 .annotate-page.maximized {
   position: fixed;
-  inset: 0;
+  /* Start BELOW the fixed 4rem app header — it has a far higher z-index, so an
+     inset:0 overlay would let the header sit on top and hide the toolbar (the
+     first element) behind it. */
+  top: 4rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 50;
   display: block;
   grid-template-columns: none;
   gap: 0;
-  height: 100vh;
+  height: calc(100vh - 4rem);
   padding: 0.75rem;
   background: #ffffff;
   overflow-y: auto;
@@ -562,7 +568,7 @@ async function confirmDeleteMedia() {
 }
 /* Plain flow inside the scrolling overlay — no flex height games, no inner
    scroll, so the whole thing scrolls as one page. Drop the panel's own padding
-   so the sticky toolbar can pin flush to the overlay's top. */
+   so the toolbar sits flush at the overlay's top. */
 .annotate-page.maximized .annotate-main {
   display: block;
   overflow: visible;
@@ -582,30 +588,19 @@ async function confirmDeleteMedia() {
 .annotate-page.maximized .preview-video {
   max-height: 82vh;
 }
-/* Editor canvas: leave headroom at the top of the viewport for the toolbar so it
-   is visible immediately (not just reachable via the sticky pin). */
+/* Editor canvas: leave room at the top for the toolbar so it sits visibly above
+   the image; the form/buttons flow below and scroll into view. */
 .annotate-page.maximized :deep(.annot-canvas-wrap) {
-  height: calc(100vh - 13rem);
-  min-height: calc(100vh - 13rem);
-  max-height: calc(100vh - 13rem);
+  height: calc(100vh - 16rem);
+  min-height: calc(100vh - 16rem);
+  max-height: calc(100vh - 16rem);
 }
 .annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
-  max-height: calc(100vh - 13rem);
+  max-height: calc(100vh - 16rem);
 }
 .annotate-page.maximized :deep(.annot-editor) {
   height: auto;
   min-height: 0;
-}
-/* Pin the annotation toolbar to the top of the scrolling overlay so it's never
-   clipped and stays reachable while you scroll the big image / form below. The
-   image/form are normal-flow siblings after it, so sticky keeps it on top. */
-.annotate-page.maximized :deep(.annot-toolbar) {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  padding: 0.25rem 0 0.5rem;
-  background: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
 }
 .media-rail {
   background: #ffffff;
