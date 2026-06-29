@@ -170,6 +170,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
     </div>
 
     <div class="chassis-readout">
+      <span class="chassis-label">里程计</span>
       <div class="mileage-row">
         <div class="mi"><span class="mi-label">左轮里程</span><span class="mi-value">{{ fmtMileage(leftWheelM) }}</span></div>
         <div class="mi"><span class="mi-label">右轮里程</span><span class="mi-value">{{ fmtMileage(rightWheelM) }}</span></div>

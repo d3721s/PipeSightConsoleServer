@@ -187,7 +187,9 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
   align-items: center;
   gap: 0.6rem;
 }
-.pfd.stale {
+/* When there's no telemetry yet, dim only the dial graphic — keep the numeric
+   readouts below at full opacity so 横滚/俯仰/航向 and their values stay legible. */
+.pfd.stale .pfd-svg {
   opacity: 0.5;
 }
 .pfd-svg {
