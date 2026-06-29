@@ -351,6 +351,29 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 .chassis-readout .clear-btn {
   margin-top: 0.5rem;
 }
+/* Left/right wheel mileage read-out: gray caption, white value. */
+.mileage-row {
+  display: flex;
+  gap: 0.75rem;
+}
+.mi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.mi-label {
+  color: #8d8d8d;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.mi-value {
+  color: #f4f4f4;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
 .chassis-controls {
   display: flex;
   flex-direction: column;
