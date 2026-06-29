@@ -541,58 +541,48 @@ async function confirmDeleteMedia() {
   gap: 1.5rem;
   height: calc(100vh - 4rem - 5rem);
 }
-/* Maximize mode: break out of the page chrome into a full-viewport overlay.
-   The inspection images are height-bound (tall/square content letterboxed in a
-   wide column), so extra WIDTH doesn't help — only extra HEIGHT does. Covering
-   the whole viewport (escaping the 4rem header + 5rem content padding) gives the
-   image the maximum possible vertical space. */
+/* Maximize mode: break out of the page chrome into a full-viewport overlay that
+   SCROLLS. The image is shown big (most of the viewport height); the form /
+   buttons / saved list flow underneath and you scroll down to reach them —
+   nothing is squeezed onto one screen or clipped. */
 .annotate-page.maximized {
   position: fixed;
   inset: 0;
   z-index: 50;
-  display: flex;
+  display: block;
   grid-template-columns: none;
   gap: 0;
   height: 100vh;
   padding: 0.75rem;
   background: #ffffff;
+  overflow-y: auto;
 }
 .annotate-page.maximized .media-rail {
   display: none;
 }
+/* Plain flow inside the scrolling overlay — no flex height games, no inner
+   scroll, so the whole thing scrolls as one page. */
 .annotate-page.maximized .annotate-main {
-  flex: 1 1 auto;
-  min-height: 0;
-  /* Don't let the whole panel scroll (that was clipping the editor toolbar at
-     the top and the actions at the bottom). It's a clean bounded box; the canvas
-     flexes to fit and only the saved-list scrolls on its own. */
-  overflow: hidden;
+  display: block;
+  overflow: visible;
+  height: auto;
 }
-/* The image area takes EXACTLY the leftover height (flex from a 0 basis, may
-   shrink, no min-height floor) so the column never grows past the overlay and
-   pushes the image under a scroll — the top was getting clipped because the
-   20rem floor + bar + saved list overflowed. object-fit: contain then shows the
-   whole image, letterboxed, fully inside that bounded box. */
+/* Big image: use most of the viewport height. It's not forced to fit the whole
+   page alongside the form — the page scrolls instead. object-fit: contain keeps
+   the full image visible (letterboxed), never cropped. */
 .annotate-page.maximized .preview-wrap,
 .annotate-page.maximized :deep(.annot-canvas-wrap) {
-  flex: 1 1 0;
-  min-height: 0;
-  max-height: none;
+  height: 82vh;
+  min-height: 82vh;
+  max-height: 82vh;
 }
 .annotate-page.maximized .preview-img,
 .annotate-page.maximized .preview-video,
 .annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
-  max-height: 100%;
+  max-height: 82vh;
 }
-/* Keep the action bar at its natural height (always visible) and let the saved
-   list scroll on its own below instead of pushing the image. */
-.annotate-page.maximized .preview-bar {
-  flex: 0 0 auto;
-}
-.annotate-page.maximized .anno-saved {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+.annotate-page.maximized :deep(.annot-editor) {
+  height: auto;
 }
 .media-rail {
   background: #ffffff;
