@@ -556,8 +556,6 @@ async function confirmDeleteMedia() {
   bottom: 0;
   z-index: 50;
   display: block;
-  grid-template-columns: none;
-  gap: 0;
   height: calc(100vh - 4rem);
   padding: 0.75rem;
   background: #ffffff;

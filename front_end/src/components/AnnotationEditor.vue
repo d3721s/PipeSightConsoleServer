@@ -61,19 +61,15 @@ function toFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function initialMileageValue(value: number | null | undefined): number | null {
-  return toFiniteNumber(value)
-}
-
+// Mileage is auto-captured from the source media (no manual input); it's read
+// straight from props at save time, so it lives on the props — not in `defect`.
 const defect = reactive({
   defectType: '',
   defectCode: '',
   severity: '',
   direction: '',
   position: '',
-  note: '',
-  leftMileage: initialMileageValue(props.initialLeftMileage),
-  rightMileage: initialMileageValue(props.initialRightMileage)
+  note: ''
 })
 
 const tools: { id: Tool; label: string; icon: unknown }[] = [
@@ -322,8 +318,8 @@ function measureArea(rect: RectShape) {
 }
 
 function save() {
-  const leftMileage = toFiniteNumber(defect.leftMileage)
-  const rightMileage = toFiniteNumber(defect.rightMileage)
+  const leftMileage = toFiniteNumber(props.initialLeftMileage)
+  const rightMileage = toFiniteNumber(props.initialRightMileage)
   emit('save', {
     shapes: shapes.value,
     baseSize: { w: baseSize.w, h: baseSize.h },
@@ -342,10 +338,6 @@ watch(() => props.baseImage, () => {
   areaM2.value = null
   areaText.value = null
   loadBase()
-})
-watch(() => [props.initialLeftMileage, props.initialRightMileage], () => {
-  defect.leftMileage = initialMileageValue(props.initialLeftMileage)
-  defect.rightMileage = initialMileageValue(props.initialRightMileage)
 })
 onMounted(() => {
   if (measureMode()) tool.value = 'rect' // area measurement is rectangle-based
