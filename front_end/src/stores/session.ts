@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue'
 import { api } from '../api'
+import { recording, recordingBusy } from './cameras'
 import type { Project, Report, Session } from '../types'
 
 // Global, cross-page session state (formerly local refs in App.vue). A single
@@ -132,5 +133,59 @@ export async function toggleReport() {
     notify((e as Error).message, 'error')
   } finally {
     reportToggling.value = false
+  }
+}
+
+// --- Background status sync --------------------------------------------------
+// The report/recording button colors are driven by `activeReport` / `recording`.
+// Those are otherwise only updated by the buttons themselves, so they drift when
+// the backend changes state on its own (recording auto-segments/finishes) or
+// another tab/device toggles them — leaving stale button colors. A slow poll
+// keeps both in sync with the backend. ~2s is plenty (states change rarely) and
+// is far cheaper than the 500ms telemetry poll. Skips while an action is mid-flight.
+const STATUS_SYNC_MS = 2000
+const STATUS_SYNC_TIMEOUT_MS = 4000
+let statusSyncing = false
+let statusTimer: number | null = null
+
+async function withStatusTimeout<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController()
+  const handle = window.setTimeout(() => controller.abort(), STATUS_SYNC_TIMEOUT_MS)
+  try {
+    return await fn(controller.signal)
+  } finally {
+    window.clearTimeout(handle)
+  }
+}
+
+async function pollStatus() {
+  try {
+    if (!reportToggling.value) {
+      const r = await withStatusTimeout(() => api.currentReport())
+      // Re-check the guard: an action may have started during the await.
+      if (!reportToggling.value) activeReport.value = r ?? null
+    }
+    if (!recordingBusy.value) {
+      const rec = await withStatusTimeout(() => api.recordingStatus())
+      if (!recordingBusy.value) recording.value = rec
+    }
+  } catch {
+    // Transient failure — keep last known state, try again next tick.
+  } finally {
+    if (statusSyncing) statusTimer = window.setTimeout(pollStatus, STATUS_SYNC_MS)
+  }
+}
+
+export function startStatusSync() {
+  if (statusSyncing) return
+  statusSyncing = true
+  void pollStatus()
+}
+
+export function stopStatusSync() {
+  statusSyncing = false
+  if (statusTimer !== null) {
+    window.clearTimeout(statusTimer)
+    statusTimer = null
   }
 }

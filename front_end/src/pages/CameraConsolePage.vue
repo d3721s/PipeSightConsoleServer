@@ -22,6 +22,7 @@ import {
   isPtzChannel,
   loadStream,
   recording,
+  recordingBusy,
   selectCamera,
   selectChannel,
   stream
@@ -81,6 +82,8 @@ async function takeSnapshot() {
 }
 
 async function toggleRecording() {
+  if (recordingBusy.value) return
+  recordingBusy.value = true
   try {
     if (recording.value.active) {
       recording.value = await api.stopRecording()
@@ -102,6 +105,8 @@ async function toggleRecording() {
     notify('录像已开始', 'success')
   } catch (e) {
     notify((e as Error).message, 'error')
+  } finally {
+    recordingBusy.value = false
   }
 }
 </script>
@@ -181,6 +186,7 @@ async function toggleRecording() {
             class="capture-btn"
             :kind="recording.active ? 'danger' : 'primary'"
             :icon="recording.active ? StopFilledAlt24 : VideoAdd24"
+            :disabled="recordingBusy"
             @click="toggleRecording"
           >{{ recording.active ? '停止' : '录制' }}</cv-button>
         </div>

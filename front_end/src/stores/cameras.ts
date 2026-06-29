@@ -9,6 +9,9 @@ export const cameras = ref<CameraDevice[]>([])
 export const active = reactive<ActiveCamera>({ device: 'front', channel: 1 })
 export const stream = ref<StreamInfo | null>(null)
 export const recording = ref<RecordingStatus>({ active: false })
+// True while a start/stop recording request is in flight, so the background
+// status poll skips that window and doesn't fight the in-progress action.
+export const recordingBusy = ref(false)
 export const digitalZoom = ref(1)
 
 export const activeCamera = computed(() => cameras.value.find((c) => c.code === active.device))

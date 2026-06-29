@@ -178,7 +178,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 
     <div class="chassis-controls">
       <div class="chassis-section">
-        <span class="chassis-label">灯光控制{{ lightPending ? '（设置中…）' : '' }}</span>
+        <span class="chassis-label">灯光{{ lightPending ? '（设置中…）' : '' }}</span>
         <div class="light-sliders" :class="{ pending: lightPending }">
           <div class="pwm-row">
             <span class="pwm-label">灯光1</span>

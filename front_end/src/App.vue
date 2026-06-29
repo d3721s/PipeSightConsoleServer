@@ -6,7 +6,7 @@ import { ExpandScreen24, ShrinkScreen24 } from '@carbon/icons-vue'
 import { cameraControlSocket } from './ws'
 import { ensureLoaded } from './stores/cameras'
 import { chassisControlEnabled, startOdometerPolling } from './stores/odometer'
-import { activeReport, restoreSession } from './stores/session'
+import { activeReport, restoreSession, startStatusSync } from './stores/session'
 import AppToast from './components/AppToast.vue'
 import CameraConsolePage from './pages/CameraConsolePage.vue'
 
@@ -73,6 +73,8 @@ onMounted(() => {
   ensureLoaded().catch(() => undefined)
   // Re-hydrate the current project/session + running report after a page reload.
   restoreSession().catch(() => undefined)
+  // Keep report/recording button colors in sync with the backend.
+  startStatusSync()
 })
 
 onBeforeUnmount(() => {
