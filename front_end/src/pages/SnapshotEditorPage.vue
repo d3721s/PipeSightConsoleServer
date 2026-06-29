@@ -564,17 +564,31 @@ async function confirmDeleteMedia() {
   flex: 1 1 auto;
   min-height: 0;
 }
-/* Let the image area use the full overlay height; the toolbar/bar and saved
-   list take the remainder and scroll. The canvas wrap/canvas live inside the
-   <annotation-editor> child, so pierce scoped styles with :deep(). */
+/* The image area takes EXACTLY the leftover height (flex from a 0 basis, may
+   shrink, no min-height floor) so the column never grows past the overlay and
+   pushes the image under a scroll — the top was getting clipped because the
+   20rem floor + bar + saved list overflowed. object-fit: contain then shows the
+   whole image, letterboxed, fully inside that bounded box. */
 .annotate-page.maximized .preview-wrap,
 .annotate-page.maximized :deep(.annot-canvas-wrap) {
+  flex: 1 1 0;
+  min-height: 0;
   max-height: none;
 }
 .annotate-page.maximized .preview-img,
 .annotate-page.maximized .preview-video,
 .annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
-  max-height: none;
+  max-height: 100%;
+}
+/* Keep the action bar at its natural height (always visible) and let the saved
+   list scroll on its own below instead of pushing the image. */
+.annotate-page.maximized .preview-bar {
+  flex: 0 0 auto;
+}
+.annotate-page.maximized .anno-saved {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 .media-rail {
   background: #ffffff;
