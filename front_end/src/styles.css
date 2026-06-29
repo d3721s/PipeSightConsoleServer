@@ -13,11 +13,13 @@
    whole UI larger or smaller — this single value controls everything. */
 
 html {
-  /* Single knob for the whole UI's size. Floor is intentionally large so the
-     tablet UI is never small regardless of how the browser reports its width
-     (high-DPR tablets report a small logical CSS width, which would otherwise
-     keep `vw`-based sizing tiny). Raise/lower this 28px floor to taste. */
-  font-size: clamp(3.5px, 1.8vw, 36px);
+  /* Single knob for the whole UI's size — every rem-based dimension scales with
+     this. The coefficient (vw) sets how big the UI is on a given logical width;
+     high-DPR tablets report a small logical CSS width (e.g. ~1280px on a
+     2560-physical panel), so this is what tunes the tablet density. Lower the vw
+     to fit more on screen, raise it to make things bigger. Clamp bounds keep it
+     sane on very narrow / very wide viewports. */
+  font-size: clamp(6px, 1.5vw, 32px);
 }
 
 * {
