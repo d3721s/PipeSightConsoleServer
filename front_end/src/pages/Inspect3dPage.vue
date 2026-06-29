@@ -18,9 +18,9 @@ import {
   setChassisControlEnabled
 } from '../stores/odometer'
 import { activeReport, currentProject, currentSession, notify, reportToggling, toggleReport } from '../stores/session'
+import { inspect3dViewMode as mode, type ViewMode } from '../stores/inspect3d'
 import { formatWheelMileage } from '../utils/osd'
 
-type ViewMode = 'pointcloud' | 'depth' | 'rgb' | 'infrared'
 type ViewerHandle = {
   snapshot: () => string
   zoomBy?: (factor: number) => void
@@ -43,7 +43,8 @@ const MODE_PORTS: Record<ViewMode, number> = {
   infrared: 9093
 }
 
-const mode = ref<ViewMode>('pointcloud')
+// `mode` lives in the inspect3d store (module-level + localStorage) so it
+// survives navigating away from this page and back, and a full refresh.
 const modeLabel = computed(() => MODE_LABELS[mode.value])
 const viewerComponent = computed(() => {
   if (mode.value === 'pointcloud') return PointCloudViewer
