@@ -215,7 +215,7 @@ async function toggleRecording() {
 <style scoped>
 .console-page {
   display: grid;
-  grid-template-columns: 1fr 18rem;
+  grid-template-columns: 1fr 15rem;
   height: 100%; /* fill .app-content (pinned to viewport-minus-header) */
   background: #000;
 }
@@ -361,13 +361,13 @@ async function toggleRecording() {
   gap: 0.5rem;
 }
 /* .capture-btn IS the Carbon <button> (cv-button + bx--btn on one element).
-   Two buttons share the 18rem rail, so trim Carbon's wide icon reserve and let
+   Two buttons share the 15rem rail, so trim Carbon's wide icon reserve and let
    each flex to half width, keeping "拍照"/"开始录像" on one line. */
 .capture-btn {
   flex: 1 1 0;
   min-width: 0;
   /* Override Carbon's wide icon reserve (.bx--btn:has(icon) sets 3rem) so two
-     buttons fit side by side in the 18rem rail without the label clipping. */
+     buttons fit side by side in the 15rem rail without the label clipping. */
   padding-left: 0.75rem !important;
   padding-right: 2rem !important;
 }

@@ -341,7 +341,7 @@ function parsePx(value: string, fallback: number) {
 <style scoped>
 .console-page {
   display: grid;
-  grid-template-columns: 1fr 18rem;
+  grid-template-columns: 1fr 15rem;
   height: 100%;
   background: #000;
 }
