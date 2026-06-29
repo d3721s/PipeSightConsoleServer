@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { CvTabs, CvTab, CvButton, CvTag, CvTile, CvModal } from '@carbon/vue'
-import { Image24, VideoFilled24, CubeView24, Download24, Edit24, TrashCan16, TrashCan24, Calculator24 } from '@carbon/icons-vue'
+import { Image24, VideoFilled24, CubeView24, Download24, Edit24, TrashCan16, TrashCan24, Calculator24, Maximize24, Minimize24 } from '@carbon/icons-vue'
 import AnnotationEditor from '../components/AnnotationEditor.vue'
 import { api } from '../api'
 import { notify } from '../stores/session'
@@ -11,6 +11,10 @@ import type { GraphicAnnotation, Photo, Recording, TrackData } from '../types'
 type Tab = 'image' | 'video' | '3d'
 type MileagePair = { left: number | null; right: number | null }
 const tab = ref<Tab>('image')
+
+// Maximize the preview/editor: collapse the media rail and let the image area
+// fill the whole page so large inspection images can be seen / annotated big.
+const maximized = ref(false)
 
 const photos = ref<Photo[]>([])
 const recordings = ref<Recording[]>([])
@@ -317,7 +321,7 @@ async function confirmDeleteMedia() {
 </script>
 
 <template>
-  <div class="annotate-page">
+  <div class="annotate-page" :class="{ maximized }">
     <!-- Left: media list -->
     <aside class="media-rail">
       <cv-tabs aria-label="标注来源" @tab-selected="onTabSelected">
@@ -382,8 +386,10 @@ async function confirmDeleteMedia() {
         :initial-left-mileage="editorMileage.left"
         :initial-right-mileage="editorMileage.right"
         :depth-frame="tab === '3d' ? activeDepthFrame : null"
+        :maximized="maximized"
         @save="saveGraphicAnnotation"
         @cancel="editorOpen = false"
+        @toggle-maximize="maximized = !maximized"
       />
 
       <template v-else-if="tab === 'image' && activePhoto">
@@ -393,6 +399,11 @@ async function confirmDeleteMedia() {
         <div class="preview-bar">
           <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(photoMileagePair(activePhoto))}`" />
           <span class="preview-bar-spacer" />
+          <cv-button
+            kind="ghost"
+            :icon="maximized ? Minimize24 : Maximize24"
+            @click="maximized = !maximized"
+          >{{ maximized ? '还原' : '最大化' }}</cv-button>
           <cv-button kind="tertiary" :icon="Download24" @click="downloadPhoto">下载图片</cv-button>
           <cv-button :icon="Edit24" @click="annotatePhoto">标注此图</cv-button>
           <cv-button kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此图</cv-button>
@@ -426,6 +437,11 @@ async function confirmDeleteMedia() {
           <cv-tag kind="cool-gray" :label="`时间 ${videoCurrentTime.toFixed(1)} s`" />
           <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(currentMileage)}`" />
           <span class="preview-bar-spacer" />
+          <cv-button
+            kind="ghost"
+            :icon="maximized ? Minimize24 : Maximize24"
+            @click="maximized = !maximized"
+          >{{ maximized ? '还原' : '最大化' }}</cv-button>
           <cv-button :icon="Edit24" @click="annotateFrame">标注当前帧</cv-button>
           <cv-button kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activeRecording)">删除此视频</cv-button>
         </div>
@@ -455,6 +471,11 @@ async function confirmDeleteMedia() {
           <cv-tag v-if="depthLoading" kind="blue" label="深度加载中…" />
           <cv-tag v-else-if="!activeDepthFrame" kind="red" label="无深度数据" />
           <span class="preview-bar-spacer" />
+          <cv-button
+            kind="ghost"
+            :icon="maximized ? Minimize24 : Maximize24"
+            @click="maximized = !maximized"
+          >{{ maximized ? '还原' : '最大化' }}</cv-button>
           <cv-button
             :icon="Calculator24"
             :disabled="!activeDepthFrame"
@@ -519,6 +540,29 @@ async function confirmDeleteMedia() {
   grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
   gap: 1.5rem;
   height: calc(100vh - 4rem - 5rem);
+}
+/* Maximize mode: collapse the media rail and give the whole width to the
+   image/editor so large inspection images can be viewed/annotated as big as
+   the page allows. The page itself stretches to the full content height. */
+.annotate-page.maximized {
+  grid-template-columns: minmax(0, 1fr);
+  height: calc(100vh - 4rem - 5rem);
+}
+.annotate-page.maximized .media-rail {
+  display: none;
+}
+/* In maximize mode the image area should dominate — let it grow to nearly the
+   full page height (the toolbar/bar and saved list take the remainder / scroll).
+   The canvas wrap/canvas live inside the <annotation-editor> child, so pierce
+   scoped styles with :deep(). */
+.annotate-page.maximized .preview-wrap,
+.annotate-page.maximized :deep(.annot-canvas-wrap) {
+  max-height: none;
+}
+.annotate-page.maximized .preview-img,
+.annotate-page.maximized .preview-video,
+.annotate-page.maximized :deep(.annot-canvas-wrap canvas) {
+  max-height: none;
 }
 .media-rail {
   background: #ffffff;

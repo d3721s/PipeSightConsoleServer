@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { CvButton, CvTextInput } from '@carbon/vue'
-import { Cursor_124, Pen24, Crop24, TextScale24, Undo24, TrashCan24, Calculator24 } from '@carbon/icons-vue'
+import { Cursor_124, Pen24, Crop24, TextScale24, Undo24, TrashCan24, Calculator24, Maximize24, Minimize24 } from '@carbon/icons-vue'
 import { measureRectArea, formatArea, type DepthFrame } from '../utils/depthArea'
 
 type Tool = 'select' | 'pen' | 'rect' | 'text'
@@ -35,11 +35,15 @@ const props = defineProps<{
   // When set (depth snapshots), enables area measurement: the selected rectangle
   // is measured against this depth frame and the area saved with the annotation.
   depthFrame?: DepthFrame | null
+  // Whether the parent page is in maximize (rail collapsed) mode; drives the
+  // toolbar toggle icon/label. The parent owns the actual layout switch.
+  maximized?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'save', payload: { shapes: Shape[]; baseSize: { w: number; h: number }; renderedPng: string; defect: Record<string, unknown> }): void
   (e: 'cancel'): void
+  (e: 'toggle-maximize'): void
 }>()
 
 const measureMode = () => !!props.depthFrame
@@ -374,6 +378,12 @@ onMounted(() => {
           kind="danger--ghost"
           @click="deleteSelected"
         >删除选中</cv-button>
+        <cv-button
+          size="sm"
+          kind="ghost"
+          :icon="maximized ? Minimize24 : Maximize24"
+          @click="emit('toggle-maximize')"
+        >{{ maximized ? '还原' : '最大化' }}</cv-button>
         <label class="annot-color"><span>颜色</span><input v-model="color" type="color" /></label>
         <div v-if="depthFrame" class="annot-area">
           <component :is="Calculator24" class="annot-area-icon" />
