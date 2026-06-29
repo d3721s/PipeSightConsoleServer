@@ -177,9 +177,14 @@ if [ -x "$BRIDGE_DIR/pointcloud_bridge" ]; then
 fi
 
 systemctl daemon-reload
+# enable --now only starts a service that isn't running; on a re-run (after
+# pulling new code) the already-active service won't pick up the rebuild, so
+# restart explicitly afterwards to load the new code.
 systemctl enable --now pipesight-backend.service
+systemctl restart pipesight-backend.service
 if [ "$ENABLE_BRIDGE" -eq 1 ]; then
   systemctl enable --now pipesight-pcl-bridge.service
+  systemctl restart pipesight-pcl-bridge.service
 fi
 
 # --- 6. firewall (only if ufw is active) -----------------------------------
