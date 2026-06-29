@@ -23,12 +23,22 @@ export const lightD3Pulse = ref<number | null>(null)
 export const eulerRoll = ref<number | null>(null)
 export const eulerPitch = ref<number | null>(null)
 export const eulerYaw = ref<number | null>(null)
-export const chassisControlEnabled = ref(true)
 export const CHASSIS_MAX_SPEED_MIN = 100
 export const CHASSIS_MAX_SPEED_MAX = 800
 export const CHASSIS_MAX_SPEED_STEP = 100
 
 const CHASSIS_MAX_SPEED_STORAGE_KEY = 'pipesight.chassisMaxSpeed'
+// Persist the chassis control mode (APP vs 遥控) so a page refresh / WS reconnect
+// restores the operator's last choice instead of silently re-enabling APP control.
+const CHASSIS_CONTROL_STORAGE_KEY = 'pipesight.chassisControlEnabled'
+
+function readStoredChassisControl() {
+  if (typeof window === 'undefined') return true
+  // Default to APP (true) on first run; otherwise honor the stored choice.
+  return window.localStorage.getItem(CHASSIS_CONTROL_STORAGE_KEY) !== 'false'
+}
+
+export const chassisControlEnabled = ref(readStoredChassisControl())
 
 export function clampChassisMaxSpeed(value: string | number) {
   const n = Math.round(Number(value))
@@ -83,6 +93,11 @@ function clampChassisCommand(value: number) {
 export function setChassisControlEnabled(enabled: boolean) {
   if (chassisControlEnabled.value === enabled) return
   chassisControlEnabled.value = enabled
+  try {
+    window.localStorage.setItem(CHASSIS_CONTROL_STORAGE_KEY, String(enabled))
+  } catch {
+    // Ignore storage failures; the runtime value still applies this session.
+  }
   cameraControlSocket.chassisControlEnabled(enabled)
 }
 
