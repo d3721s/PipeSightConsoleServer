@@ -173,9 +173,9 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
     </svg>
 
     <div class="pfd-readouts">
-      <div class="ro"><span class="ro-label">横滚 ROLL</span><span class="ro-value">{{ rollText }}</span></div>
-      <div class="ro"><span class="ro-label">俯仰 PITCH</span><span class="ro-value">{{ pitchText }}</span></div>
-      <div class="ro"><span class="ro-label">航向 YAW</span><span class="ro-value">{{ yawText }}</span></div>
+      <div class="ro"><span class="ro-label">横滚</span><span class="ro-value">{{ rollText }}</span></div>
+      <div class="ro"><span class="ro-label">俯仰</span><span class="ro-value">{{ pitchText }}</span></div>
+      <div class="ro"><span class="ro-label">航向</span><span class="ro-value">{{ yawText }}</span></div>
     </div>
   </div>
 </template>
@@ -183,17 +183,17 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
 <style scoped>
 .pfd {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 .pfd.stale {
   opacity: 0.5;
 }
 .pfd-svg {
-  width: 11rem;
-  height: 11rem;
+  width: 9rem;
+  height: 9rem;
+  max-width: 100%;
   flex: 0 0 auto;
 }
 /* Ease the 400ms telemetry steps so the dial glides instead of jumping. */
@@ -213,26 +213,30 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
 }
 .pfd-readouts {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
 }
 .ro {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.1rem;
+  flex: 1 1 0;
   min-width: 0;
+  text-align: center;
 }
 .ro-label {
   color: #8d8d8d;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 .ro-value {
   color: #f4f4f4;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
