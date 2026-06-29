@@ -409,8 +409,6 @@ onMounted(() => {
       <cv-text-input v-model="defect.severity" label="等级" />
       <cv-text-input v-model="defect.direction" label="方向" placeholder="如 3点钟" />
       <cv-text-input v-model="defect.position" label="位置" />
-      <cv-text-input v-model.number="defect.leftMileage" label="左轮里程 (m)" type="number" />
-      <cv-text-input v-model.number="defect.rightMileage" label="右轮里程 (m)" type="number" />
       <cv-text-input v-model="defect.note" label="备注" class="annot-note" />
     </div>
 
