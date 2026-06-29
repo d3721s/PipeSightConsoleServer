@@ -563,6 +563,10 @@ async function confirmDeleteMedia() {
 .annotate-page.maximized .annotate-main {
   flex: 1 1 auto;
   min-height: 0;
+  /* Don't let the whole panel scroll (that was clipping the editor toolbar at
+     the top and the actions at the bottom). It's a clean bounded box; the canvas
+     flexes to fit and only the saved-list scrolls on its own. */
+  overflow: hidden;
 }
 /* The image area takes EXACTLY the leftover height (flex from a 0 basis, may
    shrink, no min-height floor) so the column never grows past the overlay and
