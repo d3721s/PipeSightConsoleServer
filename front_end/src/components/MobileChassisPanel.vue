@@ -316,7 +316,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 }
 .pwm-value {
   min-width: 0;
-  height: 2.25rem;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: center;
