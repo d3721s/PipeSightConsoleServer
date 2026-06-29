@@ -393,9 +393,9 @@ async function confirmDeleteMedia() {
         <div class="preview-bar">
           <cv-tag kind="cool-gray" :label="`里程 ${formatMileagePair(photoMileagePair(activePhoto))}`" />
           <span class="preview-bar-spacer" />
-          <cv-button size="sm" kind="tertiary" :icon="Download24" @click="downloadPhoto">下载图片</cv-button>
-          <cv-button size="sm" :icon="Edit24" @click="annotatePhoto">标注此图</cv-button>
-          <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此图</cv-button>
+          <cv-button kind="tertiary" :icon="Download24" @click="downloadPhoto">下载图片</cv-button>
+          <cv-button :icon="Edit24" @click="annotatePhoto">标注此图</cv-button>
+          <cv-button kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此图</cv-button>
         </div>
         <div class="anno-saved">
           <h3>已保存标注（{{ graphicAnnotations.length }}）</h3>
