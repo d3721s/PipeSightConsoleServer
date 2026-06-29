@@ -43,8 +43,10 @@ export const api = {
   createProject: (data: Record<string, unknown>) =>
     request<Project>('/api/projects', { method: 'POST', body: JSON.stringify(data) }),
   listProjects: () => request<Project[]>('/api/projects'),
+  getProject: (id: number) => request<Project>(`/api/projects/${id}`),
   createSession: (data: Record<string, unknown>) =>
     request<Session>('/api/sessions', { method: 'POST', body: JSON.stringify(data) }),
+  getSession: (id: number) => request<Session>(`/api/sessions/${id}`),
   finishSession: (id: number) => request<Session>(`/api/sessions/${id}/finish`, { method: 'POST' }),
 
   snapshot: (data: Record<string, unknown>) =>
@@ -99,6 +101,7 @@ export const api = {
   startReport: (data: Record<string, unknown>) =>
     request<Report>('/api/reports/start', { method: 'POST', body: JSON.stringify(data) }),
   stopReport: (id: number) => request<Report>(`/api/reports/${id}/stop`, { method: 'POST' }),
+  currentReport: () => request<Report | null>('/api/reports/current'),
   listReports: () => request<Report[]>('/api/reports'),
   deleteReport: (id: number) => request<{ ok: boolean }>(`/api/reports/${id}`, { method: 'DELETE' }),
   exportPdf: (id: number) => request<Record<string, unknown>>(`/api/reports/${id}/export-pdf`, { method: 'POST' }),

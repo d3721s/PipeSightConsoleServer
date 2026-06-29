@@ -31,6 +31,14 @@ def _storage_url(absolute_path: str) -> str | None:
 def start_report(payload: ReportCreate, db: Session = Depends(get_db)) -> Report:
     if db.get(Project, payload.project_id) is None:
         raise HTTPException(status_code=404, detail="未找到该项目")
+    # Only one report may be running at a time. If one already exists (e.g. the
+    # page was refreshed and the client lost its handle), return that one instead
+    # of creating a duplicate.
+    existing = db.scalar(
+        select(Report).where(Report.status == "running").order_by(Report.started_at.desc())
+    )
+    if existing is not None:
+        return existing
     report = Report(
         project_id=payload.project_id,
         session_id=payload.session_id,
@@ -42,6 +50,15 @@ def start_report(payload: ReportCreate, db: Session = Depends(get_db)) -> Report
     db.commit()
     db.refresh(report)
     return report
+
+
+@router.get("/current", response_model=ReportOut | None)
+def current_report(db: Session = Depends(get_db)) -> Report | None:
+    # The single running report, if any — used to restore report state after a
+    # client refresh. Returns null when no report is running.
+    return db.scalar(
+        select(Report).where(Report.status == "running").order_by(Report.started_at.desc())
+    )
 
 
 @router.post("/{report_id}/stop", response_model=ReportOut)

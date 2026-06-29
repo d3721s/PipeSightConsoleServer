@@ -59,6 +59,14 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)) -> Ins
     return session
 
 
+@router.get("/sessions/{session_id}", response_model=SessionOut)
+def get_session(session_id: int, db: Session = Depends(get_db)) -> InspectionSession:
+    session = db.get(InspectionSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="未找到该任务")
+    return session
+
+
 @router.post("/sessions/{session_id}/finish", response_model=SessionOut)
 def finish_session(session_id: int, db: Session = Depends(get_db)) -> InspectionSession:
     session = db.get(InspectionSession, session_id)
