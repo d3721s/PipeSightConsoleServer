@@ -228,7 +228,7 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
   text-align: center;
 }
 .ro-label {
-  color: #8d8d8d;
+  color: #f4f4f4;
   font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.01em;

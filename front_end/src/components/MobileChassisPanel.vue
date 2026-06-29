@@ -293,8 +293,10 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   gap: 0.4rem;
   padding: 0.15rem 0;
 }
+/* Field label under a section heading (灯光1/灯光2/速度) — white per the
+   "section heading gray, everything else white" rail convention. */
 .pwm-label {
-  color: #8d8d8d;
+  color: #f4f4f4;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -379,7 +381,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   text-align: center;
 }
 .mi-label {
-  color: #8d8d8d;
+  color: #f4f4f4;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -402,7 +404,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   justify-content: space-between;
 }
 .readout-row span {
-  color: #8d8d8d;
+  color: #f4f4f4;
 }
 .readout-row strong {
   color: #f4f4f4;
