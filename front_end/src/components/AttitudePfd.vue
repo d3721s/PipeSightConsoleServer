@@ -191,8 +191,8 @@ const headingLabels = Array.from({ length: 12 }, (_, i) => {
   opacity: 0.5;
 }
 .pfd-svg {
-  width: 11rem;
-  height: 11rem;
+  width: 12rem;
+  height: 12rem;
   max-width: 100%;
   flex: 0 0 auto;
 }
