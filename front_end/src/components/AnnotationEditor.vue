@@ -416,6 +416,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  /* Fill the annotate-main column so the canvas area can flex-grow into the
+     space left by the toolbar / form / actions instead of being a small box. */
+  height: 100%;
+  min-height: 0;
 }
 .annot-toolbar {
   display: flex;
@@ -505,14 +509,19 @@ onMounted(() => {
 .annot-canvas-wrap {
   display: flex;
   justify-content: center;
+  align-items: center;
   background: #000;
   border: 1px solid #e0e0e0;
-  max-height: 55vh;
-  overflow: auto;
+  /* Grow to fill the available height; keep a sensible floor and a generous
+     ceiling so the image gets as much room as the layout allows. */
+  flex: 1 1 auto;
+  min-height: 20rem;
+  max-height: 78vh;
+  overflow: hidden;
 }
 .annot-canvas-wrap canvas {
   max-width: 100%;
-  max-height: 55vh;
+  max-height: 100%;
   object-fit: contain;
   touch-action: none;
   cursor: crosshair;

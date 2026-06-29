@@ -602,8 +602,11 @@ async function confirmDeleteMedia() {
   align-items: center;
   background: #000;
   border: 1px solid #e0e0e0;
-  min-height: 18rem;
-  max-height: 60vh;
+  /* Grow to fill the space left in the column so the image isn't squeezed into
+     a small strip; keep a floor and a generous ceiling. */
+  flex: 1 1 auto;
+  min-height: 20rem;
+  max-height: 78vh;
   overflow: hidden;
 }
 .preview-img,
@@ -611,7 +614,8 @@ async function confirmDeleteMedia() {
   /* Explicit width: a <video> with only max-* constraints collapses to ~0
      height before metadata loads, making it invisible. */
   width: 100%;
-  max-height: 60vh;
+  height: 100%;
+  max-height: 78vh;
   object-fit: contain;
 }
 .preview-bar {
