@@ -19,7 +19,7 @@ const form = reactive({
 })
 
 const fields: { key: keyof typeof form; label: string; placeholder?: string }[] = [
-  { key: 'name', label: '项目名称*', placeholder: '请输入项目名称' },
+  { key: 'name', label: '*项目名称', placeholder: '请输入项目名称' },
   { key: 'fanModel', label: '风机机型' },
   { key: 'fanNo', label: '风机编号' },
   { key: 'bladeModel', label: '叶片型号' },
