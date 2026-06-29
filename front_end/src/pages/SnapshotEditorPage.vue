@@ -561,11 +561,14 @@ async function confirmDeleteMedia() {
   display: none;
 }
 /* Plain flow inside the scrolling overlay — no flex height games, no inner
-   scroll, so the whole thing scrolls as one page. */
+   scroll, so the whole thing scrolls as one page. Drop the panel's own padding
+   so the sticky toolbar can pin flush to the overlay's top. */
 .annotate-page.maximized .annotate-main {
   display: block;
   overflow: visible;
   height: auto;
+  padding: 0;
+  border: none;
 }
 /* Big image: use most of the viewport height. It's not forced to fit the whole
    page alongside the form — the page scrolls instead. object-fit: contain keeps
@@ -583,6 +586,15 @@ async function confirmDeleteMedia() {
 }
 .annotate-page.maximized :deep(.annot-editor) {
   height: auto;
+}
+/* Pin the annotation toolbar to the top of the scrolling overlay so it's never
+   clipped and stays reachable while you scroll the big image / form below. */
+.annotate-page.maximized :deep(.annot-toolbar) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 0.25rem;
+  background: #ffffff;
 }
 .media-rail {
   background: #ffffff;
