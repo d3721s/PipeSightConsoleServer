@@ -351,6 +351,14 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 .chassis-readout .clear-btn {
   margin-top: 0.5rem;
 }
+/* 电池电量/故障码 reads as a continuation of the control cluster above it, so
+   match the tighter 灯光/最大速度 inter-section divider (0.75rem gap + 0.75rem
+   padding) instead of the looser 1.25rem .chassis-group gap. The negative margin
+   trims the parent gap (1.25rem) down to 0.75rem. */
+.chassis-status {
+  margin-top: -0.5rem;
+  padding-top: 0.75rem;
+}
 /* Left/right wheel mileage read-out: gray caption, white value. */
 .mileage-row {
   display: flex;
