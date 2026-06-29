@@ -64,7 +64,7 @@ async function submit() {
         />
       </div>
       <div class="form-actions">
-        <cv-button size="lg" kind="secondary" @click="router.push('/')">返回首页</cv-button>
+        <cv-button size="lg" kind="ghost" @click="router.push('/')">返回首页</cv-button>
         <cv-button size="lg" :icon="ArrowRight24" :disabled="busy" @click="submit">开始巡检</cv-button>
       </div>
     </cv-tile>

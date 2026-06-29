@@ -456,12 +456,11 @@ async function confirmDeleteMedia() {
           <cv-tag v-else-if="!activeDepthFrame" kind="red" label="无深度数据" />
           <span class="preview-bar-spacer" />
           <cv-button
-            size="sm"
             :icon="Calculator24"
             :disabled="!activeDepthFrame"
             @click="measureDepth"
           >框选计算面积</cv-button>
-          <cv-button size="sm" kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此快照</cv-button>
+          <cv-button kind="danger--ghost" :icon="TrashCan24" @click="askDeleteMedia(activePhoto)">删除此快照</cv-button>
         </div>
         <div class="anno-saved">
           <h3>已保存测量（{{ graphicAnnotations.length }}）</h3>
