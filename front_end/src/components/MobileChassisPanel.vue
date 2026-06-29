@@ -271,6 +271,11 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
   flex-direction: column;
   gap: 0.25rem;
 }
+/* Divider line between the stacked control sections (灯光 / 最大速度). */
+.chassis-controls .chassis-section + .chassis-section {
+  padding-top: 0.75rem;
+  border-top: 1px solid #393939;
+}
 .light-sliders {
   display: flex;
   flex-direction: column;
@@ -281,9 +286,9 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 }
 .pwm-row {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+  grid-template-columns: 2.5rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   padding: 0.15rem 0;
 }
 .pwm-label {
@@ -295,14 +300,14 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 }
 .pwm-controls {
   display: grid;
-  grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+  grid-template-columns: 2rem minmax(0, 1fr) 2rem;
   align-items: center;
   gap: 0.25rem;
   width: 100%;
 }
 .pwm-btn {
-  width: 2.25rem;
-  min-width: 2.25rem;
+  width: 2rem;
+  min-width: 2rem;
   height: 2.25rem;
   padding: 0 !important;
 }
@@ -311,7 +316,7 @@ const fmtText = (v: string | null) => (v === null || v === '' ? '--' : v)
 }
 .pwm-value {
   min-width: 0;
-  height: 2.75rem;
+  height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
