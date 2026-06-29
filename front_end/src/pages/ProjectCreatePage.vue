@@ -50,7 +50,7 @@ async function submit() {
   <div class="page form-page">
     <header class="page-head">
       <h1>风电机组叶片信息收集表</h1>
-      <p class="page-sub">填写本次巡检的机组与叶片信息，提交后进入控制台</p>
+      <p class="page-sub">填写本次巡检的机组与叶片信息，提交后进入实时巡检</p>
     </header>
 
     <cv-tile class="form-tile">
@@ -65,7 +65,7 @@ async function submit() {
       </div>
       <div class="form-actions">
         <cv-button size="lg" kind="secondary" @click="router.push('/')">返回首页</cv-button>
-        <cv-button size="lg" :icon="ArrowRight24" :disabled="busy" @click="submit">进入控制台</cv-button>
+        <cv-button size="lg" :icon="ArrowRight24" :disabled="busy" @click="submit">开始巡检</cv-button>
       </div>
     </cv-tile>
   </div>

@@ -19,7 +19,7 @@ html {
      2560-physical panel), so this is what tunes the tablet density. Lower the vw
      to fit more on screen, raise it to make things bigger. Clamp bounds keep it
      sane on very narrow / very wide viewports. */
-  font-size: clamp(6px, 1.5vw, 32px);
+  font-size: clamp(6px, 1.2vw, 32px);
 }
 
 * {
