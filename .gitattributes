@@ -1,0 +1,43 @@
+# 自动换行符配置
+# 确保 shell 脚本在所有平台上都使用 LF（Unix 换行符）
+
+# Shell 脚本必须使用 LF
+*.sh text eol=lf
+
+# Python 文件使用 LF
+*.py text eol=lf
+
+# 配置文件使用 LF
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+
+# Markdown 和文档
+*.md text eol=lf
+
+# 前端代码使用 LF
+*.js text eol=lf
+*.ts text eol=lf
+*.vue text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+
+# C++ 代码使用 LF
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.so binary
+*.a binary
+*.dylib binary
+*.dll binary
+*.exe binary
