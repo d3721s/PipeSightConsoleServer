@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db
 from app.models import Annotation, Marker, MediaAsset
-from app.schemas import AnnotationCreate, GraphicAnnotationIn, MarkerCreate, MarkerOut
+from app.schemas import GraphicAnnotationIn, MarkerCreate, MarkerOut
 from app.services import annotation_service
 
 
@@ -23,91 +23,6 @@ def _storage_url(absolute_path: str) -> str | None:
     except (ValueError, OSError):
         return None
     return "/storage/" + rel.as_posix()
-
-
-@router.post("/annotations")
-def create_annotation(payload: AnnotationCreate, db: Session = Depends(get_db)) -> dict:
-    if db.get(MediaAsset, payload.media_asset_id) is None:
-        raise HTTPException(status_code=404, detail="未找到该文件")
-    annotation = Annotation(
-        media_asset_id=payload.media_asset_id,
-        annotation_json=payload.annotation_json,
-        rendered_path=payload.rendered_path,
-    )
-    db.add(annotation)
-    db.commit()
-    db.refresh(annotation)
-    return {"id": annotation.id}
-
-
-@router.get("/media/{media_id}/annotations")
-def list_annotations(media_id: int, db: Session = Depends(get_db)) -> list[dict]:
-    rows = db.scalars(select(Annotation).where(Annotation.media_asset_id == media_id)).all()
-    return [
-        {
-            "id": row.id,
-            "mediaAssetId": row.media_asset_id,
-            "annotationJson": row.annotation_json,
-            "renderedPath": row.rendered_path,
-            "createdAt": row.created_at,
-        }
-        for row in rows
-    ]
-
-
-@router.post("/markers", response_model=MarkerOut)
-def create_marker(payload: MarkerCreate, db: Session = Depends(get_db)) -> Marker:
-    marker = Marker(
-        project_id=payload.project_id,
-        session_id=payload.session_id,
-        media_asset_id=payload.media_asset_id,
-        defect_type=payload.defect_type,
-        defect_code=payload.defect_code,
-        severity=payload.severity,
-        direction=payload.direction,
-        position=payload.position,
-        note=payload.note,
-        left_mileage=payload.left_mileage,
-        right_mileage=payload.right_mileage,
-    )
-    db.add(marker)
-    db.commit()
-    db.refresh(marker)
-    return marker
-
-
-@router.get("/media/{media_id}/markers", response_model=list[MarkerOut])
-def list_markers(media_id: int, db: Session = Depends(get_db)) -> list[Marker]:
-    return list(
-        db.scalars(
-            select(Marker).where(Marker.media_asset_id == media_id).order_by(Marker.left_mileage, Marker.id)
-        ).all()
-    )
-
-
-@router.put("/markers/{marker_id}", response_model=MarkerOut)
-def update_marker(marker_id: int, payload: MarkerCreate, db: Session = Depends(get_db)) -> Marker:
-    marker = db.get(Marker, marker_id)
-    if not marker:
-        raise HTTPException(status_code=404, detail="未找到该标记")
-    for key, value in payload.model_dump(by_alias=False).items():
-        setattr(marker, key, value)
-    db.commit()
-    db.refresh(marker)
-    return marker
-
-
-@router.delete("/markers/{marker_id}")
-def delete_marker(marker_id: int, db: Session = Depends(get_db)) -> dict:
-    marker = db.get(Marker, marker_id)
-    if not marker:
-        raise HTTPException(status_code=404, detail="未找到该标记")
-    db.delete(marker)
-    db.commit()
-    return {"ok": True}
-
-
-# --- graphical annotations (image / video frame) ---------------------------
 
 
 def _annotation_out(ann: Annotation) -> dict:
@@ -186,6 +101,58 @@ def create_graphic_annotation(payload: GraphicAnnotationIn, db: Session = Depend
     return _annotation_out(annotation)
 
 
+@router.post("/markers", response_model=MarkerOut)
+def create_marker(payload: MarkerCreate, db: Session = Depends(get_db)) -> Marker:
+    marker = Marker(
+        project_id=payload.project_id,
+        session_id=payload.session_id,
+        media_asset_id=payload.media_asset_id,
+        defect_type=payload.defect_type,
+        defect_code=payload.defect_code,
+        severity=payload.severity,
+        direction=payload.direction,
+        position=payload.position,
+        note=payload.note,
+        left_mileage=payload.left_mileage,
+        right_mileage=payload.right_mileage,
+    )
+    db.add(marker)
+    db.commit()
+    db.refresh(marker)
+    return marker
+
+
+@router.get("/media/{media_id}/markers", response_model=list[MarkerOut])
+def list_markers(media_id: int, db: Session = Depends(get_db)) -> list[Marker]:
+    return list(
+        db.scalars(
+            select(Marker).where(Marker.media_asset_id == media_id).order_by(Marker.left_mileage, Marker.id)
+        ).all()
+    )
+
+
+@router.put("/markers/{marker_id}", response_model=MarkerOut)
+def update_marker(marker_id: int, payload: MarkerCreate, db: Session = Depends(get_db)) -> Marker:
+    marker = db.get(Marker, marker_id)
+    if not marker:
+        raise HTTPException(status_code=404, detail="未找到该标记")
+    for key, value in payload.model_dump(by_alias=False).items():
+        setattr(marker, key, value)
+    db.commit()
+    db.refresh(marker)
+    return marker
+
+
+@router.delete("/markers/{marker_id}")
+def delete_marker(marker_id: int, db: Session = Depends(get_db)) -> dict:
+    marker = db.get(Marker, marker_id)
+    if not marker:
+        raise HTTPException(status_code=404, detail="未找到该标记")
+    db.delete(marker)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/media/{media_id}/graphic-annotations")
 def list_graphic_annotations(media_id: int, db: Session = Depends(get_db)) -> list[dict]:
     rows = db.scalars(
@@ -208,4 +175,3 @@ def delete_graphic_annotation(annotation_id: int, db: Session = Depends(get_db))
     db.delete(ann)
     db.commit()
     return {"ok": True}
-

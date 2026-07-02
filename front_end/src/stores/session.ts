@@ -93,8 +93,6 @@ export function clearNotice() {
   if (noticeTimer !== null) window.clearTimeout(noticeTimer)
 }
 
-export const hasActiveSession = () => Boolean(currentProject.value && currentSession.value)
-
 // Create a project + its inspection session in one step (matches the old flow).
 export async function createProjectWithSession(form: Record<string, unknown>) {
   const project = await api.createProject(form)

@@ -76,7 +76,6 @@ export interface ChassisTelemetry {
   rightMileage: number | null
   battery: number | null
   faultCode: number | null
-  light: number | null   // IMU D1/D3 PWM: 1 off, 2 low, 3 high
   lightPwm?: LightPwm | null
   roll: number | null
   pitch: number | null
@@ -206,4 +205,3 @@ export interface ReportDetail {
   } | null
   annotations: ReportDetailAnnotation[]
 }
-

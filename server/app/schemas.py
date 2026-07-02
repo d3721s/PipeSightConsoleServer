@@ -133,12 +133,6 @@ class RecordingStatusOut(BaseModel):
     error: str | None = None
 
 
-class AnnotationCreate(BaseModel):
-    media_asset_id: int = Field(alias="mediaAssetId")
-    annotation_json: dict[str, Any] = Field(alias="annotationJson")
-    rendered_path: str = Field(default="", alias="renderedPath")
-
-
 class GraphicAnnotationIn(BaseModel):
     # Graphical annotation saved from the editor (image or video frame).
     media_asset_id: int | None = Field(default=None, alias="mediaAssetId")

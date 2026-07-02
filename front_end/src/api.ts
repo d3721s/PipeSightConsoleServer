@@ -58,8 +58,6 @@ export const api = {
   odometer: (signal?: AbortSignal) => request<{ connected: boolean; mileageCm: number | null; mileageM: number | null }>('/api/odometer', { signal }),
 
   chassisTelemetry: (signal?: AbortSignal) => request<ChassisTelemetry>('/api/chassis/telemetry', { signal }),
-  setChassisLight: (value: number) =>
-    request<{ ok: boolean; light: number }>('/api/chassis/light', { method: 'POST', body: JSON.stringify({ value }) }),
   setChassisLightPwm: (d1PulseUs: number, d3PulseUs: number) =>
     request<{ ok: boolean; lightPwm: LightPwm }>('/api/chassis/light/pwm', {
       method: 'POST',

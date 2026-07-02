@@ -128,14 +128,3 @@ class SystemSetting(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(128), index=True)
     value_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-
-
-class SystemLog(Base):
-    __tablename__ = "system_logs"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ts: Mapped[datetime] = mapped_column(DateTime, default=now)
-    level: Mapped[str] = mapped_column(String(32), default="info")
-    source: Mapped[str] = mapped_column(String(64), default="")
-    message: Mapped[str] = mapped_column(Text, default="")
-

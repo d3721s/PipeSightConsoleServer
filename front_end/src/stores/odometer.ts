@@ -13,10 +13,7 @@ export const leftWheelM = ref<number | null>(null)
 export const rightWheelM = ref<number | null>(null)
 export const batteryLevel = ref<number | null>(null)
 export const faultCode = ref<string | null>(null)
-export const chassisId = ref<string | null>(null)
 export const chassisConnected = ref(false)
-export const chassisLight = ref<number | null>(null) // 1 off / 2 low / 3 high
-export const lightPwmPeriod = ref<number | null>(null)
 export const lightD1Pulse = ref<number | null>(null)
 export const lightD3Pulse = ref<number | null>(null)
 // IMU Euler angles (deg) from ATK-MS901M.
@@ -127,8 +124,6 @@ async function pollChassis() {
     rightWheelM.value = t.rightMileage
     batteryLevel.value = t.battery
     faultCode.value = t.faultCode === null ? null : `0x${t.faultCode.toString(16).padStart(2, '0')}`
-    chassisLight.value = t.light
-    lightPwmPeriod.value = t.lightPwm?.periodUs ?? null
     lightD1Pulse.value = t.lightPwm?.d1PulseUs ?? null
     lightD3Pulse.value = t.lightPwm?.d3PulseUs ?? null
     eulerRoll.value = t.roll
@@ -138,7 +133,6 @@ async function pollChassis() {
     chassisConnected.value = false
     batteryLevel.value = null
     faultCode.value = null
-    lightPwmPeriod.value = null
     lightD1Pulse.value = null
     lightD3Pulse.value = null
     eulerRoll.value = null

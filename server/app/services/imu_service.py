@@ -58,7 +58,6 @@ class ImuService:
         self._roll: float | None = None
         self._pitch: float | None = None
         self._yaw: float | None = None
-        self._light: int | None = None
         self._light_pwm: dict[str, int] | None = None
         self._connected = False
         self._last_frame_at: float | None = None
@@ -90,29 +89,15 @@ class ImuService:
         with self._lock:
             return self._roll, self._pitch, self._yaw
 
-    def get_light(self) -> int | None:
-        with self._lock:
-            return self._light
-
     def get_light_pwm(self) -> dict[str, int] | None:
         with self._lock:
             return dict(self._light_pwm) if self._light_pwm is not None else None
-
-    def set_light(self, value: int) -> bool:
-        value = int(value)
-        if value not in (1, 2, 3):
-            return False
-
-        period = self._bounded_u16(settings.imu_light_pwm_period_us, minimum=1)
-        d1_pulse, d3_pulse = self._light_pulses(value, period)
-        return self.set_light_pwm(d1_pulse, d3_pulse, period, light=value)
 
     def set_light_pwm(
         self,
         d1_pulse_us: int,
         d3_pulse_us: int,
         period_us: int | None = None,
-        light: int | None = None,
     ) -> bool:
         period = self._bounded_u16(
             settings.imu_light_pwm_period_us if period_us is None else period_us,
@@ -141,8 +126,7 @@ class ImuService:
 
         with self._command_lock:
             logger.info(
-                "Setting IMU light PWM: light=%s period_us=%s d1_pulse_us=%s d3_pulse_us=%s",
-                light,
+                "Setting IMU light PWM: period_us=%s d1_pulse_us=%s d3_pulse_us=%s",
                 period,
                 d1_pulse,
                 d3_pulse,
@@ -156,7 +140,6 @@ class ImuService:
                     return False
 
         with self._lock:
-            self._light = light
             self._light_pwm = {
                 "periodUs": period,
                 "d1PulseUs": d1_pulse,
@@ -438,19 +421,6 @@ class ImuService:
     @staticmethod
     def _bounded_pulse(value: int, period: int) -> int:
         return max(0, min(period, int(value)))
-
-    def _light_pulses(self, value: int, period: int) -> tuple[int, int]:
-        if value == 1:
-            return 0, 0
-        if value == 2:
-            return (
-                self._bounded_pulse(settings.imu_light_low_d1_pulse_us, period),
-                self._bounded_pulse(settings.imu_light_low_d3_pulse_us, period),
-            )
-        return (
-            self._bounded_pulse(settings.imu_light_high_d1_pulse_us, period),
-            self._bounded_pulse(settings.imu_light_high_d3_pulse_us, period),
-        )
 
     def _record_error(self, message: str) -> None:
         if message != self._last_logged_error:

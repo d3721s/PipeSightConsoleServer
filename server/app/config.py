@@ -56,10 +56,6 @@ class Settings(BaseSettings):
     # Light output through the IMU's D1/D3 PWM pins. The period is fixed at 100,
     # so D1/D3 pulse values map directly to 0-100% slider values.
     imu_light_pwm_period_us: int = 100
-    imu_light_low_d1_pulse_us: int = 50
-    imu_light_low_d3_pulse_us: int = 50
-    imu_light_high_d1_pulse_us: int = 100
-    imu_light_high_d3_pulse_us: int = 100
     pointcloud_bridge_ws_url: str = "ws://127.0.0.1:9090"
     depth_bridge_ws_url: str = "ws://127.0.0.1:9091"
 

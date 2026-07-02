@@ -16,7 +16,6 @@ def telemetry() -> dict:
     t = modbus_chassis_service.get_telemetry()
     imu = imu_service.snapshot()
     imu_fresh = bool(imu["fresh"])
-    light = imu_service.get_light()
     light_pwm = imu_service.get_light_pwm()
     return {
         "connected": t.connected,
@@ -24,7 +23,6 @@ def telemetry() -> dict:
         "rightMileage": t.right_mileage,
         "battery": t.battery,
         "faultCode": t.fault_code,
-        "light": light,                  # IMU D1/D3 PWM: 1 off / 2 low / 3 high
         "lightPwm": light_pwm,
         # IMU Euler angles (deg): roll/pitch/yaw from ATK-MS901M over UART.
         "roll": imu["roll"] if imu_fresh else None,
@@ -33,21 +31,10 @@ def telemetry() -> dict:
     }
 
 
-class LightIn(BaseModel):
-    value: int = Field(ge=1, le=3)  # 1 off, 2 low beam, 3 high beam
-
-
 class LightPwmIn(BaseModel):
     periodUs: int | None = Field(default=LIGHT_PWM_PERIOD_US, ge=LIGHT_PWM_PERIOD_US, le=LIGHT_PWM_PERIOD_US)
     d1PulseUs: int = Field(ge=0, le=LIGHT_PWM_PERIOD_US)
     d3PulseUs: int = Field(ge=0, le=LIGHT_PWM_PERIOD_US)
-
-
-@router.post("/light")
-def set_light(payload: LightIn) -> dict:
-    if not imu_service.set_light(payload.value):
-        raise HTTPException(status_code=502, detail="灯光设置未生效，请稍后重试")
-    return {"ok": True, "light": payload.value}
 
 
 @router.post("/light/pwm")

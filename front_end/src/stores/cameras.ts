@@ -14,7 +14,6 @@ export const recording = ref<RecordingStatus>({ active: false })
 export const recordingBusy = ref(false)
 export const digitalZoom = ref(1)
 
-export const activeCamera = computed(() => cameras.value.find((c) => c.code === active.device))
 export const isPtzChannel = computed(() => active.channel === 1)
 
 let loaded = false

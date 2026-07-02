@@ -5,8 +5,8 @@ import { CvHeader, CvHeaderName, CvHeaderNav, CvHeaderMenuItem, CvContent } from
 import { ExpandScreen24, ShrinkScreen24 } from '@carbon/icons-vue'
 import { cameraControlSocket } from './ws'
 import { ensureLoaded } from './stores/cameras'
-import { chassisControlEnabled, startOdometerPolling } from './stores/odometer'
-import { activeReport, restoreSession, startStatusSync } from './stores/session'
+import { chassisControlEnabled, startOdometerPolling, stopOdometerPolling } from './stores/odometer'
+import { activeReport, restoreSession, startStatusSync, stopStatusSync } from './stores/session'
 import AppToast from './components/AppToast.vue'
 import CameraConsolePage from './pages/CameraConsolePage.vue'
 
@@ -79,6 +79,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncFullscreen)
+  stopOdometerPolling()
+  stopStatusSync()
 })
 </script>
 
