@@ -93,11 +93,13 @@ def create_image_snapshot(payload: ImageSnapshotIn, db: Session = Depends(get_db
             save_depth_raw(path, payload.depth_raw)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    camera_device = payload.device or payload.source
+    camera_channel = payload.channel or 0
     asset = MediaAsset(
         project_id=payload.project_id,
         session_id=payload.session_id,
-        camera_device=payload.source,
-        camera_channel=0,
+        camera_device=camera_device,
+        camera_channel=camera_channel,
         type="photo",
         file_path=path,
         left_mileage=payload.left_mileage,
@@ -274,4 +276,3 @@ def delete_media(asset_id: int, db: Session = Depends(get_db)) -> dict:
     db.delete(asset)
     db.commit()
     return {"ok": True}
-

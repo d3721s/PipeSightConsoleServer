@@ -249,6 +249,22 @@ function stop(clearError = true) {
   if (clearError) error.value = ''
 }
 
+function snapshot(): string {
+  const frame = video.value
+  if (!frame || frame.videoWidth <= 0 || frame.videoHeight <= 0) return ''
+
+  const canvas = document.createElement('canvas')
+  canvas.width = frame.videoWidth
+  canvas.height = frame.videoHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  ctx.drawImage(frame, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/png')
+}
+
+defineExpose({ snapshot })
+
 // Reconnect only when the stream source actually changes.
 watch(() => props.src, start, { immediate: true })
 watch(() => props.active, (active) => {
@@ -343,4 +359,3 @@ onBeforeUnmount(() => stop())
   background: #0b0c0d;
 }
 </style>
-

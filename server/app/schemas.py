@@ -98,6 +98,8 @@ class ImageSnapshotIn(BaseModel):
     right_mileage: float | None = Field(default=None, alias="rightMileage")
     image: str  # PNG data URL
     source: str = "3d"  # tag for the snapshot origin
+    device: Literal["front", "rear"] | None = None
+    channel: int | None = Field(default=None, ge=1, le=2)
     # Optional raw depth blob (base64) saved alongside depth snapshots so the area
     # can be measured later. Layout: see front_end/src/utils/depthArea.ts.
     depth_raw: str | None = Field(default=None, alias="depthRaw")
@@ -197,4 +199,3 @@ class ReportOut(ReportCreate):
     exported_at: datetime | None = Field(default=None, alias="exportedAt")
 
     model_config = {"from_attributes": True, "populate_by_name": True}
-
