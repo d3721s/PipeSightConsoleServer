@@ -11,11 +11,11 @@ from app.config import get_settings
 from app.db import get_db
 from app.drivers.rtsp import build_rtsp_url
 from app.models import Annotation, CameraDevice, Marker, MediaAsset, Project
-from app.schemas import ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut, SnapshotIn
+from app.schemas import ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut
 from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
 from app.services.settings_service import get_setting
-from app.services.snapshot_service import save_depth_raw, save_png_snapshot, take_snapshot
+from app.services.snapshot_service import save_depth_raw, save_png_snapshot
 from app.services.storage_service import enforce_media_quota
 
 
@@ -43,43 +43,6 @@ def _camera_for_request(db: Session, device: str | None, channel: int | None) ->
     if not camera.ip:
         raise HTTPException(status_code=400, detail="请先填写相机 IP 地址")
     return camera, int(channel)
-
-
-@router.post("/snapshots", response_model=MediaAssetOut)
-def create_snapshot(payload: SnapshotIn, db: Session = Depends(get_db)) -> MediaAsset:
-    camera, channel = _camera_for_request(db, payload.device, payload.channel)
-
-    project_name = payload.project_name
-    project_location = payload.project_location
-    if (not project_name or not project_location) and payload.project_id is not None:
-        project = db.get(Project, payload.project_id)
-        if project is not None:
-            project_name = project_name or project.name
-            project_location = project_location or project.location
-
-    try:
-        path = take_snapshot(
-            build_rtsp_url(camera, channel),
-            project_name=project_name,
-            project_location=project_location,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    asset = MediaAsset(
-        project_id=payload.project_id,
-        session_id=payload.session_id,
-        camera_device=camera.code,
-        camera_channel=channel,
-        type="photo",
-        file_path=path,
-        left_mileage=payload.left_mileage,
-        right_mileage=payload.right_mileage,
-    )
-    db.add(asset)
-    db.commit()
-    db.refresh(asset)
-    enforce_media_quota(db, protected_asset_ids={asset.id})
-    return asset
 
 
 @router.post("/snapshots/image", response_model=MediaAssetOut)

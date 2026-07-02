@@ -49,8 +49,6 @@ export const api = {
   getSession: (id: number) => request<Session>(`/api/sessions/${id}`),
   finishSession: (id: number) => request<Session>(`/api/sessions/${id}/finish`, { method: 'POST' }),
 
-  snapshot: (data: Record<string, unknown>) =>
-    request<Record<string, unknown>>('/api/snapshots', { method: 'POST', body: JSON.stringify(data) }),
   imageSnapshot: (data: Record<string, unknown>) =>
     request<Record<string, unknown>>('/api/snapshots/image', { method: 'POST', body: JSON.stringify(data) }),
   startRecording: (data: Record<string, unknown>) =>
@@ -108,4 +106,3 @@ export const api = {
   reportDetail: (id: number) => request<ReportDetail>(`/api/reports/${id}/detail`),
   reportPdfUrl: (id: number) => `/api/reports/${id}/pdf`
 }
-

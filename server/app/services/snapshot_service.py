@@ -1,59 +1,12 @@
 from __future__ import annotations
 
-import os
-import subprocess
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
 from app.config import get_settings
-from app.services.osd_service import build_ffmpeg_osd_filter, osd_text
 
 
 settings = get_settings()
-
-
-def take_snapshot(
-    rtsp_url: str,
-    *,
-    project_name: str = "",
-    project_location: str = "",
-) -> str:
-    snapshot_dir = settings.active_storage_dir / "snapshots"
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-    name = f"PipeSight_snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]}.png"
-    path = snapshot_dir / name
-
-    # Render the OSD from a textfile (same approach as recording) to avoid
-    # drawtext inline-text escaping pitfalls with ':' and Chinese characters.
-    osd_fd, osd_name = tempfile.mkstemp(suffix=".txt", dir=str(snapshot_dir))
-    try:
-        with os.fdopen(osd_fd, "w", encoding="utf-8") as fh:
-            fh.write(osd_text(project_name, project_location))
-        vf = build_ffmpeg_osd_filter(osd_name, reload=False)
-        command = [
-            settings.ffmpeg_exe,
-            "-hide_banner",
-            "-y",
-            "-rtsp_transport",
-            "tcp",
-            "-i",
-            rtsp_url,
-            "-frames:v",
-            "1",
-            "-vf",
-            vf,
-            str(path),
-        ]
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, timeout=15)
-    finally:
-        try:
-            os.unlink(osd_name)
-        except OSError:
-            pass
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "snapshot failed")
-    return str(path)
 
 
 def save_png_snapshot(png_data_url: str, *, prefix: str = "PipeSight_3d") -> str:

@@ -148,7 +148,7 @@ curl http://127.0.0.1:8000/api/system/health
 - `POST /api/cameras/{front|rear}/probe-onvif`
 - `POST /api/cameras/active`
 - `GET /api/cameras/active/stream`
-- `POST /api/snapshots`
+- `POST /api/snapshots/image`
 - `POST /api/recordings/start`
 - `POST /api/recordings/stop`
 - `POST /api/reports/{id}/export-pdf`

@@ -79,7 +79,7 @@ class SessionOut(BaseModel):
     model_config = {"from_attributes": True, "populate_by_name": True}
 
 
-class SnapshotIn(BaseModel):
+class RecordingBaseIn(BaseModel):
     project_id: int | None = Field(default=None, alias="projectId")
     session_id: int | None = Field(default=None, alias="sessionId")
     device: Literal["front", "rear"] | None = None
@@ -120,7 +120,7 @@ class MediaAssetOut(BaseModel):
     model_config = {"from_attributes": True, "populate_by_name": True}
 
 
-class RecordingStartIn(SnapshotIn):
+class RecordingStartIn(RecordingBaseIn):
     segment_minutes: int | None = Field(default=None, alias="segmentMinutes")
 
 
