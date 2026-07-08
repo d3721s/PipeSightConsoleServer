@@ -405,14 +405,12 @@ async function confirmDeleteMedia() {
         <cv-button
           kind="tertiary"
           size="sm"
-          :icon="Download24"
           :disabled="downloadablePhotos.length === 0"
           @click="openBulkDownload('photo')"
         >批量下载图片</cv-button>
         <cv-button
           kind="tertiary"
           size="sm"
-          :icon="Download24"
           :disabled="downloadableRecordings.length === 0"
           @click="openBulkDownload('video')"
         >批量下载视频</cv-button>
@@ -747,16 +745,11 @@ async function confirmDeleteMedia() {
 }
 .media-actions :deep(.bx--btn) {
   width: 100%;
-  min-height: 2rem;
-  padding: 0 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
   justify-content: center;
-  font-size: 13px;
+  font-size: 0.875rem;
   white-space: nowrap;
-}
-.media-actions :deep(.bx--btn__icon) {
-  width: 1rem;
-  height: 1rem;
-  margin-left: 0.25rem;
 }
 /* Make the 3 source tabs (图像/视频/3D) share the rail width and fit without
    the scrollable-tabs overflow arrow. @carbon/vue renders SCROLLABLE tabs, so
