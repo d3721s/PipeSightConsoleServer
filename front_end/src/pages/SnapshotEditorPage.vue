@@ -741,13 +741,22 @@ async function confirmDeleteMedia() {
 }
 .media-actions {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem;
   margin-bottom: 0.5rem;
 }
 .media-actions :deep(.bx--btn) {
   width: 100%;
+  min-height: 2rem;
+  padding: 0 0.5rem;
   justify-content: center;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.media-actions :deep(.bx--btn__icon) {
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.25rem;
 }
 /* Make the 3 source tabs (图像/视频/3D) share the rail width and fit without
    the scrollable-tabs overflow arrow. @carbon/vue renders SCROLLABLE tabs, so
