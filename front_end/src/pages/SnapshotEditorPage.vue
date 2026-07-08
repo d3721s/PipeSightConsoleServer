@@ -9,6 +9,7 @@ import { decodeDepthRaw, type DepthFrame } from '../utils/depthArea'
 import type { GraphicAnnotation, Photo, Recording, TrackData } from '../types'
 
 type Tab = 'image' | 'video' | '3d'
+type BulkDownloadKind = 'photo' | 'video'
 type MileagePair = { left: number | null; right: number | null }
 const tab = ref<Tab>('image')
 
@@ -27,8 +28,21 @@ const graphicAnnotations = ref<GraphicAnnotation[]>([])
 // photos (image tab) do not. Split the one /photos list by that flag.
 const imagePhotos = computed(() => photos.value.filter((p) => !p.isDepth))
 const depthPhotos = computed(() => photos.value.filter((p) => p.isDepth))
+const downloadablePhotos = computed(() => photos.value.filter((p) => p.available && p.imageUrl))
+const downloadableRecordings = computed(() => recordings.value.filter((r) => r.available && r.videoUrl))
 const activeDepthFrame = ref<DepthFrame | null>(null)
 const depthLoading = ref(false)
+
+const bulkModalVisible = ref(false)
+const bulkDownloadKind = ref<BulkDownloadKind>('photo')
+const selectedBulkIds = ref<number[]>([])
+const bulkDownloading = ref(false)
+const bulkDownloadItems = computed<(Photo | Recording)[]>(() =>
+  bulkDownloadKind.value === 'photo' ? downloadablePhotos.value : downloadableRecordings.value
+)
+const bulkAllSelected = computed(() =>
+  bulkDownloadItems.value.length > 0 && selectedBulkIds.value.length === bulkDownloadItems.value.length
+)
 
 const annotateVideo = ref<HTMLVideoElement | null>(null)
 const videoCurrentTime = ref(0)
@@ -219,6 +233,69 @@ function downloadPhoto() {
   link.remove()
 }
 
+function openBulkDownload(kind: BulkDownloadKind) {
+  bulkDownloadKind.value = kind
+  const items = kind === 'photo' ? downloadablePhotos.value : downloadableRecordings.value
+  if (items.length === 0) {
+    notify(kind === 'photo' ? '暂无可下载的图片' : '暂无可下载的视频', 'warning')
+    return
+  }
+  selectedBulkIds.value = items.map((item) => item.id)
+  bulkModalVisible.value = true
+}
+
+function setAllBulkSelected(event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  selectedBulkIds.value = checked ? bulkDownloadItems.value.map((item) => item.id) : []
+}
+
+function bulkItemSubtitle(item: Photo | Recording): string {
+  const pair = 'imageUrl' in item ? photoMileagePair(item) : recordingMileagePair(item)
+  return `${item.capturedAt} · 里程 ${formatMileagePair(pair)}`
+}
+
+function bulkItemTypeLabel(item: Photo | Recording): string {
+  if ('videoUrl' in item) return '视频'
+  return item.isDepth ? '深度快照' : '图片'
+}
+
+function timestampForFilename(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function confirmBulkDownload() {
+  if (selectedBulkIds.value.length === 0) {
+    notify('请选择要下载的文件', 'warning')
+    return
+  }
+  bulkDownloading.value = true
+  const kind = bulkDownloadKind.value
+  try {
+    const blob = await api.bulkDownloadMedia(kind, [...selectedBulkIds.value])
+    const prefix = kind === 'photo' ? 'pipesight_images' : 'pipesight_videos'
+    downloadBlob(blob, `${prefix}_${timestampForFilename()}.zip`)
+    bulkModalVisible.value = false
+    notify('压缩包已开始下载', 'success')
+  } catch (e) {
+    notify((e as Error).message, 'error')
+  } finally {
+    bulkDownloading.value = false
+  }
+}
+
 function annotateFrame() {
   const video = annotateVideo.value
   if (!video) return
@@ -324,6 +401,22 @@ async function confirmDeleteMedia() {
   <div class="annotate-page" :class="{ maximized }">
     <!-- Left: media list -->
     <aside class="media-rail">
+      <div class="media-actions">
+        <cv-button
+          kind="tertiary"
+          size="sm"
+          :icon="Download24"
+          :disabled="downloadablePhotos.length === 0"
+          @click="openBulkDownload('photo')"
+        >批量下载图片</cv-button>
+        <cv-button
+          kind="tertiary"
+          size="sm"
+          :icon="Download24"
+          :disabled="downloadableRecordings.length === 0"
+          @click="openBulkDownload('video')"
+        >批量下载视频</cv-button>
+      </div>
       <cv-tabs aria-label="标注来源" @tab-selected="onTabSelected">
         <cv-tab label="图像">
           <div class="media-list">
@@ -514,6 +607,45 @@ async function confirmDeleteMedia() {
     </section>
 
     <cv-modal
+      :visible="bulkModalVisible"
+      :primary-button-disabled="bulkDownloading || selectedBulkIds.length === 0"
+      @update:visible="bulkModalVisible = $event"
+      @primary-click="confirmBulkDownload"
+      @secondary-click="bulkModalVisible = false"
+    >
+      <template #title>{{ bulkDownloadKind === 'photo' ? '批量下载图片' : '批量下载视频' }}</template>
+      <template #content>
+        <p class="bulk-hint">选择要打包下载的{{ bulkDownloadKind === 'photo' ? '图片' : '视频' }}文件。</p>
+        <label class="bulk-select-all">
+          <input
+            type="checkbox"
+            :checked="bulkAllSelected"
+            :disabled="bulkDownloading"
+            @change="setAllBulkSelected"
+          />
+          <span>全选（{{ selectedBulkIds.length }}/{{ bulkDownloadItems.length }}）</span>
+        </label>
+        <div class="bulk-list">
+          <label v-for="item in bulkDownloadItems" :key="item.id" class="bulk-item">
+            <input
+              v-model="selectedBulkIds"
+              type="checkbox"
+              :value="item.id"
+              :disabled="bulkDownloading"
+            />
+            <span class="bulk-item-body">
+              <span class="bulk-item-name">{{ item.name }}</span>
+              <span class="bulk-item-meta">{{ bulkItemSubtitle(item) }}</span>
+            </span>
+            <span class="bulk-item-type">{{ bulkItemTypeLabel(item) }}</span>
+          </label>
+        </div>
+      </template>
+      <template #secondary-button>取消</template>
+      <template #primary-button>{{ bulkDownloading ? '打包中…' : '下载 ZIP' }}</template>
+    </cv-modal>
+
+    <cv-modal
       kind="danger"
       :visible="confirmVisible"
       :primary-button-disabled="deleting"
@@ -606,6 +738,16 @@ async function confirmDeleteMedia() {
   border: 1px solid #e0e0e0;
   padding: 0.5rem;
   overflow-y: auto;
+}
+.media-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.media-actions :deep(.bx--btn) {
+  width: 100%;
+  justify-content: center;
 }
 /* Make the 3 source tabs (图像/视频/3D) share the rail width and fit without
    the scrollable-tabs overflow arrow. @carbon/vue renders SCROLLABLE tabs, so
@@ -707,6 +849,50 @@ async function confirmDeleteMedia() {
 }
 .preview-bar-spacer {
   flex: 1;
+}
+.bulk-hint {
+  margin: 0 0 0.75rem;
+  color: #525252;
+}
+.bulk-select-all,
+.bulk-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.bulk-select-all {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+.bulk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.bulk-item {
+  padding: 0.625rem;
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+}
+.bulk-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.bulk-item-name {
+  word-break: break-all;
+}
+.bulk-item-meta,
+.bulk-item-type {
+  color: #6f6f6f;
+  font-size: 0.75rem;
+}
+.bulk-item-type {
+  white-space: nowrap;
 }
 .anno-saved {
   margin-top: 0.5rem;

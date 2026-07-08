@@ -133,6 +133,11 @@ class RecordingStatusOut(BaseModel):
     error: str | None = None
 
 
+class BulkDownloadIn(BaseModel):
+    type: Literal["photo", "video"]
+    ids: list[int]
+
+
 class GraphicAnnotationIn(BaseModel):
     # Graphical annotation saved from the editor (image or video frame).
     media_asset_id: int | None = Field(default=None, alias="mediaAssetId")

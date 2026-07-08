@@ -18,6 +18,24 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+async function requestBlob(url: string, init?: RequestInit): Promise<Blob> {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    ...init
+  })
+  if (!response.ok) {
+    let message = response.statusText
+    try {
+      const body = await response.json()
+      message = body.detail || message
+    } catch {
+      // Keep HTTP status text.
+    }
+    throw new Error(message)
+  }
+  return response.blob()
+}
+
 export const api = {
   health: () => request<Record<string, unknown>>('/api/system/health'),
 
@@ -81,6 +99,8 @@ export const api = {
   listRecordings: () => request<Recording[]>('/api/recordings'),
   recordingTrack: (id: number) => request<TrackData>(`/api/recordings/${id}/track`),
   deleteMedia: (id: number) => request<{ ok: boolean }>(`/api/media/${id}`, { method: 'DELETE' }),
+  bulkDownloadMedia: (type: 'photo' | 'video', ids: number[]) =>
+    requestBlob('/api/media/bulk-download', { method: 'POST', body: JSON.stringify({ type, ids }) }),
   listMarkers: (mediaId: number) => request<Marker[]>(`/api/media/${mediaId}/markers`),
   createMarker: (data: Record<string, unknown>) =>
     request<Marker>('/api/markers', { method: 'POST', body: JSON.stringify(data) }),

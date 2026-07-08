@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import json
+import zipfile
+from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.background import BackgroundTask
 
 from app.config import get_settings
 from app.db import get_db
 from app.drivers.rtsp import build_rtsp_url
 from app.models import Annotation, CameraDevice, Marker, MediaAsset, Project
-from app.schemas import ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut
+from app.schemas import BulkDownloadIn, ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut
 from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
 from app.services.settings_service import get_setting
@@ -205,6 +210,66 @@ def _unlink(path: str | Path) -> None:
         Path(path).unlink(missing_ok=True)
     except OSError:
         pass
+
+
+def _zip_name(name: str, used: set[str]) -> str:
+    candidate = Path(name).name or "media"
+    if candidate not in used:
+        used.add(candidate)
+        return candidate
+    stem = Path(candidate).stem or "media"
+    suffix = Path(candidate).suffix
+    index = 2
+    while True:
+        deduped = f"{stem}_{index}{suffix}"
+        if deduped not in used:
+            used.add(deduped)
+            return deduped
+        index += 1
+
+
+@router.post("/media/bulk-download")
+def bulk_download_media(payload: BulkDownloadIn, db: Session = Depends(get_db)) -> FileResponse:
+    media_type = "photo" if payload.type == "photo" else "video"
+    label = "images" if media_type == "photo" else "videos"
+    selected_ids = set(payload.ids)
+    if not selected_ids:
+        raise HTTPException(status_code=400, detail="请选择要下载的文件")
+    assets = db.scalars(
+        select(MediaAsset)
+        .where(MediaAsset.id.in_(selected_ids), MediaAsset.type == media_type)
+        .order_by(MediaAsset.id.desc())
+    ).all()
+    found_ids = {asset.id for asset in assets}
+    if found_ids != selected_ids:
+        raise HTTPException(status_code=404, detail="所选文件不存在或类型不匹配")
+
+    paths: list[Path] = []
+    for asset in assets:
+        path = Path(asset.file_path)
+        if not path.exists() or _storage_url(asset.file_path) is None:
+            raise HTTPException(status_code=404, detail=f"文件缺失：{path.name}")
+        paths.append(path)
+
+    tmp = NamedTemporaryFile(prefix="pipesight_", suffix=".zip", delete=False)
+    zip_path = Path(tmp.name)
+    tmp.close()
+    try:
+        used_names: set[str] = set()
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
+            for path in paths:
+                archive.write(path, _zip_name(path.name, used_names))
+    except Exception:
+        _unlink(zip_path)
+        raise
+
+    filename = f"pipesight_{label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    return FileResponse(
+        str(zip_path),
+        media_type="application/zip",
+        filename=filename,
+        background=BackgroundTask(_unlink, zip_path),
+    )
 
 
 @router.delete("/media/{asset_id}")
