@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import re
 import shutil
 import sys
 from pathlib import Path
@@ -30,18 +29,21 @@ def requirements(project: Path, output: Path) -> None:
 
 def snapshot(project: Path, output: Path, sdk_arch: str) -> None:
     output.mkdir(parents=True, exist_ok=True)
-    ignored = shutil.ignore_patterns(
+    excluded = (
         ".git", ".env", ".venv", "node_modules", "dist", "__pycache__",
         "*.pyc", "*.log", ".deploy", "offline", "data", "storage",
     )
+    ignored = shutil.ignore_patterns(*excluded)
     for name in ("deploy", "front_end", "pointcloud_bridge"):
-        shutil.copytree(project / name, output / name, ignore=ignored)
+        # Service files describe the preparation host. Generate actual target units at install time.
+        exclusions = shutil.ignore_patterns(*excluded, "systemd") if name == "deploy" else ignored
+        shutil.copytree(project / name, output / name, ignore=exclusions)
     # The compiled bridge is never transferred between systems.
     binary = output / "pointcloud_bridge/pointcloud_bridge"
     if binary.exists() or binary.is_symlink():
         binary.unlink()
     shutil.copytree(project / "server/app", output / "server/app", ignore=ignored)
-    for name in ("pyproject.toml", ".env.example"):
+    for name in ("pyproject.toml",):
         shutil.copy2(project / "server" / name, output / "server" / name)
     sdk_source = project / "3d_camera/linux"
     sdk_output = output / "3d_camera/linux"
@@ -52,7 +54,7 @@ def snapshot(project: Path, output: Path, sdk_arch: str) -> None:
     for name in ("README.md", ".gitignore", ".gitattributes"):
         shutil.copy2(project / name, output / name)
     for path in output.rglob("*"):
-        if path.is_file() and (path.suffix in (".sh", ".service", ".rules") or path.name.endswith(".rules.example")):
+        if path.is_file() and path.suffix in (".sh", ".service", ".rules"):
             path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
 
 
@@ -104,22 +106,71 @@ def checksums(bundle: Path) -> None:
     (bundle / "SHA256SUMS").write_text("".join(entries), encoding="utf-8")
 
 
-def render(template: Path, output: Path, pairs: list[str]) -> None:
-    text = template.read_text(encoding="utf-8")
-    replacements = {}
-    for pair in pairs:
-        key, value = pair.split("=", 1)
-        value = value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
-        replacements[key] = value
+def unit_value(value: str | Path) -> str:
+    value = str(value)
+    if "\n" in value or "\r" in value:
+        raise ValueError("systemd values must not contain newlines")
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
 
-    def replace(match: re.Match[str]) -> str:
-        key = match.group(1)
-        if key not in replacements:
-            raise ValueError(f"Unresolved placeholder {key} in {template.name}")
-        return replacements[key]
 
-    text = re.sub(r"__([A-Z_]+)__", replace, text)
-    output.write_text(text, encoding="utf-8", newline="\n")
+def units(project: Path, release: Path, user: str, group: str, sdk_arch: str, output: Path) -> None:
+    """Write complete service files with the actual installation paths and account."""
+    server = unit_value(project / "server")
+    bridge = unit_value(project / "pointcloud_bridge")
+    python = unit_value(release / "venv/bin/python")
+    executable = unit_value(release / "pointcloud_bridge")
+    libraries = unit_value(project / "3d_camera/linux/libs/lib" / sdk_arch)
+    user, group = unit_value(user), unit_value(group)
+    output.mkdir(parents=True, exist_ok=True)
+    backend = f"""[Unit]
+Description=PipeSight API, frontend and camera services
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={user}
+Group={group}
+WorkingDirectory={server}
+Environment=PYTHONUNBUFFERED=1
+Environment=PIPESIGHT_HOST=0.0.0.0
+Environment=PIPESIGHT_PORT=8000
+EnvironmentFile={server}/.env
+ExecStart="{python}" -m uvicorn app.main:app --host ${{PIPESIGHT_HOST}} --port ${{PIPESIGHT_PORT}} --workers 1
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+SupplementaryGroups=dialout
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+"""
+    camera = f"""[Unit]
+Description=PipeSight depth camera streams (9090-9093)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={user}
+Group={group}
+WorkingDirectory={bridge}
+Environment="LD_LIBRARY_PATH={libraries}"
+ExecStart="{executable}"
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+SupplementaryGroups=video
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+"""
+    for name, content in (("pipesight-backend", backend), ("pipesight-pcl-bridge", camera)):
+        (output / f"{name}.service").write_text(content, encoding="utf-8", newline="\n")
 
 
 def main() -> None:
@@ -141,10 +192,13 @@ def main() -> None:
     action.add_argument("mediamtx")
     action = actions.add_parser("checksums")
     action.add_argument("bundle", type=Path)
-    action = actions.add_parser("render")
-    action.add_argument("template", type=Path)
+    action = actions.add_parser("units")
+    action.add_argument("project", type=Path)
+    action.add_argument("release", type=Path)
+    action.add_argument("user")
+    action.add_argument("group")
+    action.add_argument("sdk_arch")
     action.add_argument("output", type=Path)
-    action.add_argument("pairs", nargs="+")
     args = parser.parse_args()
     if args.action == "requirements":
         requirements(args.project, args.output)
@@ -156,8 +210,8 @@ def main() -> None:
         validate(args.project, args.output)
     elif args.action == "checksums":
         checksums(args.bundle)
-    elif args.action == "render":
-        render(args.template, args.output, args.pairs)
+    elif args.action == "units":
+        units(args.project, args.release, args.user, args.group, args.sdk_arch, args.output)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ Usage:
   sudo bash deploy/install-online.sh --prepare-offline OUTPUT_DIR [--user USER] [--dry-run]
 
 Install/update PipeSight online, or prepare a complete offline distribution.
+Default service account: robot (must already exist); override with --user USER.
 OUTPUT_DIR must not already exist. Preparation does not install PipeSight services.
 Targets: Ubuntu 22.04 amd64/arm64; prepare on the same OS and architecture as the target.
 EOF

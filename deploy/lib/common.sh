@@ -14,7 +14,7 @@ init_paths() {
   RUNTIME_DIR="$REPO_DIR/.deploy"
   HELPER="$DEPLOY_DIR/lib/bundle.py"
   PYTHON=/usr/bin/python3
-  RUN_USER="${RUN_USER:-${SUDO_USER:-$(stat -c %U "$REPO_DIR")}}"
+  RUN_USER="${RUN_USER:-robot}"
   NO_START=0
   SKIP_FIREWALL=0
   DRY_RUN=0
@@ -25,7 +25,7 @@ init_paths() {
 }
 
 preflight() {
-  [[ "$(uname -s)" == Linux ]] || die 'Run this installer inside Ubuntu 22.04, not Windows/Git Bash.'
+  [[ "$(uname -s)" == Linux ]] || die 'Run this installer on Ubuntu 22.04 Linux.'
   # shellcheck source=/dev/null
   source /etc/os-release
   [[ "$ID" == ubuntu && "$VERSION_ID" == 22.04 ]] || die "Expected Ubuntu 22.04; found $ID $VERSION_ID."
@@ -36,6 +36,9 @@ preflight() {
     *) die "Unsupported architecture: $ARCH (supported: amd64, arm64)." ;;
   esac
   SDK_LIB_DIR="$REPO_DIR/3d_camera/linux/libs/lib/$SDK_ARCH"
+  if [[ -n "${PIPESIGHT_DEPLOY_RUNTIME_DIR:-}" ]]; then
+    RUNTIME_DIR="$(realpath -m -- "$PIPESIGHT_DEPLOY_RUNTIME_DIR")"
+  fi
   NODE_ASSET="node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"
   MTX_ASSET="mediamtx_${MEDIAMTX_VERSION}_linux_${ARCH}.tar.gz"
   [[ -f "$SERVER_DIR/pyproject.toml" && -f "$FRONT_DIR/package-lock.json" ]] || die 'Incomplete project checkout.'
@@ -302,10 +305,10 @@ prepare_offline() {
 install_permissions() {
   usermod -aG dialout,video "$RUN_USER"
   if getent group plugdev >/dev/null; then usermod -aG plugdev "$RUN_USER"; fi
-  install -m 644 "$REPO_DIR/3d_camera/linux/scripts/angstrong-camera.rules" /etc/udev/rules.d/60-pipesight-camera.rules
-  local serial="$DEPLOY_DIR/config/99-pipesight-serial.rules"
+  install -m 644 "$DEPLOY_DIR/udev/60-pipesight-camera.rules" /etc/udev/rules.d/60-pipesight-camera.rules
+  local serial="$DEPLOY_DIR/udev/99-pipesight-serial.rules"
   if [[ -f "$serial" ]]; then
-    ! has_serial_placeholders "$serial" || die 'Fill serial udev placeholders before installing config/99-pipesight-serial.rules.'
+    ! has_serial_placeholders "$serial" || die 'Serial udev rules must contain actual device identifiers.'
     install -m 644 "$serial" /etc/udev/rules.d/99-pipesight-serial.rules
   else
     printf 'Serial aliases use existing udev rules or server/.env; see deploy/README.md.\n'
@@ -321,14 +324,8 @@ has_serial_placeholders() {
 
 prepare_units() {
   local release="$1"
-  local unit
   mkdir -p "$WORK_DIR/units"
-  for unit in pipesight-backend pipesight-pcl-bridge; do
-    "$PYTHON" "$HELPER" render "$DEPLOY_DIR/templates/systemd/$unit.service" "$WORK_DIR/units/$unit.service" \
-      "USER=$RUN_USER" "GROUP=$RUN_GROUP" "SERVER_DIR=$SERVER_DIR" \
-      "BRIDGE_DIR=$BRIDGE_DIR" "SDK_LIB_DIR=$SDK_LIB_DIR" "VENV_PY=$release/venv/bin/python" \
-      "BRIDGE_EXE=$release/pointcloud_bridge"
-  done
+  "$PYTHON" "$HELPER" units "$REPO_DIR" "$release" "$RUN_USER" "$RUN_GROUP" "$SDK_ARCH" "$WORK_DIR/units"
   if ! systemd-analyze verify "$WORK_DIR/units/"*.service 2> "$WORK_DIR/units/verify.log"; then
     cat "$WORK_DIR/units/verify.log" >&2
     die 'Invalid generated systemd units.'
@@ -340,6 +337,8 @@ prepare_units() {
 }
 
 install_units() {
+  mkdir -p "$DEPLOY_DIR/systemd"
+  install -m 644 "$WORK_DIR/units/"*.service "$DEPLOY_DIR/systemd/"
   install -m 644 "$WORK_DIR/units/"*.service /etc/systemd/system/
   systemctl daemon-reload
   systemctl enable pipesight-backend.service pipesight-pcl-bridge.service
@@ -371,13 +370,13 @@ install_project() {
   fi
   local release
   release="$RUNTIME_DIR/releases/$(date -u +%Y%m%dT%H%M%SZ)-$$"
-  mkdir -p "$release"
+  run_as_user mkdir -p "$release"
   chown "$RUN_USER:$RUN_GROUP" "$RUNTIME_DIR" "$RUNTIME_DIR/releases" "$release"
   extract_tools "$bundle" "$release"
   create_python_env "$REPO_DIR" "$release/venv" "$mode" "$bundle"
   local build_project="$WORK_DIR/project"
   mkdir -p "$build_project/front_end"
-  # Exclude host artifacts while copying, including large Windows node_modules trees.
+  # Exclude existing dependency and build directories while copying.
   tar -C "$FRONT_DIR" --exclude=./node_modules --exclude=./dist --exclude=./.env \
     -cf - . | tar -C "$build_project/front_end" -xf -
   chown -R "$RUN_USER:$RUN_GROUP" "$build_project"
@@ -387,11 +386,11 @@ install_project() {
   build_bridge "$REPO_DIR" "$release/pointcloud_bridge"
   run_as_user env PYTHONPYCACHEPREFIX="$WORK_DIR/pycache" \
     "$release/venv/bin/python" -m compileall -q "$SERVER_DIR/app"
-  if [[ -f "$DEPLOY_DIR/config/99-pipesight-serial.rules" ]]; then
-    ! has_serial_placeholders "$DEPLOY_DIR/config/99-pipesight-serial.rules" || die 'Unfilled serial udev template.'
+  if [[ -f "$DEPLOY_DIR/udev/99-pipesight-serial.rules" ]]; then
+    ! has_serial_placeholders "$DEPLOY_DIR/udev/99-pipesight-serial.rules" || die 'Serial udev rules must contain actual device identifiers.'
   fi
   local environment_file="$SERVER_DIR/.env"
-  [[ -f "$environment_file" ]] || environment_file="$SERVER_DIR/.env.example"
+  [[ -f "$environment_file" ]] || environment_file="$DEPLOY_DIR/config/backend.env"
   run_as_user test -r "$environment_file" || die "Service account $RUN_USER cannot read $environment_file; fix its ownership/permissions."
   HTTP_PORT="$(run_as_user "$release/venv/bin/python" -c 'from dotenv import dotenv_values; import sys; print(dotenv_values(sys.argv[1]).get("PIPESIGHT_PORT") or "8000")' "$environment_file")"
   [[ "$HTTP_PORT" =~ ^[0-9]+$ && "$HTTP_PORT" -ge 1 && "$HTTP_PORT" -le 65535 ]] || die 'Invalid PIPESIGHT_PORT in server/.env.'
@@ -419,7 +418,7 @@ install_project() {
   ln -s -- "$release/pointcloud_bridge" "$BRIDGE_DIR/pointcloud_bridge"
   install -m 755 "$release/mediamtx/mediamtx" /usr/local/bin/mediamtx
   if [[ ! -f "$SERVER_DIR/.env" ]]; then
-    install -o "$RUN_USER" -g "$RUN_GROUP" -m 600 "$SERVER_DIR/.env.example" "$SERVER_DIR/.env"
+    install -o "$RUN_USER" -g "$RUN_GROUP" -m 600 "$DEPLOY_DIR/config/backend.env" "$SERVER_DIR/.env"
   fi
   # Writable default runtime directories; existing file ownership is preserved.
   install -d -o "$RUN_USER" -g "$RUN_GROUP" "$SERVER_DIR/data" "$SERVER_DIR/storage" "$SERVER_DIR/third_party"

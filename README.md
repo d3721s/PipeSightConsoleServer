@@ -1,6 +1,6 @@
 # PipeSight Console Server
 
-生产部署支持联网、离线两种方式，详见 [部署说明](deploy/README.md)：
+生产部署支持联网、离线两种方式，默认服务用户为 `robot`，详见 [部署说明](deploy/README.md)：
 
 ```bash
 sudo bash deploy/install-online.sh
@@ -53,7 +53,7 @@ chmod +x server/third_party/mediamtx/mediamtx
 
 ```bash
 cd server
-cp .env.example .env
+cp ../deploy/config/backend.env .env
 ./run.sh
 ```
 

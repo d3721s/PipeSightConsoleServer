@@ -11,6 +11,7 @@ Usage:
   sudo bash deploy/install-offline.sh [--bundle DIR] [--user USER] [--no-start] [--skip-firewall] [--dry-run]
 
 Install/update using a verified local bundle only (no network repositories).
+Default service account: robot (must already exist); override with --user USER.
 Default bundle: deploy/offline inside the extracted offline distribution.
 Prepare first: sudo bash deploy/install-online.sh --prepare-offline OUTPUT_DIR
 EOF
@@ -33,7 +34,7 @@ preflight
 BUNDLE_DIR="$(realpath -m -- "$BUNDLE_DIR")"
 check_bundle "$BUNDLE_DIR"
 if (( DRY_RUN )); then
-  printf 'Mode: offline\nProject: %s\nBundle: %s\nPlatform: Ubuntu 22.04 %s\n' "$REPO_DIR" "$BUNDLE_DIR" "$ARCH"
+  printf 'Mode: offline\nProject: %s\nBundle: %s\nUser: %s\nPlatform: Ubuntu 22.04 %s\n' "$REPO_DIR" "$BUNDLE_DIR" "$RUN_USER" "$ARCH"
   # Validate source/interpreter compatibility when Python is already present.
   if [[ -x "$PYTHON" ]]; then "$PYTHON" "$HELPER" validate "$REPO_DIR" "$BUNDLE_DIR"; fi
   exit 0
