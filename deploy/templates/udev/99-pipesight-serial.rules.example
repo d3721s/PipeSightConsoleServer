@@ -4,11 +4,11 @@
 # as /dev/ttyUSB-IMU regardless of plug order or which ttyUSB* the kernel picks.
 #
 # !!! The match attributes below are PLACEHOLDERS — you MUST fill them with your
-#     actual devices' identifiers (see deploy/UDEV_SETUP.md for how to find them).
+#     actual devices' identifiers (see deploy/README.md).
 #     Case matters: the symlink names are exactly as the backend expects.
 #
 # Install:
-#   sudo cp deploy/99-pipesight-serial.rules /etc/udev/rules.d/
+#   Fill a copy of this template, then install it as 99-pipesight-serial.rules.
 #   sudo udevadm control --reload-rules && sudo udevadm trigger
 #   (then replug the devices, or reboot)
 #

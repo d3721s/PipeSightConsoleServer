@@ -41,3 +41,10 @@
 *.dylib binary
 *.dll binary
 *.exe binary
+
+# Deployment templates and dependency configuration
+*.service text eol=lf
+*.rules text eol=lf
+*.rules.example text eol=lf
+deploy/**/*.txt text eol=lf
+deploy/**/*.env text eol=lf

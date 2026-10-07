@@ -1,5 +1,13 @@
 # PipeSight Console Server
 
+生产部署支持联网、离线两种方式，详见 [部署说明](deploy/README.md)：
+
+```bash
+sudo bash deploy/install-online.sh
+# 或解压预先准备的离线发行包后执行：
+sudo bash deploy/install-offline.sh
+```
+
 首版范围：
 
 - 两台大华乐橙相机：前摄、后摄。

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # Remove PipeSight systemd services (does NOT touch code, venv, or storage).
-#   sudo bash deploy/uninstall.sh
+#   sudo bash deploy/tools/uninstall.sh
 set -euo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run with sudo: sudo bash deploy/uninstall.sh" >&2
+  echo "Please run with sudo: sudo bash deploy/tools/uninstall.sh" >&2
   exit 1
 fi
 

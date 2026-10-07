@@ -1,0 +1,5 @@
+# Build-time tooling. Application dependencies come from server/pyproject.toml.
+pip>=24,<27
+setuptools>=70,<83
+wheel>=0.44,<1
+tomli>=2,<3

@@ -14,3 +14,8 @@ front_end/dist/
 # Local env
 .env
 *.log
+
+# Deployment artifacts and offline bundles
+.deploy/
+deploy/offline/
+pointcloud_bridge/pointcloud_bridge

@@ -1,0 +1,21 @@
+[Unit]
+Description=PipeSight depth camera streams (9090-9093)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__BRIDGE_DIR__
+Environment="LD_LIBRARY_PATH=__SDK_LIB_DIR__"
+ExecStart="__BRIDGE_EXE__"
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+SupplementaryGroups=video
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
