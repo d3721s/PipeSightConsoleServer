@@ -1,8 +1,9 @@
 # Python
-server/.venv/
+server/.venv
 server/data/
 server/storage/
 server/.uvicorn.pid
+server/third_party/mediamtx/
 front_end/.vite.pid
 __pycache__/
 *.py[cod]
