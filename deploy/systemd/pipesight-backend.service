@@ -5,14 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=ros2
-Group=ros2
-WorkingDirectory=/mnt/c/Users/runyu/Desktop/yb_ws/PipeSightConsoleServer/server
+User=robot
+Group=robot
+WorkingDirectory=/home/robot/PipeSightConsoleServer/server
 Environment=PYTHONUNBUFFERED=1
 Environment=PIPESIGHT_HOST=0.0.0.0
 Environment=PIPESIGHT_PORT=8000
-EnvironmentFile=/mnt/c/Users/runyu/Desktop/yb_ws/PipeSightConsoleServer/server/.env
-ExecStart="/home/ros2/.local/share/pipesight/releases/20261007T092533Z-385/venv/bin/python" -m uvicorn app.main:app --host ${PIPESIGHT_HOST} --port ${PIPESIGHT_PORT} --workers 1
+EnvironmentFile=/home/robot/PipeSightConsoleServer/server/.env
+ExecStart="/home/robot/PipeSightConsoleServer/.deploy/releases/20261007T100551Z-852/venv/bin/python" -m uvicorn app.main:app --host ${PIPESIGHT_HOST} --port ${PIPESIGHT_PORT} --workers 1
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=20

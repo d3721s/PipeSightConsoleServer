@@ -1,0 +1,8 @@
+# Cache matching Ubuntu base components so existing packages can be upgraded
+# together without removing init, login, time synchronization or Python users.
+# These packages are cached; the installer does not force-install optional components.
+systemd-sysv
+libnss-systemd
+libpam-systemd
+systemd-timesyncd
+libpython3.10

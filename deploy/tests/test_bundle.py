@@ -26,6 +26,7 @@ class BundleTests(unittest.TestCase):
         self.write("front_end/package-lock.json", '{"lockfileVersion":3}\n')
         self.write("server/pyproject.toml", '[project]\ndependencies = ["httpx"]\n')
         self.write("deploy/config/system-packages.txt", "python3\n")
+        self.write("deploy/config/offline-base-packages.txt", "systemd-sysv\n")
         bundle.manifest(self.project, self.cache, "amd64", "22.23.0", "v1.15.2")
 
     def write(self, name, value="test\n"):
@@ -66,6 +67,11 @@ class BundleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bundle.validate(self.project, self.cache)
         self.assertFalse((self.root / "dangerous").exists())
+
+    def test_changed_base_compatibility_packages_are_rejected(self):
+        self.write("deploy/config/offline-base-packages.txt", "systemd-sysv\nlibpython3.10\n")
+        with self.assertRaisesRegex(ValueError, "OFFLINE_BASE_PACKAGES_SHA256"):
+            bundle.validate(self.project, self.cache)
 
     @unittest.skipUnless(sys.platform == "linux", "requires sha256sum")
     def test_checksums_detect_corruption(self):

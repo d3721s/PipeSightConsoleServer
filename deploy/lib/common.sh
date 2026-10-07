@@ -22,6 +22,8 @@ init_paths() {
   # shellcheck source=../config/versions.env
   source "$DEPLOY_DIR/config/versions.env"
   mapfile -t SYSTEM_PACKAGES < <(sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d' "$DEPLOY_DIR/config/system-packages.txt")
+  mapfile -t OFFLINE_BASE_PACKAGES < <(sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d' "$DEPLOY_DIR/config/offline-base-packages.txt")
+  OFFLINE_PACKAGES=("${SYSTEM_PACKAGES[@]}" "${OFFLINE_BASE_PACKAGES[@]}")
 }
 
 preflight() {
@@ -241,7 +243,7 @@ collect_debs() {
   apt-get -y --download-only --no-install-recommends \
     -o "Dir::State::status=$WORK_DIR/empty-dpkg-status" \
     -o "Dir::Cache::archives=$bundle/debs" \
-    -o 'APT::Sandbox::User=root' install "${SYSTEM_PACKAGES[@]}"
+    -o 'APT::Sandbox::User=root' install "${OFFLINE_PACKAGES[@]}"
   (
     cd -- "$bundle/debs" || exit 1
     dpkg-scanpackages --multiversion . /dev/null > Packages
@@ -259,7 +261,7 @@ verify_offline_apt() {
   unshare --net apt-get "${OFFLINE_APT_OPTIONS[@]}" update
   unshare --net apt-get "${OFFLINE_APT_OPTIONS[@]}" \
     -o "Dir::State::status=$WORK_DIR/empty-dpkg-status" \
-    --simulate --no-download --no-install-recommends --no-remove install "${SYSTEM_PACKAGES[@]}"
+    --simulate --no-download --no-install-recommends --no-remove install "${OFFLINE_PACKAGES[@]}"
 }
 
 prepare_offline() {

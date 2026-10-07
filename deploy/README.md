@@ -14,6 +14,7 @@ deploy/
 │   ├── backend.env               # 实际后端运行配置
 │   ├── versions.env              # Node、MediaMTX 固定版本
 │   ├── system-packages.txt       # 系统依赖清单
+│   ├── offline-base-packages.txt # Ubuntu 基础组件的配套版本缓存
 │   └── python-bootstrap.txt      # Python 安装工具依赖
 ├── systemd/                      # 安装时在目标机器生成的完整服务配置
 ├── udev/60-pipesight-camera.rules # 相机 SDK 提供的设备权限规则
@@ -78,7 +79,7 @@ mkdir -p ~/pipesight-releases
 sudo bash deploy/install-online.sh --prepare-offline ~/pipesight-releases/release-002
 ```
 
-离线包必须在与目标机相同 Ubuntu 版本、架构的 Linux 上准备。准备机器也默认使用 `robot`；账户不同时通过 `--user` 指定该机器已有的非 root 账户，目标机器安装仍默认使用 `robot`。目前依赖对应 Ubuntu 22.04 amd64、Python 3.10；arm64 需要在对应架构上另行准备。系统包收集包括准备机已安装的软件及递归依赖，打包前校验本地 APT 的完整依赖解析，并验证 Python、npm 的离线安装。
+离线包必须在与目标机相同 Ubuntu 版本、架构的 Linux 上准备。准备机器也默认使用 `robot`；账户不同时通过 `--user` 指定该机器已有的非 root 账户，目标机器安装仍默认使用 `robot`。目前依赖对应 Ubuntu 22.04 amd64、Python 3.10；arm64 需要在对应架构上另行准备。系统包收集包括准备机已安装的软件及递归依赖，也缓存与 systemd、Python 配套的 Ubuntu 基础组件，让目标机已有软件可以一起升级。缓存中的可选基础组件由 APT 按目标机需要选择，安装器禁止删除已有软件。打包前校验本地 APT 的完整依赖解析，并验证 Python、npm 的离线安装。
 
 依赖目录较大，已加入 Git 忽略规则，但保留在当前项目中供断网安装。修改 Python、前端或系统依赖后应重新准备对应包。
 
@@ -93,3 +94,5 @@ sudo bash deploy/tools/uninstall.sh
 ```
 
 卸载只移除两个 systemd 服务，保留配置、代码、依赖和应用数据。
+
+干净 Ubuntu 22.04 WSL 的断网安装、运行与发行版重启验证见 [验证记录](VALIDATION.md)。

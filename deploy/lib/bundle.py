@@ -70,6 +70,7 @@ def manifest(project: Path, bundle: Path, arch: str, node: str, mediamtx: str) -
         "FRONT_LOCK_SHA256": digest(project / "front_end/package-lock.json"),
         "PYPROJECT_SHA256": digest(project / "server/pyproject.toml"),
         "SYSTEM_PACKAGES_SHA256": digest(project / "deploy/config/system-packages.txt"),
+        "OFFLINE_BASE_PACKAGES_SHA256": digest(project / "deploy/config/offline-base-packages.txt"),
     }
     (bundle / "manifest.env").write_text(
         "".join(f"{key}={value}\n" for key, value in fields.items()), encoding="utf-8"
@@ -88,6 +89,7 @@ def validate(project: Path, bundle: Path) -> None:
         "FRONT_LOCK_SHA256": digest(project / "front_end/package-lock.json"),
         "PYPROJECT_SHA256": digest(project / "server/pyproject.toml"),
         "SYSTEM_PACKAGES_SHA256": digest(project / "deploy/config/system-packages.txt"),
+        "OFFLINE_BASE_PACKAGES_SHA256": digest(project / "deploy/config/offline-base-packages.txt"),
     }
     for key, value in expected.items():
         if fields.get(key) != value:

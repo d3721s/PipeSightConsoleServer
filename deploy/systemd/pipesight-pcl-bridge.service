@@ -5,11 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=ros2
-Group=ros2
-WorkingDirectory=/mnt/c/Users/runyu/Desktop/yb_ws/PipeSightConsoleServer/pointcloud_bridge
-Environment="LD_LIBRARY_PATH=/mnt/c/Users/runyu/Desktop/yb_ws/PipeSightConsoleServer/3d_camera/linux/libs/lib/x86_64-linux-gnu"
-ExecStart="/home/ros2/.local/share/pipesight/releases/20261007T092533Z-385/pointcloud_bridge"
+User=robot
+Group=robot
+WorkingDirectory=/home/robot/PipeSightConsoleServer/pointcloud_bridge
+Environment="LD_LIBRARY_PATH=/home/robot/PipeSightConsoleServer/3d_camera/linux/libs/lib/x86_64-linux-gnu"
+ExecStart="/home/robot/PipeSightConsoleServer/.deploy/releases/20261007T100551Z-852/pointcloud_bridge"
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=15
