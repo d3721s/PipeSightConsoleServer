@@ -9,8 +9,8 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@carbon/icons-vue": "^10.130.0",
-    "@carbon/vue": "^3.0.30",
+    "@carbon/icons-vue": "^10.139.0",
+    "@carbon/vue": "^3.0.32",
     "@types/three": "^0.184.1",
     "@vitejs/plugin-vue": "^6.0.2",
     "three": "^0.184.0",
