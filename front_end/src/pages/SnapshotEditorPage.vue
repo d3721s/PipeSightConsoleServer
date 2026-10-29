@@ -673,6 +673,7 @@ async function confirmDeleteMedia() {
     </section>
 
     <cv-modal
+      :key="bulkAction"
       :kind="bulkAction === 'delete' ? 'danger' : ''"
       :visible="bulkModalVisible"
       :primary-button-disabled="bulkDownloading || selectedBulkIds.length === 0"
@@ -947,7 +948,7 @@ async function confirmDeleteMedia() {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: 45vh;
+  max-height: min(45vh, calc(100vh - 20rem));
   overflow-y: auto;
 }
 .bulk-item {
