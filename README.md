@@ -133,6 +133,7 @@ PIPESIGHT_PREVIEW_RTSP_SUBTYPE=0
 cd server
 source .venv/bin/activate
 python -m compileall app
+python -m unittest discover -s tests
 ```
 
 前端：
@@ -159,5 +160,6 @@ curl http://127.0.0.1:8000/api/system/health
 - `POST /api/snapshots/image`
 - `POST /api/recordings/start`
 - `POST /api/recordings/stop`
+- `POST /api/media/bulk-delete`（按类型和 ID 批量删除落盘文件及关联标注）
 - `POST /api/reports/{id}/export-pdf`
 - `WS /ws/camera-control`

@@ -99,6 +99,10 @@ export const api = {
   listRecordings: () => request<Recording[]>('/api/recordings'),
   recordingTrack: (id: number) => request<TrackData>(`/api/recordings/${id}/track`),
   deleteMedia: (id: number) => request<{ ok: boolean }>(`/api/media/${id}`, { method: 'DELETE' }),
+  bulkDeleteMedia: (type: 'photo' | 'video', ids: number[]) =>
+    request<{ ok: boolean; deletedIds: number[]; failed: { id: number; detail: string }[] }>(
+      '/api/media/bulk-delete', { method: 'POST', body: JSON.stringify({ type, ids }) }
+    ),
   bulkDownloadMedia: (type: 'photo' | 'video', ids: number[]) =>
     requestBlob('/api/media/bulk-download', { method: 'POST', body: JSON.stringify({ type, ids }) }),
   listMarkers: (mediaId: number) => request<Marker[]>(`/api/media/${mediaId}/markers`),

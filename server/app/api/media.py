@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.drivers.rtsp import build_rtsp_url
 from app.models import Annotation, CameraDevice, Marker, MediaAsset, Project
-from app.schemas import BulkDownloadIn, ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut
+from app.schemas import BulkDeleteIn, BulkDownloadIn, ImageSnapshotIn, MediaAssetOut, RecordingStartIn, RecordingStatusOut
 from app.services.recorder_service import recorder_service
 from app.services.odometer_service import odometer_service
 from app.services.settings_service import get_setting
@@ -272,35 +272,68 @@ def bulk_download_media(payload: BulkDownloadIn, db: Session = Depends(get_db)) 
     )
 
 
-@router.delete("/media/{asset_id}")
-def delete_media(asset_id: int, db: Session = Depends(get_db)) -> dict:
-    """Delete a photo/recording: its file (+ video track sidecar), its graphic
-    annotations (rows + rendered PNGs) and its marker rows."""
-    asset = db.get(MediaAsset, asset_id)
-    if asset is None:
-        raise HTTPException(status_code=404, detail="未找到该文件")
-
-    # Remove the media file itself, and the per-segment track json for videos.
+def _delete_media_asset(asset: MediaAsset, db: Session) -> None:
+    """Remove files before deleting rows so failed unlinks remain retryable."""
+    paths: list[Path] = []
     if asset.file_path:
-        _unlink(asset.file_path)
-        if asset.type == "video":
-            _unlink(Path(asset.file_path).with_suffix(".json"))
-        else:
-            # Depth snapshots carry a raw-depth sibling; remove it too.
-            _unlink(Path(asset.file_path).with_suffix(".depthbin"))
+        path = Path(asset.file_path)
+        paths.append(path.with_suffix(".json" if asset.type == "video" else ".depthbin"))
+    if asset.thumbnail_path:
+        paths.append(Path(asset.thumbnail_path))
 
-    # Remove linked annotations (and their rendered images) + marker mirrors.
     annotations = db.scalars(
-        select(Annotation).where(Annotation.media_asset_id == asset_id)
+        select(Annotation).where(Annotation.media_asset_id == asset.id)
     ).all()
     for annotation in annotations:
         if annotation.rendered_path:
-            _unlink(annotation.rendered_path)
+            paths.append(Path(annotation.rendered_path))
+    if asset.file_path:
+        paths.append(Path(asset.file_path))
+    for path in dict.fromkeys(paths):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"无法删除文件：{path.name}，请检查存储设备和文件权限") from exc
+
+    for annotation in annotations:
         db.delete(annotation)
-    markers = db.scalars(select(Marker).where(Marker.media_asset_id == asset_id)).all()
+    markers = db.scalars(select(Marker).where(Marker.media_asset_id == asset.id)).all()
     for marker in markers:
         db.delete(marker)
-
     db.delete(asset)
+
+
+@router.post("/media/bulk-delete")
+def bulk_delete_media(payload: BulkDeleteIn, db: Session = Depends(get_db)) -> dict:
+    selected_ids = set(payload.ids)
+    if not selected_ids:
+        raise HTTPException(status_code=400, detail="请选择要删除的文件")
+    assets = db.scalars(
+        select(MediaAsset)
+        .where(MediaAsset.id.in_(selected_ids), MediaAsset.type == payload.type)
+        .order_by(MediaAsset.id.desc())
+    ).all()
+    if {asset.id for asset in assets} != selected_ids:
+        raise HTTPException(status_code=404, detail="所选文件不存在或类型不匹配，请刷新列表后重试")
+
+    deleted_ids: list[int] = []
+    failed: list[dict] = []
+    for asset in assets:
+        try:
+            _delete_media_asset(asset, db)
+        except HTTPException as exc:
+            failed.append({"id": asset.id, "detail": exc.detail})
+        else:
+            deleted_ids.append(asset.id)
+    db.commit()
+    return {"ok": not failed, "deletedIds": deleted_ids, "failed": failed}
+
+
+@router.delete("/media/{asset_id}")
+def delete_media(asset_id: int, db: Session = Depends(get_db)) -> dict:
+    asset = db.get(MediaAsset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="未找到该文件")
+    _delete_media_asset(asset, db)
     db.commit()
     return {"ok": True}

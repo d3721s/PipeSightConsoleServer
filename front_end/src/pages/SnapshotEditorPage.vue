@@ -9,7 +9,8 @@ import { decodeDepthRaw, type DepthFrame } from '../utils/depthArea'
 import type { GraphicAnnotation, Photo, Recording, TrackData } from '../types'
 
 type Tab = 'image' | 'video' | '3d'
-type BulkDownloadKind = 'photo' | 'video'
+type BulkMediaKind = 'photo' | 'video'
+type BulkAction = 'download' | 'delete'
 type MileagePair = { left: number | null; right: number | null }
 const tab = ref<Tab>('image')
 
@@ -34,14 +35,16 @@ const activeDepthFrame = ref<DepthFrame | null>(null)
 const depthLoading = ref(false)
 
 const bulkModalVisible = ref(false)
-const bulkDownloadKind = ref<BulkDownloadKind>('photo')
+const bulkMediaKind = ref<BulkMediaKind>('photo')
+const bulkAction = ref<BulkAction>('download')
 const selectedBulkIds = ref<number[]>([])
 const bulkDownloading = ref(false)
-const bulkDownloadItems = computed<(Photo | Recording)[]>(() =>
-  bulkDownloadKind.value === 'photo' ? downloadablePhotos.value : downloadableRecordings.value
-)
+const bulkMediaItems = computed<(Photo | Recording)[]>(() => {
+  if (bulkAction.value === 'delete') return bulkMediaKind.value === 'photo' ? photos.value : recordings.value
+  return bulkMediaKind.value === 'photo' ? downloadablePhotos.value : downloadableRecordings.value
+})
 const bulkAllSelected = computed(() =>
-  bulkDownloadItems.value.length > 0 && selectedBulkIds.value.length === bulkDownloadItems.value.length
+  bulkMediaItems.value.length > 0 && selectedBulkIds.value.length === bulkMediaItems.value.length
 )
 
 const annotateVideo = ref<HTMLVideoElement | null>(null)
@@ -233,20 +236,23 @@ function downloadPhoto() {
   link.remove()
 }
 
-function openBulkDownload(kind: BulkDownloadKind) {
-  bulkDownloadKind.value = kind
-  const items = kind === 'photo' ? downloadablePhotos.value : downloadableRecordings.value
+function openBulkMedia(kind: BulkMediaKind, action: BulkAction) {
+  if (bulkDownloading.value || deleting.value) return
+  bulkMediaKind.value = kind
+  bulkAction.value = action
+  const items = bulkMediaItems.value
   if (items.length === 0) {
-    notify(kind === 'photo' ? '暂无可下载的图片' : '暂无可下载的视频', 'warning')
+    const label = kind === 'photo' ? '图片' : '视频'
+    notify(`暂无可${action === 'download' ? '下载' : '删除'}的${label}`, 'warning')
     return
   }
-  selectedBulkIds.value = items.map((item) => item.id)
+  selectedBulkIds.value = action === 'download' ? items.map((item) => item.id) : []
   bulkModalVisible.value = true
 }
 
 function setAllBulkSelected(event: Event) {
   const checked = (event.target as HTMLInputElement).checked
-  selectedBulkIds.value = checked ? bulkDownloadItems.value.map((item) => item.id) : []
+  selectedBulkIds.value = checked ? bulkMediaItems.value.map((item) => item.id) : []
 }
 
 function bulkItemSubtitle(item: Photo | Recording): string {
@@ -276,13 +282,22 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-async function confirmBulkDownload() {
+async function confirmBulkMedia() {
+  if (bulkDownloading.value || deleting.value) return
   if (selectedBulkIds.value.length === 0) {
-    notify('请选择要下载的文件', 'warning')
+    notify(`请选择要${bulkAction.value === 'download' ? '下载' : '删除'}的文件`, 'warning')
+    return
+  }
+  if (bulkAction.value === 'delete') {
+    pendingDelete.value = bulkMediaItems.value.filter((item) => selectedBulkIds.value.includes(item.id))
+    pendingDeleteIsBulk.value = true
+    deleteError.value = ''
+    bulkModalVisible.value = false
+    confirmVisible.value = true
     return
   }
   bulkDownloading.value = true
-  const kind = bulkDownloadKind.value
+  const kind = bulkMediaKind.value
   try {
     const blob = await api.bulkDownloadMedia(kind, [...selectedBulkIds.value])
     const prefix = kind === 'photo' ? 'pipesight_images' : 'pipesight_videos'
@@ -364,33 +379,74 @@ async function removeAnnotation(id: number) {
   }
 }
 
-// --- Delete the selected media (photo / recording) -------------------------
+// --- Delete selected media (photo / recording) -----------------------------
 const confirmVisible = ref(false)
-const pendingDelete = ref<Photo | Recording | null>(null)
+const pendingDelete = ref<(Photo | Recording)[]>([])
+const pendingDeleteIsBulk = ref(false)
 const deleting = ref(false)
+const deleteError = ref('')
+const pendingDeleteLabel = computed(() =>
+  pendingDelete.value[0] && 'videoUrl' in pendingDelete.value[0] ? '视频' : '图片'
+)
 
 function askDeleteMedia(media: Photo | Recording | null) {
-  if (!media) return
-  pendingDelete.value = media
+  if (!media || deleting.value) return
+  pendingDelete.value = [media]
+  pendingDeleteIsBulk.value = false
+  deleteError.value = ''
   confirmVisible.value = true
 }
 
+function removeDeletedMedia(ids: number[]) {
+  photos.value = photos.value.filter((photo) => !ids.includes(photo.id))
+  recordings.value = recordings.value.filter((rec) => !ids.includes(rec.id))
+  selectedBulkIds.value = selectedBulkIds.value.filter((id) => !ids.includes(id))
+  const active = activePhoto.value ?? activeRecording.value
+  if (!active || !ids.includes(active.id)) return
+  activePhoto.value = null
+  activeRecording.value = null
+  activeDepthFrame.value = null
+  track.value = null
+  videoCurrentTime.value = 0
+  editorOpen.value = false
+  graphicAnnotations.value = []
+  maximized.value = false
+}
+
+function closeDeleteConfirmation(visible = false) {
+  if (deleting.value) return
+  confirmVisible.value = visible
+}
+
 async function confirmDeleteMedia() {
-  const media = pendingDelete.value
-  if (!media || deleting.value) return
+  const items = [...pendingDelete.value]
+  if (items.length === 0 || deleting.value) return
+  const label = pendingDeleteLabel.value
   deleting.value = true
+  deleteError.value = ''
   try {
-    await api.deleteMedia(media.id)
+    if (pendingDeleteIsBulk.value) {
+      const kind = 'videoUrl' in items[0] ? 'video' : 'photo'
+      const result = await api.bulkDeleteMedia(kind, items.map((item) => item.id))
+      removeDeletedMedia(result.deletedIds)
+      pendingDelete.value = items.filter((item) => result.failed.some((failure) => failure.id === item.id))
+      if (result.failed.length > 0) {
+        deleteError.value = `已删除 ${result.deletedIds.length} 项，${result.failed.length} 项未删除。${result.failed[0].detail}`
+        notify(deleteError.value, 'warning')
+        await reload()
+        return
+      }
+    } else {
+      await api.deleteMedia(items[0].id)
+      removeDeletedMedia([items[0].id])
+    }
     confirmVisible.value = false
-    pendingDelete.value = null
-    activePhoto.value = null
-    activeRecording.value = null
-    editorOpen.value = false
-    graphicAnnotations.value = []
+    pendingDelete.value = []
     await reload()
-    notify(tab.value === 'image' ? '图片已删除' : '视频已删除', 'success')
+    notify(pendingDeleteIsBulk.value ? `已删除 ${items.length} 项${label}` : `${label}已删除`, 'success')
   } catch (e) {
-    notify((e as Error).message, 'error')
+    deleteError.value = (e as Error).message
+    notify(deleteError.value, 'error')
   } finally {
     deleting.value = false
   }
@@ -406,14 +462,26 @@ async function confirmDeleteMedia() {
           kind="tertiary"
           size="sm"
           :disabled="downloadablePhotos.length === 0"
-          @click="openBulkDownload('photo')"
+          @click="openBulkMedia('photo', 'download')"
         >批量下载图片</cv-button>
         <cv-button
           kind="tertiary"
           size="sm"
           :disabled="downloadableRecordings.length === 0"
-          @click="openBulkDownload('video')"
+          @click="openBulkMedia('video', 'download')"
         >批量下载视频</cv-button>
+        <cv-button
+          kind="danger--ghost"
+          size="sm"
+          :disabled="photos.length === 0 || deleting"
+          @click="openBulkMedia('photo', 'delete')"
+        >批量删除图片</cv-button>
+        <cv-button
+          kind="danger--ghost"
+          size="sm"
+          :disabled="recordings.length === 0 || deleting"
+          @click="openBulkMedia('video', 'delete')"
+        >批量删除视频</cv-button>
       </div>
       <cv-tabs aria-label="标注来源" @tab-selected="onTabSelected">
         <cv-tab label="图像">
@@ -605,26 +673,30 @@ async function confirmDeleteMedia() {
     </section>
 
     <cv-modal
+      :kind="bulkAction === 'delete' ? 'danger' : ''"
       :visible="bulkModalVisible"
       :primary-button-disabled="bulkDownloading || selectedBulkIds.length === 0"
       @update:visible="bulkModalVisible = $event"
-      @primary-click="confirmBulkDownload"
+      @primary-click="confirmBulkMedia"
       @secondary-click="bulkModalVisible = false"
     >
-      <template #title>{{ bulkDownloadKind === 'photo' ? '批量下载图片' : '批量下载视频' }}</template>
+      <template #title>批量{{ bulkAction === 'download' ? '下载' : '删除' }}{{ bulkMediaKind === 'photo' ? '图片' : '视频' }}</template>
       <template #content>
-        <p class="bulk-hint">选择要打包下载的{{ bulkDownloadKind === 'photo' ? '图片' : '视频' }}文件。</p>
+        <p class="bulk-hint">
+          选择要{{ bulkAction === 'download' ? '打包下载' : '删除' }}的{{ bulkMediaKind === 'photo' ? '图片（含深度快照）' : '视频' }}文件。
+        </p>
         <label class="bulk-select-all">
           <input
             type="checkbox"
             :checked="bulkAllSelected"
+            :indeterminate="selectedBulkIds.length > 0 && !bulkAllSelected"
             :disabled="bulkDownloading"
             @change="setAllBulkSelected"
           />
-          <span>全选（{{ selectedBulkIds.length }}/{{ bulkDownloadItems.length }}）</span>
+          <span>全选（{{ selectedBulkIds.length }}/{{ bulkMediaItems.length }}）</span>
         </label>
         <div class="bulk-list">
-          <label v-for="item in bulkDownloadItems" :key="item.id" class="bulk-item">
+          <label v-for="item in bulkMediaItems" :key="item.id" class="bulk-item">
             <input
               v-model="selectedBulkIds"
               type="checkbox"
@@ -634,32 +706,37 @@ async function confirmDeleteMedia() {
             <span class="bulk-item-body">
               <span class="bulk-item-name">{{ item.name }}</span>
               <span class="bulk-item-meta">{{ bulkItemSubtitle(item) }}</span>
+              <span v-if="!item.available" class="bulk-item-meta">文件缺失或存储不可用</span>
             </span>
             <span class="bulk-item-type">{{ bulkItemTypeLabel(item) }}</span>
           </label>
         </div>
       </template>
       <template #secondary-button>取消</template>
-      <template #primary-button>{{ bulkDownloading ? '打包中…' : '下载 ZIP' }}</template>
+      <template #primary-button>{{ bulkAction === 'delete' ? '删除选中项' : bulkDownloading ? '打包中…' : '下载 ZIP' }}</template>
     </cv-modal>
 
     <cv-modal
       kind="danger"
+      auto-hide-off
       :visible="confirmVisible"
-      :primary-button-disabled="deleting"
-      @update:visible="confirmVisible = $event"
+      :primary-button-disabled="deleting || pendingDelete.length === 0"
+      @update:visible="closeDeleteConfirmation"
+      @modal-hide-request="closeDeleteConfirmation()"
       @primary-click="confirmDeleteMedia"
-      @secondary-click="confirmVisible = false"
+      @secondary-click="closeDeleteConfirmation()"
     >
-      <template #title>{{ tab === 'image' ? '删除图片' : '删除视频' }}</template>
+      <template #title>{{ pendingDeleteIsBulk ? '批量删除' : '删除' }}{{ pendingDeleteLabel }}</template>
       <template #content>
         <p>
-          确定删除「{{ pendingDelete?.name }}」吗？
-          此操作会同时删除该{{ tab === 'image' ? '图片' : '视频' }}文件及其全部标注，且不可恢复。
+          <template v-if="pendingDeleteIsBulk">确定删除选中的 {{ pendingDelete.length }} 项{{ pendingDeleteLabel }}吗？</template>
+          <template v-else>确定删除「{{ pendingDelete[0]?.name }}」吗？</template>
+          此操作会同时删除所选文件及其全部标注、录像轨迹或深度数据，且不可恢复。
         </p>
+        <p v-if="deleteError" class="bulk-hint" role="alert">{{ deleteError }}</p>
       </template>
       <template #secondary-button>取消</template>
-      <template #primary-button>删除</template>
+      <template #primary-button>{{ deleting ? '删除中…' : '删除' }}</template>
     </cv-modal>
   </div>
 </template>

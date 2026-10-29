@@ -138,6 +138,11 @@ class BulkDownloadIn(BaseModel):
     ids: list[int]
 
 
+class BulkDeleteIn(BaseModel):
+    type: Literal["photo", "video"]
+    ids: list[int]
+
+
 class GraphicAnnotationIn(BaseModel):
     # Graphical annotation saved from the editor (image or video frame).
     media_asset_id: int | None = Field(default=None, alias="mediaAssetId")
